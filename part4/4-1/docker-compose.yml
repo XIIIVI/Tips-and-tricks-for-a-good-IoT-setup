@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  hivemq-edge:
+    image: ${PRIVATE_REPO}/hivemq-edge:2025.8
+    deploy:
+      replicas: 5
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 100M
+          cpus: "1"
+      placement:
+        constraints:
+          - node.labels.mqtt == true
+    ports:
+      - "5001:5100"
+    networks:
+      - secured_network
+
+networks:
+  secured_network:
+    driver: overlay
