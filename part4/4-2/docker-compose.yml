@@ -4,7 +4,7 @@ services:
   hivemq-edge:
     image: ${PRIVATE_REPO}/hivemq/hivemq-edge:2025.8
     deploy:
-      replicas: 5
+      mode: global  # Ensures one instance per eligible node
       restart_policy:
         condition: on-failure
       resources:
