@@ -10,3 +10,5 @@ Before deploying this stack, ensure you are using the private repo. You can use 
 export PRIVATE_REPO=<IP_ADDRESS_OF_THE_REPO>:4443
 docker stack deploy --compose-file docker-compose.yml iot-stack
 ```
+
+To remove the stack, ```type sudo docker stack rm iot-stack```
