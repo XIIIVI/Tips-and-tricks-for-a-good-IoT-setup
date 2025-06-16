@@ -171,12 +171,6 @@ main() {
            --build-arg IMAGE_VERSION="${IMAGE_VERSION}" \
            --build-arg LOCAL_REGISTRY="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}" \
            --push .
-    docker buildx build \
-           --platform linux/amd64 \
-           --tag "${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/telegraf-level${LEVEL_NUMBER}:${IMAGE_VERSION}" \
-           --build-arg IMAGE_VERSION="${IMAGE_VERSION}" \
-           --build-arg LOCAL_REGISTRY="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}" \
-           --push .
     
     cd - || exit
 
