@@ -16,3 +16,7 @@ services:
           - node.labels.mqtt == true
     ports:
       - "5001:5100"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/hostname:/etc/hostname:ro
