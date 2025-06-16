@@ -92,8 +92,6 @@ check_all_mandatory_parameters() {
 main() {
     MANDATORY_PARAMETER_LIST=("LEVEL_NUMBER" "LOCAL_REGISTRY_ADDRESS")
 
-    docker-compose down
-
     # Parses the parameters
     while (("$#")); do
         case "$1" in
