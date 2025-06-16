@@ -162,13 +162,18 @@ main() {
     cp "./commons_telegraf.conf" "level${LEVEL_NUMBER}/telegraf.conf"
     cat "level${LEVEL_NUMBER}/telegraf.tmp" >> "level${LEVEL_NUMBER}/telegraf.conf"
 
+    log_info "Importing image ${IMAGE_NAME}:${IMAGE_VERSION} into local registry ${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}"
+    log_debug "Creating the builder"
+    docker buildx create --name mybuilder --use --bootstrap
+    log_debug "Importing the image"
+
     # Build the Telegraf image
     cd "level${LEVEL_NUMBER}/" || exit
     docker buildx build \
            --platform linux/amd64,linux/arm64 \
            -t "${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/telegraf-level${LEVEL_NUMBER}:${IMAGE_VERSION}" \
            --build-arg IMAGE_VERSION="${IMAGE_VERSION}" \
-           --build-arg LOCAL_REGISTRY="${LOCAL_REGISTRY}:${LOCAL_REGISTRY_PORT}" \
+           --build-arg LOCAL_REGISTRY="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}" \
            --push .
 
     log_debug "Removing the builder"
