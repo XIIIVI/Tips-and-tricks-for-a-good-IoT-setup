@@ -3,7 +3,7 @@ ARG LOCAL_REGISTRY
 ARG IMAGE_VERSION
 
 # Final stage: use the same or another base image
-FROM --platform=$TARGETPLATFORM ${LOCAL_REGISTRY}/telegraf:${IMAGE_VERSION}
+FROM ${LOCAL_REGISTRY}/telegraf:${IMAGE_VERSION}
 
 ENV MODULE_VERSION=#-MODULE_VERSION-#
 ENV DEBUG_ON=false
