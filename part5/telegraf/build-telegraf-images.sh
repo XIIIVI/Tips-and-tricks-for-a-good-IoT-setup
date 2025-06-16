@@ -168,7 +168,13 @@ main() {
            --platform linux/amd64,linux/arm64 \
            -t "${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/telegraf-level${LEVEL_NUMBER}:${IMAGE_VERSION}" \
            --build-arg IMAGE_VERSION="${IMAGE_VERSION}" \
+           --build-arg LOCAL_REGISTRY="${LOCAL_REGISTRY}:${LOCAL_REGISTRY_PORT}" \
            --push .
+
+    log_debug "Removing the builder"
+    docker buildx rm mybuilder
+    
+    cd - || exit
 
     log_info "Telegraf image for level ${LEVEL_NUMBER} with version ${IMAGE_VERSION} has been built and pushed successfully."
 }
