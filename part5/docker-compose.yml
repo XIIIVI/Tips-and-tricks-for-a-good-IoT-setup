@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  hivemq-edge:
+    image: ${PRIVATE_REPO}/hivemq/hivemq-edge:2025.8
+    deploy:
+      mode: global  # Ensures one instance per eligible node
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 100M
+          cpus: "1"
+      placement:
+        constraints:
+          - node.labels.mqtt == true
+    ports:
+      - "5001:5100"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/hostname:/etc/hostname:ro
