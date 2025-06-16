@@ -145,25 +145,25 @@ main() {
     log_info "Building the Telegraf image for level ${LEVEL_NUMBER} with version ${IMAGE_VERSION}"
 
     log_debug "Generating the banner"
-    figlet -f "${FIGLET_FONT}" "Level #${LEVEL_NUMBER}" >"part5/telegraf/level${LEVEL_NUMBER}/banner"
+    figlet -f "${FIGLET_FONT}" "Level #${LEVEL_NUMBER}" >"telegraf/level${LEVEL_NUMBER}/banner"
 
     # entrypoint.sh
     log_debug "Customizing and copying the file entrypoint.sh"
-    cp "./entrypoint.sh" "part5/telegraf/level${LEVEL_NUMBER}/entrypoint.sh"
-    sed -i "s/#-MODULE_VERSION-#/${IMAGE_VERSION}/g" "part5/telegraf/level${LEVEL_NUMBER}/entrypoint.sh"
+    cp "./entrypoint.sh" "telegraf/level${LEVEL_NUMBER}/entrypoint.sh"
+    sed -i "s/#-MODULE_VERSION-#/${IMAGE_VERSION}/g" "telegraf/level${LEVEL_NUMBER}/entrypoint.sh"
 
     # Dockerfile
     log_debug "Copying the file Dockerfile"
-    cp "./Dockerfile" "part5/telegraf/level${LEVEL_NUMBER}/Dockerfile"
+    cp "./Dockerfile" "telegraf/level${LEVEL_NUMBER}/Dockerfile"
 
     # commons_telegraf.conf
     log_debug "Copying and customizing the file commons_telegraf.conf"
-    mv "part5/telegraf/level${LEVEL_NUMBER}/telegraf.conf" "part5/telegraf/level${LEVEL_NUMBER}/telegraf.tmp"
-    cp "./commons_telegraf.conf" "part5/telegraf/level${LEVEL_NUMBER}/telegraf.conf"
-    cat "part5/telegraf/level${LEVEL_NUMBER}/telegraf.tmp" >> "part5/telegraf/level${LEVEL_NUMBER}/telegraf.conf"
+    mv "telegraf/level${LEVEL_NUMBER}/telegraf.conf" "telegraf/level${LEVEL_NUMBER}/telegraf.tmp"
+    cp "./commons_telegraf.conf" "telegraf/level${LEVEL_NUMBER}/telegraf.conf"
+    cat "telegraf/level${LEVEL_NUMBER}/telegraf.tmp" >> "telegraf/level${LEVEL_NUMBER}/telegraf.conf"
 
     # Build the Telegraf image
-    cd "part5/telegraf/level${LEVEL_NUMBER}/" || exit
+    cd "telegraf/level${LEVEL_NUMBER}/" || exit
     docker buildx build \
            --platform linux/amd64,linux/arm64 \
            -t "${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/telegraf-level${LEVEL_NUMBER}:${IMAGE_VERSION}" \
