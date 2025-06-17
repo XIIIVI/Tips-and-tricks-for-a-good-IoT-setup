@@ -1,0 +1,79 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// #################################
+// HTTP server to serve /api/v1/push
+// #################################
+loki.source.api "loki_push_api" {
+    http {
+        listen_address = "0.0.0.0"
+        listen_port = sys.env("MAIN_ALLOY_PORT")
+    }
+    forward_to = [loki.process.add_labels.receiver]
+}
+
+// #####################################
+// #### Local logging Configuration ####
+// #####################################
+local.file_match "local_files" {
+    path_targets = [
+        {"__path__" = "/host/log/*.log"}
+        ]
+    sync_period = "5s"
+}
+
+loki.source.file "log_scrape" {
+    targets    = local.file_match.local_files.targets
+    forward_to = [loki.process.add_labels.receiver]
+    tail_from_end = true
+}
+
+// ###############################
+// #### Logging Configuration ####
+// ###############################
+
+// Discover Docker containers and extract metadata.
+discovery.docker "linux" {
+  host = "unix:///var/run/docker.sock"
+}
+
+// Define a relabeling rule to create a service name from the container name.
+discovery.relabel "logs_integrations_docker" {
+      targets = []
+  
+      rule {
+          source_labels = ["__meta_docker_container_name"]
+          regex = "/(.*)"
+          target_label = "service_name"
+      }
+}
+
+// Configure a loki.source.docker component to collect logs from Docker containers.
+loki.source.docker "default" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.docker.linux.targets
+  labels     = {"platform" = "docker"}
+  relabel_rules = discovery.relabel.logs_integrations_docker.rules
+  forward_to = [loki.process.add_labels.receiver]
+}
+
+
+// Add custom labels to each log record
+loki.process "add_labels" {
+    forward_to = [loki.process.parent.receiver]
+
+    // Add static labels from environment variables
+    stage.static_labels {
+        values = {
+            host = sys.env("HOSTNAME")}
+    }        
+}
+
+
+loki.write "parent" {
+  endpoint {
+    url = string.format("http://%s:%s/loki/api/v1/push", sys.env("PARENT_HOSTNAME"), sys.env("PARENT_ALLOY_PORT"))
+  }
+}

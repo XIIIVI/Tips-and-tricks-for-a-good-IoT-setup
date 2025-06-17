@@ -1,4 +1,4 @@
-This section provides a convenient way to build a cluster for VictoriaMetrics (time series).
+This section provides a convenient way to build a cluster for VictoriaMetrics (time series) as described in [part #6](https://medium.com/p/aeedbf038511).
 
 > ⚠️ You must configure a dedicated storage for VictoriaMetrics ON ALL YOUR DEVICES by running the following commands
 >
@@ -8,7 +8,7 @@ sudo chown root:root /data/victoriametrics
 sudo chmod 744 /data/victoriametrics
 ```
 
-1) Import the VictoriaMetrics components
+1) Import the VictoriaMetrics images
 
 ```bash
 sudo ../../commons/import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name victoriametrics/vminsert --image-version v1.119.0-cluster

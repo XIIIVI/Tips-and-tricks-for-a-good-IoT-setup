@@ -40,7 +40,6 @@ log_debug() {
 display_help() {
     log_debug "Usage: ${0} --local-registry-address <IP address of the local registry>"
     log_debug "            [--local-registry-port <Port of the local registry> (By default: 4443)]"
-    log_debug "            --level-number <Number>"
 }
 
 #
@@ -48,7 +47,6 @@ display_help() {
 #
 display_settings() {
     log_debug "S E T T I N G S"
-    log_debug "LEVEL_NUMBER : ${LEVEL_NUMBER}"
     log_debug "LOCAL_REGISTRY_ADDRESS: ${LOCAL_REGISTRY_ADDRESS}"
     log_debug "LOCAL_REGISTRY_PORT   : ${LOCAL_REGISTRY_PORT}"
 }
@@ -90,16 +88,11 @@ check_all_mandatory_parameters() {
 # main
 #
 main() {
-    MANDATORY_PARAMETER_LIST=("LEVEL_NUMBER" "LOCAL_REGISTRY_ADDRESS")
+    MANDATORY_PARAMETER_LIST=("LOCAL_REGISTRY_ADDRESS")
 
     # Parses the parameters
     while (("$#")); do
         case "$1" in
-        --level-number)
-            LEVEL_NUMBER="${2}"
-            shift # past argument
-            shift # past value
-            ;;
         --local-registry-address)
             LOCAL_REGISTRY_ADDRESS="${2}"
             shift # past argument
@@ -126,7 +119,7 @@ main() {
     done
 
     LOCAL_REGISTRY_PORT=${LOCAL_REGISTRY_PORT:="4443"}
-    IMAGE_VERSION=${IMAGE_VERSION:="1.34.4-alpine"}
+    IMAGE_VERSION=${IMAGE_VERSION:="1.9.1"}
 
     log_info "Installing the required packages"
     apt-get -y -qq update
@@ -140,25 +133,16 @@ main() {
 
     display_settings
 
-    log_info "Building the Telegraf image for level ${LEVEL_NUMBER} with version ${IMAGE_VERSION}"
+    log_info "Building the Alloy image v${IMAGE_VERSION}"
 
     log_debug "Generating the banner"
-    figlet -f "${FIGLET_FONT}" "Level #${LEVEL_NUMBER}" >"level${LEVEL_NUMBER}/banner"
+    figlet -f "${FIGLET_FONT}" "Alloy" >"level${LEVEL_NUMBER}/banner"
 
     # entrypoint.sh
-    log_debug "Customizing and copying the file entrypoint.sh"
-    cp "./entrypoint.sh" "level${LEVEL_NUMBER}/entrypoint.sh"
-    sed -i "s/#-MODULE_VERSION-#/${IMAGE_VERSION}/g" "level${LEVEL_NUMBER}/entrypoint.sh"
+    log_debug "Customizing the file entrypoint.sh"
+    sed -i "s/#-MODULE_VERSION-#/${IMAGE_VERSION}/g" "./entrypoint.sh"
 
-    # Dockerfile
-    log_debug "Copying the file Dockerfile"
-    cp "./Dockerfile" "level${LEVEL_NUMBER}/Dockerfile"
-
-    # commons_telegraf.conf
-    log_debug "Copying and customizing the file commons_telegraf.conf"
-    mv "level${LEVEL_NUMBER}/telegraf.conf" "level${LEVEL_NUMBER}/telegraf.tmp"
-    cp "./commons_telegraf.conf" "level${LEVEL_NUMBER}/telegraf.conf"
-    cat "level${LEVEL_NUMBER}/telegraf.tmp" >> "level${LEVEL_NUMBER}/telegraf.conf"
+    log_info "Importing image ${IMAGE_NAME}:${IMAGE_VERSION} into local registry ${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}"
 
     # Build the Telegraf image
     cd "level${LEVEL_NUMBER}/" || exit

@@ -9,6 +9,8 @@ sudo chown root:root /data/telegraf
 sudo chmod 744 /data/telegraf
 ```
 
+❓Type ```./telegraf/build-telegraf-images.sh```
+
 1) Import the Telegraf image
 
 ```bash
@@ -23,3 +25,5 @@ sudo ./build-telegraf-images.sh --local-registry-address <LOCAL_REGISTRY_IP_ADDR
 sudo ./build-telegraf-images.sh --local-registry-address <LOCAL_REGISTRY_IP_ADDRESS> --level-number 1
 sudo ./build-telegraf-images.sh --local-registry-address <LOCAL_REGISTRY_IP_ADDRESS> --level-number 2
 ```
+
+3) Then update the stack ```PRIVATE_REPO=<IP_ADDRESS_OF_THE_REPO>:4443 sudo docker stack deploy --compose-file docker-compose.yml iot-stack```

@@ -208,3 +208,26 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
+
+
+#################################
+#                               #
+#          P A R T   7          #
+#                               #
+#################################
+
+
+  alloy-alllevels:
+    image: ${PRIVATE_REPO}/grafana/alloy:v1.9.1
+    deploy:
+      mode: global  # Ensures one instance per eligible node
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "3100:3100"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/hostname:/etc/hostname:ro
+      - /data/alloy:/alloy
