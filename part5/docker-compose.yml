@@ -20,3 +20,98 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
+
+  telegraf-level0:
+    image: ${PRIVATE_REPO}/telegraf-level0:1.34.4-alpine
+    deploy:
+      mode: global  # Ensures one instance per eligible node
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 100M
+          cpus: "1"
+      placement:
+        constraints:
+          - node.labels.level == 0
+    ports:
+      - "5001:5100"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/hostname:/etc/hostname:ro
+      # For Docker
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # File system
+      - /proc/sys/fs:/host/proc/sys/fs:ro
+      # For CPU metrics
+      - /proc/stat:/proc/stat:ro
+      - /proc/cpuinfo:/proc/cpuinfo:ro
+      # For memory metrics
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+
+  telegraf-level1:
+    image: ${PRIVATE_REPO}/telegraf-level1:1.34.4-alpine
+    deploy:
+      mode: global  # Ensures one instance per eligible node
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 100M
+          cpus: "1"
+      placement:
+        constraints:
+          - node.labels.level == 0
+    ports:
+      - "5001:5100"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/hostname:/etc/hostname:ro
+      # For Docker
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # For CPU metrics
+      - /proc/stat:/proc/stat:ro
+      - /proc/cpuinfo:/proc/cpuinfo:ro
+      # For memory metrics
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+
+  telegraf-level2:
+    image: ${PRIVATE_REPO}/telegraf-level2:1.34.4-alpine
+    deploy:
+      mode: global  # Ensures one instance per eligible node
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 100M
+          cpus: "1"
+      placement:
+        constraints:
+          - node.labels.level == 0
+    ports:
+      - "5001:5100"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/hostname:/etc/hostname:ro
+      # For Docker
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # For CPU metrics
+      - /proc/stat:/proc/stat:ro
+      - /proc/cpuinfo:/proc/cpuinfo:ro
+      # For memory metrics
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      # For temperature metrics
+      - /sys/class/thermal:/sys/class/thermal:ro
+      # For vcgencmd metrics
+      - /tmp/telegraf_metrics:/telegraf_metrics:ro
+
+
+
+
+

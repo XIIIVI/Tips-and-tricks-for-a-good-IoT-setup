@@ -161,10 +161,10 @@ main() {
     cat "level${LEVEL_NUMBER}/telegraf.tmp" >> "level${LEVEL_NUMBER}/telegraf.conf"
 
     log_info "Importing image ${IMAGE_NAME}:${IMAGE_VERSION} into local registry ${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}"
-    log_debug "Importing the image"
 
     # Build the Telegraf image
     cd "level${LEVEL_NUMBER}/" || exit
+    log_debug "Importing the image from the folder ${PWD}"
     docker buildx build \
            --platform linux/arm64 \
            --tag "${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/telegraf-level${LEVEL_NUMBER}:${IMAGE_VERSION}" \
