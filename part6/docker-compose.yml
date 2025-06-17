@@ -34,7 +34,6 @@ services:
 #          P A R T   5          #
 #                               #
 #################################
-
   telegraf-level0:
     image: ${PRIVATE_REPO}/telegraf-level0:1.34.4-alpine
     deploy:
@@ -124,5 +123,89 @@ services:
 
 
 
+#################################
+#                               #
+#          P A R T   6          #
+#                               #
+#################################
 
 
+  vminsert:
+    image: ${PRIVATE_REPO}/victoriametrics/vminsert:v1.119.0-cluster
+    deploy:
+      mode: replicated
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.labels.level == 0
+    command:
+      - '--storageNode=vmstorage:8400'
+    depends_on:
+      - vmstorage
+    ports:
+      - "8480:8480"  # remote_write endpoint for Telegraf
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/hostname:/etc/hostname:ro
+
+  vmstorage:
+    image: ${PRIVATE_REPO}/victoriametrics/vmstorage:v1.119.0-cluster
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.labels.level == 0
+    command:
+      - '--retentionPeriod=1d'
+      - '--storageDataPath=/vmstorage'
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/hostname:/etc/hostname:ro
+      - /data/victoriametrics:/vmstorage
+
+  vmselect:
+    image: ${PRIVATE_REPO}/victoriametrics/vmselect:v1.119.0-cluster
+    deploy:
+      mode: replicated
+      replicas: 2 
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.labels.level == 0
+    depends_on:
+      - vmstorage
+    ports:
+      - "8481:8481"  # UI and query API
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/hostname:/etc/hostname:ro
+    command:
+      - '--storageNode=vmstorage:8401'
+
+
+  vmauth:
+    image: ${PRIVATE_REPO}/victoriametrics/vmauth:v1.119.0
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.labels.level == 0
+    depends_on:
+      - vmselect
+    ports:
+      - "8428:8428"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/hostname:/etc/hostname:ro

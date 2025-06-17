@@ -13,13 +13,16 @@ PARENT_HOSTNAME="${HOSTNAME%-[0-9]*}"
 
 # If result is same as original, we are at the top level
 if [[ "$PARENT_HOSTNAME" == "$HOSTNAME" ]]; then
-  PARENT_HOSTNAME="orchestrator"
+    PARENT_HOSTNAME="orchestrator"
 fi
 
 export PARENT_HOSTNAME
 
+# Create the log directory if it does not exist
+mkdir -p /telegraf/logs
+
 # Create the state file for the plugin
-PLUGIN_STATE_FILE="/data/telegraf/plugin_state"
+PLUGIN_STATE_FILE="/telegraf/plugin_state"
 
 echo "Creating the plugin state file"
 

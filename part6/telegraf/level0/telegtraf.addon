@@ -1,0 +1,6 @@
+[[outputs.prometheus_remote_write]]
+  url = "http://vminsert:8480/insert/0/prometheus/api/v1/write"
+
+  # Optional: Batch size settings for performance tuning
+  flush_interval = "10s"
+  metric_version = 2
