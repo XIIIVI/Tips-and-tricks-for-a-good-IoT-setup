@@ -231,3 +231,5 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
       - /data/alloy:/alloy
+      # For Docker
+      - /var/run/docker.sock:/var/run/docker.sock:ro
