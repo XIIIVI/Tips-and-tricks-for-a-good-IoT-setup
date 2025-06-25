@@ -32,8 +32,8 @@ install_uctronics_pi_rack() {
 
     log_info "Installing Uctronics Pi Rack on $HOST_IP_ARG ..."
 
-    copy_file_to_host "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" "${DIR_DATA_ARG}/uctronics.service" "/etc/systemd/system/uctronics.service"
-    copy_file_to_host "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" "${DIR_DATA_ARG}/ssd1306_stats.py" "/etc/systemd/system/uctronics.service"
+    copy_file_to_host "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" "${DIR_DATA_ARG}/uctronics.service" "/etc/systemd/system"
+    copy_file_to_host "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" "${DIR_DATA_ARG}/ssd1306_stats.py" "/opt"
 
     sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_UCTRONICS'
     sudo apt-get install -y python3-pip
@@ -43,11 +43,9 @@ install_uctronics_pi_rack() {
     sudo pip3 install Adafruit-SSD1306
     sudo pip3 install adafruit-circuitpython-ssd1306
 
-
     sudo systemctl daemon-reload
     sudo systemctl enable uctronics.service
     sudo systemctl start uctronics.service
-
 EOF_UCTRONICS
 
     log_info "Uctronics Pi Rack installation complete."
