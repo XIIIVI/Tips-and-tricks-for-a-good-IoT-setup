@@ -12,6 +12,7 @@ if command -v docker &> /dev/null; then
     echo "Docker is already installed."
 else
     echo "Installing Docker..."
+sudo apt-get install -y git    
 sudo curl -sL https://raw.githubusercontent.com/ezekeal/scripts/main/docker-pi.sh | bash
 sudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
 sudo chmod a+r /etc/apt/keyrings/docker.asc

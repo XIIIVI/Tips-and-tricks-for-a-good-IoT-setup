@@ -128,7 +128,7 @@ while True:
     time.sleep(0.1)
 EOF_SSD1306
 
-    cat << 'EOF_SERVICE' > /etc/systemd/system/uctronics.service
+    sudo cat << 'EOF_SERVICE' > /etc/systemd/system/uctronics.service
 [Unit]
 Description=Uctronics display
 After=multi-user.target

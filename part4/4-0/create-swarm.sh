@@ -41,7 +41,7 @@ set_hostname() {
     local HOSTNAME_ARG="${3}"
     local NODE_IP_ARG="${4}"
 
-    log_debug "\t\t- Setting hostname to ${HOSTNAME_ARG} on node ${NODE_IP_ARG}"
+    log_warning "\t\t- Setting hostname to ${HOSTNAME_ARG} on node ${NODE_IP_ARG}"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${NODE_IP_ARG}" "sudo hostnamectl set-hostname ${HOSTNAME_ARG}"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${NODE_IP_ARG}" "sudo sed -i 's/undefined/${HOSTNAME_ARG}/' /etc/hosts"
 }
@@ -55,11 +55,11 @@ create_swarm_manager() {
     local NODE_HOSTNAME_ARG="orchestrator${3}"
     local MANAGER_IP_ARG="${4}"
 
-    install_docker "${MANAGER_IP_ARG}" "${LOGIN_ARG}" "${PASSWORD_ARG}"
-
     if [ -z "${SWARM_TOKEN}" ]; then
         log_debug "\t- Creating the Swarm"
         set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME_ARG}" "${MANAGER_IP_ARG}"
+        install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}"
+
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm init --advertise-addr ${MANAGER_IP_ARG}"
         SWARM_TOKEN=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm join-token -q manager")
         MANAGER_IP_ADDRESS="${MANAGER_IP_ARG}"
@@ -69,10 +69,10 @@ create_swarm_manager() {
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm join --token ${SWARM_TOKEN} manager"
     fi
 
-    log_debug "\t\t- Adding the labels to the manager"
+    log_warning "\t\t- Adding the labels to the manager"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker node update --label-add level=0 --label-add mqtt=true ${NODE_HOSTNAME_ARG}"
 
-    log_debug "\t\t- Creating the folders"
+    log_warning "\t\t- Creating the folders"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo mkdir -p /data/alloy /data/database /data/telegraf"
 
     if [[ "${UCTRONICS_RACK}" == true ]]; then
@@ -114,31 +114,33 @@ create_workers() {
     local -n IPS_ARG=$4
     local INDEX_IN_ROW=0
 
-    log_info "++++++++++++++++++++++++++"
-    log_info "|                        |"
-    log_info "| CREATING THE WORKERS   |"
-    log_info "|                        |"
-    log_info "++++++++++++++++++++++++++"
+    if [ -z "${SWARM_TOKEN}" ]; then
+        log_info "++++++++++++++++++++++++++"
+        log_info "|                        |"
+        log_info "| CREATING THE WORKERS   |"
+        log_info "|                        |"
+        log_info "++++++++++++++++++++++++++"
 
-    for IP_INDEX in "${IPS_ARG[@]}"; do
-        local NODE_HOSTNAME
+        for IP_INDEX in "${IPS_ARG[@]}"; do
+            local NODE_HOSTNAME
 
-        ((INDEX_IN_ROW++))
+            ((INDEX_IN_ROW++))
 
-        NODE_HOSTNAME="sat${INDEX_IN_ROW}"
+            NODE_HOSTNAME="sat${INDEX_IN_ROW}"
 
-        install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
-        set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_INDEX}"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker swarm join --token ${SWARM_TOKEN} ${MANAGER_IP_ADDRESS}"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker node update --label-add level=${LEVEL_ARG} ${NODE_HOSTNAME}"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo mkdir -p /data/alloy /data/telegraf"
+            set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_INDEX}"
+            install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
+            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker swarm join --token ${SWARM_TOKEN} ${MANAGER_IP_ADDRESS}"
+            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker node update --label-add level=${LEVEL_ARG} ${NODE_HOSTNAME}"
+            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo mkdir -p /data/alloy /data/telegraf"
 
-        if [[ "${UCTRONICS_RACK}" == true ]]; then
-            install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
-        fi
-        
-        change_ip_address "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
-    done
+            if [[ "${UCTRONICS_RACK}" == true ]]; then
+                install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
+            fi
+
+            change_ip_address "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
+        done
+    fi
 }
 
 #
@@ -203,8 +205,10 @@ main() {
 
     display_settings
 
-    create_swarm "$LOGIN" "${PASSWORD}" "${LEVEL_0_IPS[@]}"
-    create_workers "$LOGIN" "${PASSWORD}" 1 "${LEVEL_1_IPS[@]}"
+    # Installing required packages
+    apt-get install -y sshpass
+    create_swarm "$LOGIN" "${PASSWORD}" LEVEL_0_IPS
+    create_workers "$LOGIN" "${PASSWORD}" 1 LEVEL_1_IPS
 }
 
 time main "$@"
