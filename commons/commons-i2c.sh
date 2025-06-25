@@ -32,7 +32,9 @@ install_uctronics_pi_rack() {
 
     log_info "Installing Uctronics Pi Rack on $HOST_IP_ARG ..."
 
-    log_warning "\t\t- Copying Uctronics service"
+    copy_file_to_host "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" "${DIR_DATA_ARG}/uctronics.service" "/etc/systemd/system/uctronics.service"
+    copy_file_to_host "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" "${DIR_DATA_ARG}/ssd1306_stats.py" "/etc/systemd/system/uctronics.service"
+
     sshpass -p "$ROOT_PASS_ARG" scp -o StrictHostKeyChecking=no "${DIR_DATA_ARG}"/uctronics.service "${ROOT_USER_ARG}@${HOST_IP_ARG}:/etc/systemd/system/uctronics.service"
     log_warning "\t\t- Copying the Python script to monitor the Uctronics display"
     sshpass -p "$ROOT_PASS_ARG" scp -o StrictHostKeyChecking=no "${DIR_DATA_ARG}"/ssd1306_stats.py "${ROOT_USER_ARG}@${HOST_IP_ARG}:/opt/"

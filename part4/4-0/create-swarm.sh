@@ -5,6 +5,7 @@ source "../../commons/commons-docker.sh"
 source "../../commons/commons-i2c.sh"
 source "../../commons/commons-log.sh"
 source "../../commons/commons-net.sh"
+source "../../commons/commons-ssh.sh"
 
 #
 # display_help
