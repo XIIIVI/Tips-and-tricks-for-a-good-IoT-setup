@@ -32,21 +32,26 @@ set_static_ip_address() {
   local OLD_IP_ARG="$3"
   local NEW_IP_ARG="$4"
 
-  local LAST_OCTET="${NEW_IP_ARG##*.}"
-  if ((LAST_OCTET > 240)); then
-    echo "New IP $NEW_IP_ARG exceeds the xxx.xxx.xxx.240 limit."
-    return 1
-  fi
+  # If NEW_IP_ARG is provided
+  if [[ -z "$NEW_IP_ARG" ]]; then
+    echo "No new IP address provided. Aborting."
+  else
+    local LAST_OCTET="${NEW_IP_ARG##*.}"
 
-  echo "Pinging $NEW_IP_ARG to check if it's already in use..."
-  if ping -c 1 -W 1 "$NEW_IP_ARG" &>/dev/null; then
-    echo "IP address $NEW_IP_ARG is already active. Aborting."
-    return 1
-  fi
+    if ((LAST_OCTET > 240)); then
+      echo "New IP $NEW_IP_ARG exceeds the xxx.xxx.xxx.240 limit."
+      return 1
+    fi
 
-  echo "Connecting to $OLD_IP_ARG to reconfigure network using nmcli..."
+    echo "Pinging $NEW_IP_ARG to check if it's already in use..."
+    if ping -c 1 -W 1 "$NEW_IP_ARG" &>/dev/null; then
+      echo "IP address $NEW_IP_ARG is already active. Aborting."
+      return 1
+    fi
 
-  sshpass -p "$PASSWORD_ARG" ssh -o StrictHostKeyChecking=no "$LOGIN_ARG@$OLD_IP_ARG" bash -s <<EOF
+    echo "Connecting to $OLD_IP_ARG to reconfigure network using nmcli..."
+
+    sshpass -p "$PASSWORD_ARG" ssh -o StrictHostKeyChecking=no "$LOGIN_ARG@$OLD_IP_ARG" bash -s <<EOF
 DEVICE="\$(sudo nmcli |  grep -v "externally" | grep "connected" | sed 's/^.*: connected to //g')"
 
 if [[ -z "\$DEVICE" ]]; then
@@ -65,6 +70,7 @@ sudo nmcli con up "\$DEVICE"
 
 echo "IP changed to $NEW_IP_ARG via nmcli."
 EOF
+  fi
 }
 
 #
