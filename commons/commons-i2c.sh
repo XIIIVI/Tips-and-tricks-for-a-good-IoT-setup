@@ -37,7 +37,7 @@ install_uctronics_pi_rack() {
 
     sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" 'bash -s' <<'EOF_UCTRONICS'
 sudo apt-get install -y python3-pip git
-cd "\$HOME"
+cd "/tmp"
 git clone https://github.com/UCTRONICS/U6143_ssd1306.git
 sudo pip3 install Adafruit-Blinka Adafruit-SSD1306 adafruit-circuitpython-ssd1306
 

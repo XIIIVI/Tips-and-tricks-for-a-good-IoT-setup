@@ -34,9 +34,11 @@ set_static_ip_address() {
 
   # If NEW_IP_ARG is provided
   if [[ -z "$NEW_IP_ARG" ]]; then
-    echo "No new IP address provided. Aborting."
+    log_warning "\tNo new IP address provided. Aborting."
   else
     local LAST_OCTET="${NEW_IP_ARG##*.}"
+
+    log_debug "\t\t- Assigning new IP $START_IP_ADDRESS to ${OLD_IP_ARG} ..."
 
     if ((LAST_OCTET > 240)); then
       echo "New IP $NEW_IP_ARG exceeds the xxx.xxx.xxx.240 limit."
@@ -103,8 +105,6 @@ change_ip_address() {
     local LOGIN_ARG="$1"
     local PASSWORD_ARG="$2"
     local OLD_IP_ARG="$3"
-
-    log_debug "\t\t- Assigning new IP $START_IP_ADDRESS to ${OLD_IP_ARG} ..."
 
     if set_static_ip_address "${LOGIN_ARG}" "${PASSWORD_ARG}" "${OLD_IP_ARG}" "${START_IP_ADDRESS}"; then
       local NEXT_IP
