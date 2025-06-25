@@ -68,6 +68,6 @@ copy_file_to_host() {
   local SOURCE_FILE_ARG="$4"
   local TARGET_DIR_ARG="$5"
 
-  sshpass -p "$ROOT_PASS_ARG" ssh "${LOGIN_ARG}@${IP_INDEX}"sudo scp -o StrictHostKeyChecking=no "${SOURCE_FILE_ARG}" "${ROOT_USER_ARG}@${HOST_IP_ARG}:/tmp/"
-  sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo mv /tmp/$(basename ${SOURCE_FILE_ARG}) ${TARGET_DIR_ARG}"
+  sshpass -p "$ROOT_PASS_ARG" ssh "${LOGIN_ARG}@${IP_INDEX}" sudo scp -o StrictHostKeyChecking=no "${SOURCE_FILE_ARG}" "${ROOT_USER_ARG}@${HOST_IP_ARG}:/tmp/"
+  sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" sudo mv /tmp/"$(basename ${SOURCE_FILE_ARG})" "${TARGET_DIR_ARG}"
 }
