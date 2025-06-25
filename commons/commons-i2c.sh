@@ -35,7 +35,7 @@ install_uctronics_pi_rack() {
     copy_file_to_host "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" "${DIR_DATA_ARG}/uctronics.service" "/etc/systemd/system"
     copy_file_to_host "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" "${DIR_DATA_ARG}/ssd1306_stats.py" "/opt"
 
-    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_UCTRONICS'
+    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<EOF_UCTRONICS
     sudo apt-get install -y python3-pip
     cd $HOME
     git clone https://github.com/UCTRONICS/U6143_ssd1306.git
