@@ -24,7 +24,7 @@ sudo apt-get update -y
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 # Setup a 10 MiB rolling log with 3 files
-sudo cat << EOF_DOCKER_DAEMON > /etc/docker/daemon.json
+sudo tee /etc/docker/daemon.json > /dev/null << 'EOF_DOCKER_DAEMON'
 {
     "log-driver": "local",
     "log-opts": {
