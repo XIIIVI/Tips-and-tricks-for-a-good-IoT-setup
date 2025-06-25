@@ -76,7 +76,7 @@ create_swarm_manager() {
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo mkdir -p /data/alloy /data/database /data/telegraf"
 
     if [[ "${UCTRONICS_RACK}" == true ]]; then
-        install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}"
+        install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}" "./data"
     fi
 
     change_ip_address "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
@@ -135,7 +135,7 @@ create_workers() {
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo mkdir -p /data/alloy /data/telegraf"
 
             if [[ "${UCTRONICS_RACK}" == true ]]; then
-                install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
+                install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}" "./data"
             fi
 
             change_ip_address "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
