@@ -16,7 +16,7 @@ find_devices_by_prefix() {
   for i in {1..254}; do
     IP="${SUBNET}${i}"
     HOSTNAME=$(getent hosts "$IP" | awk '{print $2}')
-    
+
     if [[ "$HOSTNAME" == "$PREFIX"* ]]; then
       HOSTMAP["$HOSTNAME"]="$IP"
     fi
@@ -47,7 +47,7 @@ set_static_ip_address() {
   echo "Connecting to $OLD_IP_ARG to reconfigure network using nmcli..."
 
   sshpass -p "$PASSWORD_ARG" ssh -o StrictHostKeyChecking=no "$LOGIN_ARG@$OLD_IP_ARG" bash -s <<EOF
-DEVICE="\$(sudo nmcli -t -f DEVICE,STATE d | grep ":connected" | cut -d: -f1)"
+DEVICE="\$(sudo nmcli -t -f DEVICE,STATE d | grep -v "externally" | grep ":connected" | cut -d: -f1 | head -n 1)"
 
 if [[ -z "\$DEVICE" ]]; then
     echo "No active network device found. Exiting."

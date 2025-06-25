@@ -208,6 +208,7 @@ main() {
 
     # Installing required packages
     apt-get install -y sshpass
+    
     create_swarm "$LOGIN" "${PASSWORD}" LEVEL_0_IPS
     create_workers "$LOGIN" "${PASSWORD}" 1 LEVEL_1_IPS
 }
