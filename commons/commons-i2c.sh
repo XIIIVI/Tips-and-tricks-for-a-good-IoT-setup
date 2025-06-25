@@ -35,10 +35,6 @@ install_uctronics_pi_rack() {
     copy_file_to_host "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" "${DIR_DATA_ARG}/uctronics.service" "/etc/systemd/system/uctronics.service"
     copy_file_to_host "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" "${DIR_DATA_ARG}/ssd1306_stats.py" "/etc/systemd/system/uctronics.service"
 
-    sshpass -p "$ROOT_PASS_ARG" scp -o StrictHostKeyChecking=no "${DIR_DATA_ARG}"/uctronics.service "${ROOT_USER_ARG}@${HOST_IP_ARG}:/etc/systemd/system/uctronics.service"
-    log_warning "\t\t- Copying the Python script to monitor the Uctronics display"
-    sshpass -p "$ROOT_PASS_ARG" scp -o StrictHostKeyChecking=no "${DIR_DATA_ARG}"/ssd1306_stats.py "${ROOT_USER_ARG}@${HOST_IP_ARG}:/opt/"
-
     sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_UCTRONICS'
     sudo apt-get install -y python3-pip
     cd $HOME
