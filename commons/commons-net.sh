@@ -47,7 +47,7 @@ set_static_ip_address() {
   echo "Connecting to $OLD_IP_ARG to reconfigure network using nmcli..."
 
   sshpass -p "$PASSWORD_ARG" ssh -o StrictHostKeyChecking=no "$LOGIN_ARG@$OLD_IP_ARG" bash -s <<EOF
-DEVICE="\$(sudo nmcli -t -f DEVICE,STATE d | grep -v "externally" | grep ":connected" | cut -d: -f1 | head -n 1)"
+DEVICE="\$(sudo nmcli |  grep -v "externally" | grep "connected" | sed 's/^.*: connected to //g')"
 
 if [[ -z "\$DEVICE" ]]; then
     echo "No active network device found. Exiting."
