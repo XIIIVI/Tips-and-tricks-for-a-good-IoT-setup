@@ -10,14 +10,26 @@ activate_i2c() {
 
     log_info "Activating I2C on $HOST_IP_ARG ..."
 
-    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_I2C'
-if ! grep -q "i2c-dev" /etc/modules; then
-    sed -i 's|#dtparam=i2c_arm=on|dtparam=i2c_arm=on|g' /boot/firmware/config.txt
+    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" 'bash -s' <<'EOF_I2C'
+set -e
+
+# Ensure i2c-dev is in /etc/modules
+if ! grep -q "^i2c-dev" /etc/modules; then
     echo "i2c-dev" | sudo tee -a /etc/modules
-    sudo modprobe i2c-dev
-    sudo apt update -y
-    sudo apt install -y i2c-tools
 fi
+
+# Ensure dtparam=i2c_arm=on is present and uncommented
+CONFIG_FILE="/boot/firmware/config.txt"
+if grep -q "^#dtparam=i2c_arm=on" "$CONFIG_FILE"; then
+    sudo sed -i 's|^#dtparam=i2c_arm=on|dtparam=i2c_arm=on|' "$CONFIG_FILE"
+elif ! grep -q "^dtparam=i2c_arm=on" "$CONFIG_FILE"; then
+    echo "dtparam=i2c_arm=on" | sudo tee -a "$CONFIG_FILE"
+fi
+
+# Load module and install tools
+sudo modprobe i2c-dev
+sudo apt update -y
+sudo apt install -y i2c-tools
 EOF_I2C
 }
 

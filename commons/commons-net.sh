@@ -35,6 +35,8 @@ set_static_ip_address() {
   # If NEW_IP_ARG is provided
   if [[ -z "$NEW_IP_ARG" ]]; then
     log_warning "\tNo new IP address provided. Aborting."
+
+    return 0
   else
     local LAST_OCTET="${NEW_IP_ARG##*.}"
 
@@ -72,6 +74,8 @@ sudo nmcli con up "\$DEVICE"
 
 echo "IP changed to $NEW_IP_ARG via nmcli."
 EOF
+
+    return 1
   fi
 }
 
