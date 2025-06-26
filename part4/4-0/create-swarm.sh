@@ -85,13 +85,11 @@ create_swarm_manager() {
 
     change_ip_address "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
 
+    log_warning "\t\t- Adding the labels to the manager"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker node update --label-add level=0 --label-add mqtt=true ${MANAGER_IP_ARG}"
+
     log_debug "\t- Rebooting the manager"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r now"
-
-    wait_for_device "${NODE_HOSTNAME_ARG}"
-
-    log_warning "\t\t- Adding the labels to the manager"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker node update --label-add level=0 --label-add mqtt=true ${NODE_HOSTNAME_ARG}"
 }
 
 #
@@ -143,6 +141,7 @@ create_workers() {
             set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_INDEX}"
             install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker swarm join --token ${SWARM_TOKEN} ${MANAGER_IP_ADDRESS}"
+            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker node update --label-add level=${LEVEL_ARG} ${IP_INDEX}"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo mkdir -p /data/alloy /data/telegraf"
 
             if [[ "${UCTRONICS_RACK}" == true ]]; then
@@ -153,10 +152,6 @@ create_workers() {
 
             log_debug "\t- Rebooting the worker now"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r now"
-
-            wait_for_device "${NODE_HOSTNAME}"
-
-            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker node update --label-add level=${LEVEL_ARG} ${NODE_HOSTNAME}"
         done
     fi
 }
