@@ -63,18 +63,21 @@ create_swarm_manager() {
 
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm init --advertise-addr ${MANAGER_IP_ARG}"
         SWARM_TOKEN=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm join-token -q manager")
-        MANAGER_IP_ADDRESS="${MANAGER_IP_ARG}"
+        MAIN_MANAGER_IP_ADDRESS="${MANAGER_IP_ARG}"
 
         log_debug "\t- Saving the Swarm token to ${SWARM_TOKEN_FILE}"
         echo "${SWARM_TOKEN}" >"${SWARM_TOKEN_FILE}"
 
-        log_debug "\t- Saving the manager's IP address to ${SWARM_TOKEN_FILE}"
-        echo "${MANAGER_IP_ADDRESS}" >"${MANAGER_IP_ADDRESS_FILE}"
+        log_debug "\t- Saving the manager's IP address to ${MANAGER_IP_ADDRESS_FILE}"
+        echo "${MAIN_MANAGER_IP_ADDRESS}" >"${MANAGER_IP_ADDRESS_FILE}"
     else
         log_debug "\t- Swarm already created, using existing token to add a new manager"
         install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}"
         set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME_ARG}" "${MANAGER_IP_ARG}"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm join --token ${SWARM_TOKEN} manager"
+        
+        log_warning "\t\t- Adding the manager ${NODE_HOSTNAME_ARG} to the Swarm"
+        JOIN_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker swarm join-token manager | grep -A 1 'docker swarm join' | tr -d '\\' | xargs")
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo ${JOIN_CMD}"
     fi
 
     log_warning "\t\t- Creating the folders"
@@ -155,7 +158,7 @@ create_workers() {
 
             set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_INDEX}"
             install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
-            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker swarm join --token ${SWARM_TOKEN} ${MANAGER_IP_ADDRESS}"
+            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker swarm join --token ${SWARM_TOKEN} ${MAIN_MANAGER_IP_ADDRESS}"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo mkdir -p /data/alloy /data/telegraf"
 
             if [[ "${UCTRONICS_RACK}" == true ]]; then
@@ -260,7 +263,7 @@ main() {
     if [[ -s "${MANAGER_IP_ADDRESS_FILE}" ]]; then
         log_info "Loading the manager's IP address"
 
-        MANAGER_IP_ADDRESS=$(<"${MANAGER_IP_ADDRESS_FILE}")
+        MAIN_MANAGER_IP_ADDRESS=$(<"${MANAGER_IP_ADDRESS_FILE}")
     fi
 
     # Check all mandatory parameter are set
