@@ -16,6 +16,7 @@ display_help() {
     log_debug "            --level2 <IPs> (comma-separated list)"
     log_debug "            --login <login>"
     log_debug "            --password <password>"
+    log_debug "            [--default-hostname <Hostname> (by default, set to \"undefined\")]"
     log_debug "            [--swarm-first-ip-address <IP>]"
     log_debug "            [--uctronics-rack]"
 }
@@ -25,6 +26,7 @@ display_help() {
 #
 display_settings() {
     log_debug "S E T T I N G S"
+    log_debug "DEFAULT_HOSTNAME: ${DEFAULT_HOSTNAME}"
     log_debug "LEVEL_0_IPS     : ${LEVEL_0_IPS}"
     log_debug "LEVEL_1_IPS     : ${LEVEL_1_IPS}"
     log_debug "LEVEL_2_IPS     : ${LEVEL_2_IPS}"
@@ -44,7 +46,7 @@ set_hostname() {
 
     log_warning "\t\t- Setting hostname to ${HOSTNAME_ARG} on node ${NODE_IP_ARG}"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${NODE_IP_ARG}" "sudo hostnamectl set-hostname ${HOSTNAME_ARG}"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${NODE_IP_ARG}" "sudo sed -i 's/undefined/${HOSTNAME_ARG}/' /etc/hosts"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${NODE_IP_ARG}" "sudo sed -i 's/${DEFAULT_HOSTNAME}/${HOSTNAME_ARG}/' /etc/hosts"
 }
 
 #
@@ -92,7 +94,7 @@ create_swarm_manager() {
 
     change_ip_address "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
 
-    log_debug "\t- Rebooting the manager"
+    log_debug "\t- Rebooting the manager now"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r now"
 
     wait_for_device "${NODE_HOSTNAME_ARG}"
@@ -177,7 +179,7 @@ create_workers() {
             change_ip_address "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
 
             log_debug "\t- Rebooting the worker now"
-            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r now"
+            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo shutdown -r now"
 
             wait_for_device "${NODE_HOSTNAME}"
 
@@ -220,6 +222,11 @@ main() {
     # Parses the parameters
     while (("$#")); do
         case "$1" in
+        --default-hostname)
+            DEFAULT_HOSTNAME="${2}"
+            shift # past argument
+            shift # past value
+            ;;
         --level0)
             IFS=',' read -r -a LEVEL_0_IPS <<<"$2"
             shift
@@ -267,6 +274,7 @@ main() {
     done
 
     UCTRONICS_RACK=${UCTRONICS_RACK:-false}
+    DEFAULT_HOSTNAME=${DEFAULT_HOSTNAME:-"undefined"}
 
     # Initialize variables from values saved in files
     if [[ -s "${SWARM_TOKEN_FILE}" ]]; then
