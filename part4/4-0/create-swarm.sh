@@ -64,6 +64,9 @@ create_swarm_manager() {
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm init --advertise-addr ${MANAGER_IP_ARG}"
         SWARM_TOKEN=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm join-token -q manager")
         MANAGER_IP_ADDRESS="${MANAGER_IP_ARG}"
+
+        log_debug "\t- Saving the Swarm token to ${SWARM_TOKEN_FILE}"
+        echo "${SWARM_TOKEN}" > "${SWARM_TOKEN_FILE}"
     else
         log_debug "\t- Swarm already created, using existing token to add a new manager"
         set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME_ARG}" "${MANAGER_IP_ARG}"
@@ -81,6 +84,9 @@ create_swarm_manager() {
     fi
 
     change_ip_address "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
+
+    log_debug "\t- Rebooting the manager in 5mn"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r +5 \"System will reboot in 5 minutes\""
 }
 
 #
@@ -140,7 +146,10 @@ create_workers() {
             fi
 
             change_ip_address "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
-        done
+
+    log_debug "\t- Rebooting the worker now"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r now"
+            done
     fi
 }
 
@@ -149,6 +158,7 @@ create_workers() {
 #
 main() {
     MANDATORY_PARAMETER_LIST=("LEVEL_0_IPS" "LEVEL_1_IPS" "LEVEL_1_IPS" "LOGIN" "PASSWORD")
+    SWARM_TOKEN_FILE="./token.swarm"
 
     # Parses the parameters
     while (("$#")); do
@@ -201,6 +211,12 @@ main() {
 
     UCTRONICS_RACK=${UCTRONICS_RACK:-false}
 
+    if [[ -s "${SWARM_TOKEN_FILE}" ]]; then
+        log_info "Loading the Swarm token"
+
+        SWARM_TOKEN=$(<"${SWARM_TOKEN_FILE}")
+    fi
+
     # Check all mandatory parameter are set
     check_all_mandatory_parameters "${MANDATORY_PARAMETER_LIST[@]}"
 
@@ -208,7 +224,7 @@ main() {
 
     # Installing required packages
     apt-get install -y sshpass
-    
+
     create_swarm "$LOGIN" "${PASSWORD}" LEVEL_0_IPS
     create_workers "$LOGIN" "${PASSWORD}" 1 LEVEL_1_IPS
 }
