@@ -88,7 +88,7 @@ create_swarm_manager() {
     log_debug "\t- Rebooting the manager"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r now"
 
-    sleep 3m
+    wait_for_device "${NODE_HOSTNAME_ARG}"
 
     log_warning "\t\t- Adding the labels to the manager"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker node update --label-add level=0 --label-add mqtt=true ${NODE_HOSTNAME_ARG}"
@@ -154,11 +154,28 @@ create_workers() {
             log_debug "\t- Rebooting the worker now"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r now"
 
-            sleep 3m
+            wait_for_device "${NODE_HOSTNAME}"
 
-            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker node update --label-add level=${LEVEL_ARG} ${NODE_HOSTNAME}"            
+            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker node update --label-add level=${LEVEL_ARG} ${NODE_HOSTNAME}"
         done
     fi
+}
+
+#
+# wait_for_device
+#
+wait_for_device() {
+    local REMOTE_HOST_ARG="${1}"
+
+    # Wait for the device to go down and come back up
+    log_warning "\t\t- Waiting for device ${REMOTE_HOST_ARG} to reboot..."
+    while ! ping -c 1 "${REMOTE_HOST_ARG}" &>/dev/null; do
+        sleep 5
+    done
+
+    # Optional: wait a bit longer to ensure services are up
+    sleep 30
+    log_warning "\t\t- ${REMOTE_HOST_ARG} is back online!"
 }
 
 #
