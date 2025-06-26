@@ -72,6 +72,7 @@ create_swarm_manager() {
         echo "${MANAGER_IP_ADDRESS}" >"${MANAGER_IP_ADDRESS_FILE}"
     else
         log_debug "\t- Swarm already created, using existing token to add a new manager"
+        install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}"
         set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME_ARG}" "${MANAGER_IP_ARG}"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm join --token ${SWARM_TOKEN} manager"
     fi
