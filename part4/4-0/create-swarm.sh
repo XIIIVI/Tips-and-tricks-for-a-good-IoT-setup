@@ -74,7 +74,7 @@ create_swarm_manager() {
         log_debug "\t- Swarm already created, using existing token to add a new manager"
         install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}"
         set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME_ARG}" "${MANAGER_IP_ARG}"
-        
+
         log_warning "\t\t- Adding the manager ${NODE_HOSTNAME_ARG} to the Swarm"
         JOIN_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker swarm join-token manager | grep -A 1 'docker swarm join' | tr -d '\\' | xargs")
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo ${JOIN_CMD}"
@@ -96,6 +96,11 @@ create_swarm_manager() {
 
     log_warning "\t\t- Adding the labels to the manager"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker node update --label-add level=0 --label-add mqtt=true ${NODE_HOSTNAME_ARG}"
+
+    log_warning "########################"
+    log_warning "# Content of the Swarm #"
+    log_warning "########################"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node ls"
 }
 
 #
@@ -173,6 +178,11 @@ create_workers() {
             wait_for_device "${NODE_HOSTNAME}"
 
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker node update --label-add level=${LEVEL_ARG} ${NODE_HOSTNAME}"
+
+            log_warning "########################"
+            log_warning "# Content of the Swarm #"
+            log_warning "########################"
+            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node ls"
         done
     fi
 }
