@@ -64,20 +64,23 @@ create_swarm_manager() {
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm init --advertise-addr ${MANAGER_IP_ARG}"
         SWARM_TOKEN=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm join-token -q manager")
         MAIN_MANAGER_IP_ADDRESS="${MANAGER_IP_ARG}"
+        JOIN_MGR_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker swarm join-token manager | grep -A 1 'docker swarm join' | tr -d '\\\\' | xargs")
 
         log_debug "\t- Saving the Swarm token to ${SWARM_TOKEN_FILE}"
         echo "${SWARM_TOKEN}" >"${SWARM_TOKEN_FILE}"
 
         log_debug "\t- Saving the manager's IP address to ${MANAGER_IP_ADDRESS_FILE}"
         echo "${MAIN_MANAGER_IP_ADDRESS}" >"${MANAGER_IP_ADDRESS_FILE}"
+
+        log_debug "\t- Saving the join manager command to ${JOIN_MANAGER_CMD_FILE}"
+        echo "${JOIN_MGR_CMD}" >"${JOIN_MANAGER_CMD_FILE}"
     else
         log_debug "\t- Swarm already created, using existing token to add a new manager"
         install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}"
         set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME_ARG}" "${MANAGER_IP_ARG}"
 
         log_warning "\t\t- Adding the manager ${NODE_HOSTNAME_ARG} to the Swarm"
-        JOIN_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker swarm join-token manager | grep -A 1 'docker swarm join' | tr -d '\\' | xargs")
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo ${JOIN_CMD}"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo ${JOIN_MGR_CMD}"
     fi
 
     log_warning "\t\t- Creating the folders"
@@ -141,12 +144,13 @@ create_workers() {
     local -n IPS_ARG=$4
     local INDEX_IN_ROW=0
 
-    if [ -z "${SWARM_TOKEN}" ]; then
-        log_info "++++++++++++++++++++++++++"
-        log_info "|                        |"
-        log_info "| CREATING THE WORKERS   |"
-        log_info "|                        |"
-        log_info "++++++++++++++++++++++++++"
+    log_info "++++++++++++++++++++++++++"
+    log_info "|                        |"
+    log_info "| CREATING THE WORKERS   |"
+    log_info "|                        |"
+    log_info "++++++++++++++++++++++++++"
+
+    if [ -n "${SWARM_TOKEN}" ]; then
 
         for IP_INDEX in "${IPS_ARG[@]}"; do
             local NODE_HOSTNAME
@@ -211,6 +215,7 @@ main() {
     MANDATORY_PARAMETER_LIST=("LEVEL_0_IPS" "LEVEL_1_IPS" "LEVEL_1_IPS" "LOGIN" "PASSWORD")
     SWARM_TOKEN_FILE="./token.swarm"
     MANAGER_IP_ADDRESS_FILE="./ip.swarm"
+    JOIN_MANAGER_CMD_FILE="./join_mgr_cmd.swarm"
 
     # Parses the parameters
     while (("$#")); do
@@ -274,6 +279,12 @@ main() {
         log_info "Loading the manager's IP address"
 
         MAIN_MANAGER_IP_ADDRESS=$(<"${MANAGER_IP_ADDRESS_FILE}")
+    fi
+
+    if [[ -s "${JOIN_MANAGER_CMD_FILE}" ]]; then
+        log_info "Loading the manager's IP address"
+
+        JOIN_MGR_CMD=$(<"${JOIN_MANAGER_CMD_FILE}")
     fi
 
     # Check all mandatory parameter are set
