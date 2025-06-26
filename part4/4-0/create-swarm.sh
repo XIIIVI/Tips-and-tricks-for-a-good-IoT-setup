@@ -66,18 +66,15 @@ create_swarm_manager() {
         MANAGER_IP_ADDRESS="${MANAGER_IP_ARG}"
 
         log_debug "\t- Saving the Swarm token to ${SWARM_TOKEN_FILE}"
-        echo "${SWARM_TOKEN}" > "${SWARM_TOKEN_FILE}"
+        echo "${SWARM_TOKEN}" >"${SWARM_TOKEN_FILE}"
 
         log_debug "\t- Saving the manager's IP address to ${SWARM_TOKEN_FILE}"
-        echo "${MANAGER_IP_ADDRESS}" > "${MANAGER_IP_ADDRESS_FILE}"
+        echo "${MANAGER_IP_ADDRESS}" >"${MANAGER_IP_ADDRESS_FILE}"
     else
         log_debug "\t- Swarm already created, using existing token to add a new manager"
         set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME_ARG}" "${MANAGER_IP_ARG}"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm join --token ${SWARM_TOKEN} manager"
     fi
-
-    log_warning "\t\t- Adding the labels to the manager"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker node update --label-add level=0 --label-add mqtt=true ${MANAGER_IP_ARG}"
 
     log_warning "\t\t- Creating the folders"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo mkdir -p /data/alloy /data/database /data/telegraf"
@@ -88,8 +85,13 @@ create_swarm_manager() {
 
     change_ip_address "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
 
-    log_debug "\t- Rebooting the manager in 5mn"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r +5 \"System will reboot in 5 minutes\""
+    log_debug "\t- Rebooting the manager"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r now"
+
+    sleep 3m
+
+    log_warning "\t\t- Adding the labels to the manager"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker node update --label-add level=0 --label-add mqtt=true ${NODE_HOSTNAME_ARG}"
 }
 
 #
@@ -141,7 +143,6 @@ create_workers() {
             set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_INDEX}"
             install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker swarm join --token ${SWARM_TOKEN} ${MANAGER_IP_ADDRESS}"
-            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker node update --label-add level=${LEVEL_ARG} ${IP_INDEX}"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo mkdir -p /data/alloy /data/telegraf"
 
             if [[ "${UCTRONICS_RACK}" == true ]]; then
@@ -150,9 +151,13 @@ create_workers() {
 
             change_ip_address "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
 
-    log_debug "\t- Rebooting the worker now"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r now"
-            done
+            log_debug "\t- Rebooting the worker now"
+            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r now"
+
+            sleep 3m
+
+            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker node update --label-add level=${LEVEL_ARG} ${NODE_HOSTNAME}"            
+        done
     fi
 }
 
