@@ -66,7 +66,7 @@ create_swarm_manager() {
         set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME_ARG}" "${MANAGER_IP_ARG}"
         install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}"
 
-        log_warning "\t\t- Adding the manager ${NODE_HOSTNAME_ARG} to the Swarm"
+        log_debug "\t- Adding the manager ${NODE_HOSTNAME_ARG} to the Swarm"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo ${JOIN_MGR_CMD}"
     fi
 
@@ -77,7 +77,7 @@ create_swarm_manager() {
         install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}" "./data"
     fi
 
-    reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}" "${NODE_HOSTNAME_ARG}"
+    reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}" "${NODE_HOSTNAME_ARG}"
 
     log_debug "\t- Adding the labels to the manager"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker node update --label-add level=0 --label-add mqtt=true ${NODE_HOSTNAME_ARG}"
