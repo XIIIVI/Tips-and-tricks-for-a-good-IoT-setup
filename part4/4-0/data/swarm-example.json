@@ -1,0 +1,65 @@
+{
+    "swarm": {
+        "device-credentials": {
+            "username": "admin",
+            "password": "admin123"
+        },
+        "managers": {
+            "prefix": "orchestrator",
+            "ip-adresses": [
+                "192.168.2.191",
+                "192.168.2.244",
+                "192.168.2.229"
+            ],
+            "folders": [
+                "/data/alloy",
+                "/data/database",
+                "/data/telegraf"
+            ],
+            "labels": [
+                {
+                    "key": "mqtt",
+                    "value": "true"
+                }
+            ]
+        },
+        "workers": [
+            {
+                "level-prefix": "sat",
+                "ip-adresses": [
+                    "192.168.2.124",
+                    "192.168.2.118"
+                ],
+                "labels": [
+                    {
+                        "key": "swarm",
+                        "value": "manager"
+                    },
+                    {
+                        "key": "role",
+                        "value": "orchestrator"
+                    }
+                ]
+            },
+            {
+                "level-prefix": "sat",
+                "ip-adresses": [
+                    "192.168.2.124",
+                    "192.168.2.118"
+                ],
+                "labels": [
+                    {
+                        "key": "swarm",
+                        "value": "manager"
+                    },
+                    {
+                        "key": "role",
+                        "value": "orchestrator"
+                    }
+                ]
+            }
+        ],
+        "networks": [],
+        "exposed-ports": []
+    }
+}

@@ -77,7 +77,7 @@ create_swarm_manager() {
         install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}" "./data"
     fi
 
-    reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
+    reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}" "${NODE_HOSTNAME_ARG}"
 
     log_debug "\t- Adding the labels to the manager"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker node update --label-add level=0 --label-add mqtt=true ${NODE_HOSTNAME_ARG}"
@@ -145,13 +145,15 @@ create_workers() {
             set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_INDEX}"
             install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo ${JOIN_WORKER_CMD}"
+
+            log_debug "\t- Creating the folders on worker ${NODE_HOSTNAME} at IP address ${IP_INDEX}"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo mkdir -p /data/alloy /data/telegraf"
 
             if [[ "${UCTRONICS_RACK}" == true ]]; then
                 install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}" "./data"
             fi
 
-            reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
+            reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}" "${NODE_HOSTNAME}"
 
             log_debug "\t- Adding the labels to the worker"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node update --label-add level=${LEVEL_ARG} ${NODE_HOSTNAME}"
