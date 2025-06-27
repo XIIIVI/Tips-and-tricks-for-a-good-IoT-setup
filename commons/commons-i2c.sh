@@ -29,7 +29,7 @@ fi
 # Load module and install tools
 sudo modprobe i2c-dev
 sudo apt update -y
-sudo apt install -y i2c-tools
+sudo apt install -y -qq i2c-tools
 EOF_I2C
 }
 
@@ -50,10 +50,10 @@ install_uctronics_pi_rack() {
 
     sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" 'bash -s' <<'EOF_UCTRONICS'
 sudo dpkg --configure -a    
-sudo apt-get install -y python3-pip git
+sudo apt-get install -y -qq python3-pip git
 cd "/tmp"
 git clone https://github.com/UCTRONICS/U6143_ssd1306.git
-sudo pip3 install pillow Adafruit-Blinka Adafruit-SSD1306 adafruit-circuitpython-ssd1306 --break-system-packages
+sudo pip3 install pillow Adafruit-Blinka Adafruit-SSD1306 adafruit-circuitpython-ssd1306 --break-system-packages --quiet
 
 sudo systemctl daemon-reload
 sudo systemctl enable uctronics.service

@@ -304,7 +304,7 @@ main() {
     display_settings
 
     # Installing required packages
-    apt-get install -y sshpass
+    apt-get install -y -qq sshpass
 
     create_swarm "$LOGIN" "${PASSWORD}" LEVEL_0_IPS
     create_workers "$LOGIN" "${PASSWORD}" 1 LEVEL_1_IPS

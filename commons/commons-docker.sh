@@ -12,7 +12,7 @@ if command -v docker &> /dev/null; then
     echo "Docker is already installed."
 else
     echo "Installing Docker..."
-sudo apt-get install -y git    
+sudo apt-get install -y -qq git    
 sudo curl -sL https://raw.githubusercontent.com/ezekeal/scripts/main/docker-pi.sh | bash
 sudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
 sudo chmod a+r /etc/apt/keyrings/docker.asc
@@ -21,7 +21,7 @@ sudo echo \
   $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
 sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 sudo apt-get update -y
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 # Setup a 10 MiB rolling log with 3 files
 sudo tee /etc/docker/daemon.json > /dev/null << 'EOF_DOCKER_DAEMON'
