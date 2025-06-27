@@ -27,7 +27,7 @@ reboot() {
   local NODE_IP_ARG="${3}"
   local HOSTNAME_ARG="${4}"
 
-  log_debug "\t- Rebooting the device now"
+  log_debug "\t- Rebooting node ${NODE_IP_ARG} with hostname ${HOSTNAME_ARG}"
   sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${NODE_IP_ARG}" "sudo shutdown -r now"
   wait_for_device "${HOSTNAME_ARG}"
 }
