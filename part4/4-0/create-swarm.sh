@@ -79,7 +79,7 @@ create_swarm_manager() {
 
     reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
 
-    log_warning "\t\t- Adding the labels to the manager"
+    log_debug "\t- Adding the labels to the manager"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker node update --label-add level=0 --label-add mqtt=true ${NODE_HOSTNAME_ARG}"
 
     log_warning "########################"
@@ -152,6 +152,8 @@ create_workers() {
             fi
 
             reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
+
+            log_debug "\t- Adding the labels to the worker"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node update --label-add level=${LEVEL_ARG} ${NODE_HOSTNAME}"
 
             log_warning "########################"
