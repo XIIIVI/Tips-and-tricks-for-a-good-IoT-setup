@@ -58,18 +58,18 @@ create_swarm_manager() {
     local NODE_HOSTNAME_ARG="orchestrator${3}"
     local MANAGER_IP_ARG="${4}"
 
-    if [ -z "${SWARM_TOKEN}" ]; then
+    if [ -z "${JOIN_WORKER_CMD}" ]; then
         log_debug "\t- Creating the Swarm"
         set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME_ARG}" "${MANAGER_IP_ARG}"
         install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}"
 
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm init --advertise-addr ${MANAGER_IP_ARG}"
-        SWARM_TOKEN=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm join-token -q manager")
+        JOIN_WORKER_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm join-token -q manager | grep -Po 'docker swarm join --token .* \d+\.\d+\.\d+\.\d+:\d+')")
         MAIN_MANAGER_IP_ADDRESS="${MANAGER_IP_ARG}"
         JOIN_MGR_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker swarm join-token manager | grep -A 1 'docker swarm join' | tr -d '\\\\' | xargs")
 
-        log_debug "\t- Saving the Swarm token to ${SWARM_TOKEN_FILE}"
-        echo "${SWARM_TOKEN}" >"${SWARM_TOKEN_FILE}"
+        log_debug "\t- Saving the Swarm token to ${JOIN_WORKER_CMD_FILE}"
+        echo "${JOIN_WORKER_CMD}" >"${JOIN_WORKER_CMD_FILE}"
 
         log_debug "\t- Saving the manager's IP address to ${MANAGER_IP_ADDRESS_FILE}"
         echo "${MAIN_MANAGER_IP_ADDRESS}" >"${MANAGER_IP_ADDRESS_FILE}"
@@ -152,7 +152,7 @@ create_workers() {
     log_info "|                        |"
     log_info "++++++++++++++++++++++++++"
 
-    if [ -n "${SWARM_TOKEN}" ]; then
+    if [ -n "${JOIN_WORKER_CMD}" ]; then
 
         for IP_INDEX in "${IPS_ARG[@]}"; do
             local NODE_HOSTNAME
@@ -169,7 +169,7 @@ create_workers() {
 
             set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_INDEX}"
             install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
-            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker swarm join --token ${SWARM_TOKEN} ${MAIN_MANAGER_IP_ADDRESS}"
+            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo ${JOIN_WORKER_CMD}"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo mkdir -p /data/alloy /data/telegraf"
 
             if [[ "${UCTRONICS_RACK}" == true ]]; then
@@ -215,7 +215,7 @@ wait_for_device() {
 #
 main() {
     MANDATORY_PARAMETER_LIST=("LEVEL_0_IPS" "LEVEL_1_IPS" "LEVEL_1_IPS" "LOGIN" "PASSWORD")
-    SWARM_TOKEN_FILE="./token.swarm"
+    JOIN_WORKER_CMD_FILE="./join_worker_cmd.swarm"
     MANAGER_IP_ADDRESS_FILE="./ip.swarm"
     JOIN_MANAGER_CMD_FILE="./join_mgr_cmd.swarm"
 
@@ -277,10 +277,10 @@ main() {
     DEFAULT_HOSTNAME=${DEFAULT_HOSTNAME:-"undefined"}
 
     # Initialize variables from values saved in files
-    if [[ -s "${SWARM_TOKEN_FILE}" ]]; then
+    if [[ -s "${JOIN_WORKER_CMD_FILE}" ]]; then
         log_info "Loading the Swarm token"
 
-        SWARM_TOKEN=$(<"${SWARM_TOKEN_FILE}")
+        JOIN_WORKER_CMD=$(<"${JOIN_WORKER_CMD_FILE}")
     fi
 
     if [[ -s "${MANAGER_IP_ADDRESS_FILE}" ]]; then
