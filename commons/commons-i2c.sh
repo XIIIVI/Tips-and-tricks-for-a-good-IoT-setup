@@ -8,7 +8,7 @@ activate_i2c() {
     local ROOT_PASS_ARG="$2"
     local HOST_IP_ARG="$3"
 
-    log_info "Activating I2C on $HOST_IP_ARG ..."
+    log_debug "\t- Activating I2C on $HOST_IP_ARG ..."
 
     sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" 'bash -s' <<'EOF_I2C'
 set -e
@@ -42,7 +42,7 @@ install_uctronics_pi_rack() {
     local HOST_IP_ARG="$3"
     local DIR_DATA_ARG="$4"
 
-    log_info "Installing Uctronics Pi Rack on $HOST_IP_ARG ..."
+    log_debug "\t- Installing Uctronics Pi Rack on $HOST_IP_ARG ..."
 
     activate_i2c "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG"
     copy_file_to_host "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" "${DIR_DATA_ARG}/uctronics.service" "/etc/systemd/system"
@@ -60,5 +60,5 @@ sudo systemctl enable uctronics.service
 sudo systemctl start uctronics.service
 EOF_UCTRONICS
 
-    log_info "Uctronics Pi Rack installation complete."
+    log_debug "\t- Uctronics Pi Rack installation complete."
 }

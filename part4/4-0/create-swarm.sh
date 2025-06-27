@@ -59,25 +59,24 @@ create_swarm_manager() {
     local MANAGER_IP_ARG="${4}"
 
     if [ -z "${JOIN_WORKER_CMD}" ]; then
-        log_debug "\t- Creating the Swarm"
+        log_debug "\t- Creating the main Swarm manager node ${NODE_HOSTNAME_ARG} at IP address ${MANAGER_IP_ARG}"
         set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME_ARG}" "${MANAGER_IP_ARG}"
         install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}"
 
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm init --advertise-addr ${MANAGER_IP_ARG}"
-        JOIN_WORKER_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm join-token -q manager | grep -Po 'docker swarm join --token .* \d+\.\d+\.\d+\.\d+:\d+'")
+        JOIN_WORKER_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm init --advertise-addr ${MANAGER_IP_ARG} | grep -Po 'docker swarm join --token .* \d+\.\d+\.\d+\.\d+:\d+'")
         MAIN_MANAGER_IP_ADDRESS="${MANAGER_IP_ARG}"
         JOIN_MGR_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker swarm join-token manager | grep -A 1 'docker swarm join' | tr -d '\\\\' | xargs")
 
-        log_debug "\t- Saving the Swarm token to ${JOIN_WORKER_CMD_FILE}"
+        log_debug "\t- Saving the Swarm join command for workers to ${JOIN_WORKER_CMD_FILE}"
         echo "${JOIN_WORKER_CMD}" >"${JOIN_WORKER_CMD_FILE}"
 
         log_debug "\t- Saving the manager's IP address to ${MANAGER_IP_ADDRESS_FILE}"
         echo "${MAIN_MANAGER_IP_ADDRESS}" >"${MANAGER_IP_ADDRESS_FILE}"
 
-        log_debug "\t- Saving the join manager command to ${JOIN_MANAGER_CMD_FILE}"
+        log_debug "\t- Saving the join manager command for managers to ${JOIN_MANAGER_CMD_FILE}"
         echo "${JOIN_MGR_CMD}" >"${JOIN_MANAGER_CMD_FILE}"
     else
-        log_debug "\t- Swarm already created, using existing token to add a new manager"
+        log_debug "\t- Swarm already created, using existing token to add a new manager node ${NODE_HOSTNAME_ARG} at IP address ${MANAGER_IP_ARG}"
         install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}"
         set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME_ARG}" "${MANAGER_IP_ARG}"
 
@@ -123,6 +122,8 @@ create_swarm() {
     log_info "|                             |"
     log_info "+++++++++++++++++++++++++++++++"
 
+    log_info "Creating the Swarm managers"
+
     for IP_INDEX in "${IPS_ARG[@]}"; do
         ((INDEX_IN_ROW++))
 
@@ -151,6 +152,8 @@ create_workers() {
     log_info "| CREATING THE WORKERS   |"
     log_info "|                        |"
     log_info "++++++++++++++++++++++++++"
+
+    log_info "Creating the Swarm workers"
 
     if [ -n "${JOIN_WORKER_CMD}" ]; then
 
