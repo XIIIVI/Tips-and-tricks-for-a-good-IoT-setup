@@ -5,6 +5,50 @@ START_IP_ADDRESS=
 declare -A HOSTMAP
 
 #
+# set_hostname
+#
+set_hostname() {
+    local LOGIN_ARG="${1}"
+    local PASSWORD_ARG="${2}"
+    local HOSTNAME_ARG="${3}"
+    local NODE_IP_ARG="${4}"
+
+    log_warning "\t\t- Setting hostname to ${HOSTNAME_ARG} on node ${NODE_IP_ARG}"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${NODE_IP_ARG}" "sudo hostnamectl set-hostname ${HOSTNAME_ARG}"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${NODE_IP_ARG}" "sudo sed -i 's/${DEFAULT_HOSTNAME}/${HOSTNAME_ARG}/' /etc/hosts"
+}
+
+#
+# reboot
+#
+reboot() {
+    local LOGIN_ARG="${1}"
+    local PASSWORD_ARG="${2}"
+    local NODE_IP_ARG="${3}"
+
+    log_debug "\t\t- Rebooting the device now"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r now"
+    wait_for_device "${HOSTNAME_ARG}"
+}
+
+#
+# wait_for_device
+#
+wait_for_device() {
+    local REMOTE_HOST_ARG="${1}"
+
+    # Wait for the device to go down and come back up
+    log_warning "\t\t- Waiting for device ${REMOTE_HOST_ARG} to reboot..."
+    while ! ping -c 1 "${REMOTE_HOST_ARG}" &>/dev/null; do
+        sleep 5
+    done
+
+    # Optional: wait a bit longer to ensure services are up
+    sleep 30
+    log_warning "\t\t- ${REMOTE_HOST_ARG} is back online!"
+}
+
+#
 # find_devices_by_prefix
 #
 find_devices_by_prefix() {

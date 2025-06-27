@@ -36,23 +36,6 @@ display_settings() {
 }
 
 #
-# set_hostname
-#
-set_hostname() {
-    local LOGIN_ARG="${1}"
-    local PASSWORD_ARG="${2}"
-    local HOSTNAME_ARG="${3}"
-    local NODE_IP_ARG="${4}"
-
-    log_warning "\t\t- Setting hostname to ${HOSTNAME_ARG} on node ${NODE_IP_ARG}"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${NODE_IP_ARG}" "sudo hostnamectl set-hostname ${HOSTNAME_ARG}"
-    log_debug "\t\t- Rebooting the device now"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r now"
-    wait_for_device "${HOSTNAME_ARG}"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${NODE_IP_ARG}" "sudo sed -i 's/${DEFAULT_HOSTNAME}/${HOSTNAME_ARG}/' /etc/hosts"
-}
-
-#
 # create_swarm_manager
 #
 create_swarm_manager() {
@@ -80,8 +63,8 @@ create_swarm_manager() {
         echo "${JOIN_MGR_CMD}" >"${JOIN_MANAGER_CMD_FILE}"
     else
         log_debug "\t- Swarm already created, using existing token to add a new manager node ${NODE_HOSTNAME_ARG} at IP address ${MANAGER_IP_ARG}"
-        install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}"
         set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME_ARG}" "${MANAGER_IP_ARG}"
+        install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}"
 
         log_warning "\t\t- Adding the manager ${NODE_HOSTNAME_ARG} to the Swarm"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo ${JOIN_MGR_CMD}"
@@ -93,6 +76,8 @@ create_swarm_manager() {
     if [[ "${UCTRONICS_RACK}" == true ]]; then
         install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}" "./data"
     fi
+
+    reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
 
     log_warning "\t\t- Adding the labels to the manager"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker node update --label-add level=0 --label-add mqtt=true ${NODE_HOSTNAME_ARG}"
@@ -175,6 +160,7 @@ create_workers() {
                 install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}" "./data"
             fi
 
+            reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node update --label-add level=${LEVEL_ARG} ${NODE_HOSTNAME}"
 
             log_warning "########################"
@@ -183,23 +169,6 @@ create_workers() {
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node ls"
         done
     fi
-}
-
-#
-# wait_for_device
-#
-wait_for_device() {
-    local REMOTE_HOST_ARG="${1}"
-
-    # Wait for the device to go down and come back up
-    log_warning "\t\t- Waiting for device ${REMOTE_HOST_ARG} to reboot..."
-    while ! ping -c 1 "${REMOTE_HOST_ARG}" &>/dev/null; do
-        sleep 5
-    done
-
-    # Optional: wait a bit longer to ensure services are up
-    sleep 30
-    log_warning "\t\t- ${REMOTE_HOST_ARG} is back online!"
 }
 
 #
