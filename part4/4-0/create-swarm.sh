@@ -84,14 +84,12 @@ create_swarm_manager() {
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo ${JOIN_MGR_CMD}"
     fi
 
-    log_warning "\t\t- Creating the folders"
+    log_debug "\t- Creating the folders"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo mkdir -p /data/alloy /data/database /data/telegraf"
 
     if [[ "${UCTRONICS_RACK}" == true ]]; then
         install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}" "./data"
     fi
-
-    change_ip_address "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
 
     log_debug "\t- Rebooting the manager now"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r now"
@@ -179,14 +177,12 @@ create_workers() {
                 install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}" "./data"
             fi
 
-            change_ip_address "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
-
             log_debug "\t- Rebooting the worker now"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo shutdown -r now"
 
             wait_for_device "${NODE_HOSTNAME}"
 
-            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo docker node update --label-add level=${LEVEL_ARG} ${NODE_HOSTNAME}"
+            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node update --label-add level=${LEVEL_ARG} ${NODE_HOSTNAME}"
 
             log_warning "########################"
             log_warning "# Content of the Swarm #"
@@ -304,7 +300,7 @@ main() {
     display_settings
 
     # Installing required packages
-    apt-get install -y -qq sshpass
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sshpass
 
     create_swarm "$LOGIN" "${PASSWORD}" LEVEL_0_IPS
     create_workers "$LOGIN" "${PASSWORD}" 1 LEVEL_1_IPS

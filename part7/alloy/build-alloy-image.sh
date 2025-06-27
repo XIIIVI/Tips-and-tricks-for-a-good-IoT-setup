@@ -122,9 +122,9 @@ main() {
     IMAGE_VERSION=${IMAGE_VERSION:="1.9.1"}
 
     log_info "Installing the required packages"
-    apt-get -y -qq update
-    apt-get install -y dos2unix figlet jq
-    apt autoremove -y
+    DEBIAN_FRONTEND=noninteractive apt-get -y -qq update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y dos2unix figlet jq
+    DEBIAN_FRONTEND=noninteractive apt autoremove -y
 
     FIGLET_FONT="${PWD}/larry3d.flf"
 
@@ -148,12 +148,12 @@ main() {
     cd "level${LEVEL_NUMBER}/" || exit
     log_debug "Importing the image from the folder ${PWD}"
     docker buildx build \
-           --platform linux/arm64 \
-           --tag "${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/telegraf-level${LEVEL_NUMBER}:${IMAGE_VERSION}" \
-           --build-arg IMAGE_VERSION="${IMAGE_VERSION}" \
-           --build-arg LOCAL_REGISTRY="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}" \
-           --push .
-    
+        --platform linux/arm64 \
+        --tag "${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/telegraf-level${LEVEL_NUMBER}:${IMAGE_VERSION}" \
+        --build-arg IMAGE_VERSION="${IMAGE_VERSION}" \
+        --build-arg LOCAL_REGISTRY="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}" \
+        --push .
+
     cd - || exit
 
     log_info "Telegraf image for level ${LEVEL_NUMBER} with version ${IMAGE_VERSION} has been built and pushed successfully."

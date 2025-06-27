@@ -129,9 +129,9 @@ main() {
     IMAGE_VERSION=${IMAGE_VERSION:="1.34.4-alpine"}
 
     log_info "Installing the required packages"
-    apt-get -y -qq update
-    apt-get install -y dos2unix figlet jq
-    apt autoremove -y
+    DEBIAN_FRONTEND=noninteractive apt-get -y -qq update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y dos2unix figlet jq
+    DEBIAN_FRONTEND=noninteractive apt autoremove -y
 
     FIGLET_FONT="${PWD}/larry3d.flf"
 
