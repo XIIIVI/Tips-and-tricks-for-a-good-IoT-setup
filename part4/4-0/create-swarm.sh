@@ -64,7 +64,7 @@ create_swarm_manager() {
         install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}"
 
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm init --advertise-addr ${MANAGER_IP_ARG}"
-        JOIN_WORKER_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm join-token -q manager | grep -Po 'docker swarm join --token .* \d+\.\d+\.\d+\.\d+:\d+')")
+        JOIN_WORKER_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker swarm join-token -q manager | grep -Po 'docker swarm join --token .* \d+\.\d+\.\d+\.\d+:\d+'")
         MAIN_MANAGER_IP_ADDRESS="${MANAGER_IP_ARG}"
         JOIN_MGR_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker swarm join-token manager | grep -A 1 'docker swarm join' | tr -d '\\\\' | xargs")
 
