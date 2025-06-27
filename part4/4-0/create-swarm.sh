@@ -45,8 +45,11 @@ set_hostname() {
     local NODE_IP_ARG="${4}"
 
     log_warning "\t\t- Setting hostname to ${HOSTNAME_ARG} on node ${NODE_IP_ARG}"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${NODE_IP_ARG}" "sudo sed -i 's/${DEFAULT_HOSTNAME}/${HOSTNAME_ARG}/' /etc/hosts"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${NODE_IP_ARG}" "sudo hostnamectl set-hostname ${HOSTNAME_ARG}"
+    log_debug "\t\t- Rebooting the device now"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r now"
+    wait_for_device "${HOSTNAME_ARG}"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${NODE_IP_ARG}" "sudo sed -i 's/${DEFAULT_HOSTNAME}/${HOSTNAME_ARG}/' /etc/hosts"
 }
 
 #
@@ -90,11 +93,6 @@ create_swarm_manager() {
     if [[ "${UCTRONICS_RACK}" == true ]]; then
         install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}" "./data"
     fi
-
-    log_debug "\t- Rebooting the manager now"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo shutdown -r now"
-
-    wait_for_device "${NODE_HOSTNAME_ARG}"
 
     log_warning "\t\t- Adding the labels to the manager"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MANAGER_IP_ARG}" "sudo docker node update --label-add level=0 --label-add mqtt=true ${NODE_HOSTNAME_ARG}"
@@ -176,11 +174,6 @@ create_workers() {
             if [[ "${UCTRONICS_RACK}" == true ]]; then
                 install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}" "./data"
             fi
-
-            log_debug "\t- Rebooting the worker now"
-            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "sudo shutdown -r now"
-
-            wait_for_device "${NODE_HOSTNAME}"
 
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node update --label-add level=${LEVEL_ARG} ${NODE_HOSTNAME}"
 
