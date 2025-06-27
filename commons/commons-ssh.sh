@@ -1,6 +1,21 @@
 #!/bin/bash
 
 #
+# remove_ssh_host
+#
+remove_ssh_host() {
+  local IP_ADDRESS_ARG="${1}"
+
+  log_debug "\t- Removing SSH host key for ${IP_ADDRESS_ARG}..."
+
+  # Remove the old host key silently
+  ssh-keygen -f "/root/.ssh/known_hosts" -R "${IP_ADDRESS_ARG}" >/dev/null 2>&1
+
+  # Fetch and add the new host key silently
+  ssh-keyscan -H "${IP_ADDRESS_ARG}" >>/root/.ssh/known_hosts 2>/dev/null
+}
+
+#
 # setup_runoverssh
 #
 install_runoverssh() {

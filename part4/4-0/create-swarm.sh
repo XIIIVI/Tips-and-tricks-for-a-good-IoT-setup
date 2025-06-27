@@ -108,12 +108,7 @@ create_swarm() {
     for IP_INDEX in "${IPS_ARG[@]}"; do
         ((INDEX_IN_ROW++))
 
-        # Remove the old host key
-        ssh-keygen -f "/root/.ssh/known_hosts" -R "${IP_INDEX}"
-
-        # Optionally fetch and add the new host key (safer than disabling checking)
-        ssh-keyscan -H "${IP_INDEX}" >>/root/.ssh/known_hosts
-
+        remove_ssh_host "${IP_INDEX}"
         create_swarm_manager "${LOGIN}" "${PASSWORD}" "${INDEX_IN_ROW}" "${IP_INDEX}"
     done
 }
@@ -145,11 +140,7 @@ create_workers() {
 
             NODE_HOSTNAME="sat${INDEX_IN_ROW}"
 
-            # Remove the old host key
-            ssh-keygen -f "/root/.ssh/known_hosts" -R "${IP_INDEX}"
-
-            # Optionally fetch and add the new host key (safer than disabling checking)
-            ssh-keyscan -H "${IP_INDEX}" >>/root/.ssh/known_hosts
+            remove_ssh_host "${IP_INDEX}"
 
             set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_INDEX}"
             install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}"
