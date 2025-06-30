@@ -119,13 +119,12 @@ create_managers() {
     HOSTNAME_DEFAULT_PREFIX=$(echo "$JSON_ARG" | jq -r '.swarm.managers["hostname-default-prefix"]')
 
     log_info "Creating the Swarm managers by using the default prefix: ${HOSTNAME_DEFAULT_PREFIX}"
-    local i=1
-    
-    while read -r manager; do
-        log_info "Creating the manager #${i}"
-        create_single_manager "$LOGIN_ARG" "$PASSWORD_ARG" "$HOSTNAME_DEFAULT_PREFIX" "$manager" "$i" || log_warn "Manager #$i failed, continuing..."
-        ((i++))
-    done < <(echo "$JSON_ARG" | jq -c '.swarm.managers.members[]')
+    mapfile -t WORKER_ARRAY < <(echo "$JSON_ARG" | jq -c '.swarm.managers.members[]')
+
+    for index in "${!WORKER_ARRAY[@]}"; do
+        log_info "Creating the manager #$((index + 1))"
+        create_single_manager "$LOGIN_ARG" "$PASSWORD_ARG" "$HOSTNAME_DEFAULT_PREFIX" "${WORKER_ARRAY[$i]}" "$((index + 1))" || log_error "Manager #$((index + 1)) failed, continuing..."
+    done
 }
 
 #
@@ -202,13 +201,12 @@ create_workers() {
     log_info "++++++++++++++++++++++++++"
 
     log_info "Creating the Swarm workers"
-    local i=1
-    
-    while read -r worker; do
-        log_info "Creating the worker #${i}"
-        create_single_worker "$LOGIN_ARG" "$PASSWORD_ARG" "$worker" "$i" || log_warn "Worker #$i failed, continuing..."
-        ((i++))
-    done < <(echo "$JSON_ARG" | jq -c '.swarm.workers[]')
+    mapfile -t WORKER_ARRAY < <(echo "$JSON_ARG" | jq -c '.swarm.workers[]')
+
+    for index in "${!WORKER_ARRAY[@]}"; do
+        log_info "Creating the worker #$((index + 1))"
+        create_single_worker "$LOGIN_ARG" "$PASSWORD_ARG" "$worker" "$((index + 1))" || log_error "Worker #$((index + 1)) failed, continuing..."
+    done
 }
 
 #
