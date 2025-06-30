@@ -54,7 +54,7 @@ create_single_manager() {
 
         remove_ssh_host "${IP_ADDRESS}"
 
-        if [ -z "${JOIN_WORKER_CMD}" ]; then
+        if [ -z "${JOIN_MGR_CMD}" ]; then
             log_debug "\t- Creating the main Swarm manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
             set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_ADDRESS}"
             install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
@@ -121,11 +121,11 @@ create_managers() {
     log_info "Creating the Swarm managers by using the default prefix: ${HOSTNAME_DEFAULT_PREFIX}"
 
     local i=1
-    echo "$JSON_ARG" | jq -c '.swarm.managers.members[]' | while read -r manager; do
+    while read -r manager; do
         log_info "Creating the manager #${i}"
         create_single_manager "$LOGIN_ARG" "$PASSWORD_ARG" "$HOSTNAME_DEFAULT_PREFIX" "$manager" "$i"
         ((i++))
-    done
+    done < <(echo "$JSON_ARG" | jq -c '.swarm.managers.members[]')
 }
 
 #
@@ -203,11 +203,12 @@ create_workers() {
 
     log_info "Creating the Swarm workers"
     local i=1
-    echo "$JSON_ARG" | jq -c '.swarm.workers[]' | while read -r worker; do
-        log_info "Creating the worker #{i}"
+    
+    while read -r worker; do
+        log_info "Creating the worker ${i}"
         create_single_worker "$LOGIN_ARG" "$PASSWORD_ARG" "$worker" "$i"
         ((i++))
-    done
+    done < <(echo "$JSON_ARG" | jq -c '.swarm.workers[]')
 }
 
 #
