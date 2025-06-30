@@ -13,7 +13,7 @@ if command -v docker &> /dev/null; then
 else
     set -e
     echo "Installing Docker..."
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git    
+    sudo apt-get install -y -qq git 1>/dev/null
     sudo curl -sL https://raw.githubusercontent.com/ezekeal/scripts/main/docker-pi.sh | bash
     sudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
     sudo chmod a+r /etc/apt/keyrings/docker.asc
@@ -21,9 +21,9 @@ else
     "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
   $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
     sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    sudo apt-get update -y -qq
-    sudo apt-get upgrade -y -qq
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    sudo apt-get update -y -qq 1>/dev/null
+    sudo apt-get upgrade -y -qq 1>/dev/null
+    sudo apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin 1>/dev/null
 
 # Setup a 10 MiB rolling log with 3 files
 sudo tee /etc/docker/daemon.json > /dev/null << 'EOF_DOCKER_DAEMON'
