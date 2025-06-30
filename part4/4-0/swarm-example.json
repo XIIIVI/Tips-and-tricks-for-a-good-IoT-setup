@@ -1,9 +1,5 @@
 {
     "swarm": {
-        "device-default-credentials": {
-            "username": "admin",
-            "password": "admin123"
-        },
         "managers": {
             "hostname-default-prefix": "orchestrator",
             "members": [

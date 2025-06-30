@@ -12,6 +12,8 @@ source "../../commons/commons-ssh.sh"
 #
 display_help() {
     log_debug "Usage: ${0} --configuration-file | -f <Configuration file>"
+    log_debug "            --login <login>"
+    log_debug "            --password <password>"
     log_debug "            [--default-hostname <Hostname> (by default, set to \"undefined\")]"
 }
 
@@ -22,6 +24,7 @@ display_settings() {
     log_debug "S E T T I N G S"
     log_debug "CONFIGURATION_FILE: ${CONFIGURATION_FILE}"
     log_debug "DEFAULT_HOSTNAME  : ${DEFAULT_HOSTNAME}"
+    log_debug "LOGIN             : ${LOGIN}"
 }
 
 #
@@ -96,7 +99,7 @@ create_single_manager() {
         log_warning "########################"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node ls"
     else
-        log_error "$IP_ADDRESS is unreachable"
+        log_error "❌ $IP_ADDRESS is unreachable"
     fi
 }
 
@@ -122,7 +125,7 @@ create_managers() {
 
     for index in "${!MANAGER_ARRAY[@]}"; do
         log_info "Creating the manager #$((index + 1))"
-        create_single_manager "$LOGIN_ARG" "$PASSWORD_ARG" "$HOSTNAME_DEFAULT_PREFIX" "${MANAGER_ARRAY[$index]}" "${index}" || log_error "Manager #$((index + 1)) failed, continuing..."
+        create_single_manager "$LOGIN_ARG" "$PASSWORD_ARG" "$HOSTNAME_DEFAULT_PREFIX" "${MANAGER_ARRAY[$index]}" "${index}" || log_error "❌ Manager #$((index + 1)) failed, continuing..."
     done
 }
 
@@ -149,7 +152,7 @@ create_single_worker() {
         NODE_HOSTNAME=$(echo "$JSON_OBJECT_ARG" | jq -r '.hostname')
 
         if [ -z "$IP_ADDRESS" ] || [ -z "$NODE_HOSTNAME" ]; then
-            log_error "Worker at index $INDEX_ARG is missing required fields." >&2
+            log_error "❌ Worker at index $INDEX_ARG is missing required fields." >&2
             return 1
         fi
 
@@ -181,7 +184,7 @@ create_single_worker() {
         log_warning "########################"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node ls"
     else
-        log_error "$IP_ADDRESS is unreachable"
+        log_error "❌ $IP_ADDRESS is unreachable"
     fi
 }
 
@@ -203,8 +206,8 @@ create_workers() {
     mapfile -t WORKER_ARRAY < <(echo "$JSON_ARG" | jq -c '.swarm.workers[]')
 
     for index in "${!WORKER_ARRAY[@]}"; do
-        log_info "Creating the worker #${index}"
-        create_single_worker "$LOGIN_ARG" "$PASSWORD_ARG" "${WORKER_ARRAY[$index]}" "${index}" || log_error "Worker #${index} failed, continuing..."
+        log_info "Creating the worker #$(( index + 1))"
+        create_single_worker "$LOGIN_ARG" "$PASSWORD_ARG" "${WORKER_ARRAY[$index]}" "${index}" || log_error "❌ Worker #$(( index + 1 )) failed, continuing..."
     done
 }
 
@@ -212,7 +215,7 @@ create_workers() {
 # main
 #
 main() {
-    MANDATORY_PARAMETER_LIST=("CONFIGURATION_FILE")
+    MANDATORY_PARAMETER_LIST=("CONFIGURATION_FILE" "LOGIN" "PASSWORD")
     JOIN_WORKER_CMD_FILE="./join_worker_cmd.swarm"
     MANAGER_IP_ADDRESS_FILE="./ip.swarm"
     JOIN_MANAGER_CMD_FILE="./join_mgr_cmd.swarm"
@@ -227,6 +230,16 @@ main() {
             ;;
         --configuration-file | -f)
             CONFIGURATION_FILE="${2}"
+            shift # past argument
+            shift # past value
+            ;;
+        --login)
+            LOGIN="${2}"
+            shift # past argument
+            shift # past value
+            ;;
+        --password)
+            PASSWORD="${2}"
             shift # past argument
             shift # past value
             ;;
@@ -276,20 +289,17 @@ main() {
 
     # Check if the file exists and is not empty
     if [ ! -s "$CONFIGURATION_FILE" ]; then
-        log_error "Error: Configuration file '$CONFIGURATION_FILE' is missing or empty." >&2
+        log_error "❌ Error: Configuration file '$CONFIGURATION_FILE' is missing or empty." >&2
         exit 1
     fi
 
     local JSON_CONTENT
     JSON_CONTENT=$(cat "$CONFIGURATION_FILE")
 
-    DEVICE_DEFAULT_LOGIN=$(echo "$JSON_CONTENT" | jq -r '.swarm["device-default-credentials"].username')
-    DEVICE_DEFAULT_PASSWORD=$(echo "$JSON_CONTENT" | jq -r '.swarm["device-default-credentials"].password')
+    create_managers "$LOGIN" "$PASSWORD" "$JSON_CONTENT"
+    create_workers "$LOGIN" "$PASSWORD" "$JSON_CONTENT"
 
-    create_managers "$DEVICE_DEFAULT_LOGIN" "$DEVICE_DEFAULT_PASSWORD" "$JSON_CONTENT"
-    create_workers "$DEVICE_DEFAULT_LOGIN" "$DEVICE_DEFAULT_PASSWORD" "$JSON_CONTENT"
-
-    log_info "The swarm has been successfully created"
+    log_info "✅ The swarm has been successfully created"
     log_warning "DO NOT FORGET TO CHANGE THE PASSWORD OF THE ROOT USER ON ALL NODES !!!"
 }
 
