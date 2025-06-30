@@ -121,7 +121,7 @@ create_managers() {
     mapfile -t MANAGER_ARRAY < <(echo "$JSON_ARG" | jq -c '.swarm.managers.members[]')
 
     for index in "${!MANAGER_ARRAY[@]}"; do
-        log_info "Creating the manager #${index}"
+        log_info "Creating the manager #$((index + 1))"
         create_single_manager "$LOGIN_ARG" "$PASSWORD_ARG" "$HOSTNAME_DEFAULT_PREFIX" "${MANAGER_ARRAY[$index]}" "${index}" || log_error "Manager #$((index + 1)) failed, continuing..."
     done
 }
