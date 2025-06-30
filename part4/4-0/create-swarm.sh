@@ -261,6 +261,9 @@ main() {
 
     create_swarm "$LOGIN" "${PASSWORD}" LEVEL_0_IPS
     create_workers "$LOGIN" "${PASSWORD}" 1 LEVEL_1_IPS
+
+    log_info "The swarm has been successfully created"
+    log_warning "DO NOT FORGET TO CHANGE THE PASSWORD OF THE ROOT USER ON ALL NODES !!!"
 }
 
 time main "$@"
