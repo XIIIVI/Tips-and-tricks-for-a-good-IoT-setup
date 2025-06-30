@@ -45,6 +45,12 @@ create_single_manager() {
     HAS_DISPLAY=$(echo "$JSON_OBJECT_ARG" | jq -r '.["has-display"]')
     NODE_HOSTNAME=$(echo "$JSON_OBJECT_ARG" | jq -r '.hostname // empty')
 
+    if [ -z "$NODE_HOSTNAME" ]; then
+        NODE_HOSTNAME="${HOSTNAME_DEFAULT_PREFIX_ARG}${INDEX_ARG}"
+    fi
+    
+    remove_ssh_host "${IP_ADDRESS}"
+
     if [ -z "${JOIN_WORKER_CMD}" ]; then
         log_debug "\t- Creating the main Swarm manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
         set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_ADDRESS}"
@@ -72,11 +78,7 @@ create_single_manager() {
     fi
 
     if [ "$HAS_DISPLAY" == "true" ]; then
-        install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MANAGER_IP_ARG}" "./data"
-    fi
-
-    if [ -z "$NODE_HOSTNAME" ]; then
-        NODE_HOSTNAME="${HOSTNAME_DEFAULT_PREFIX_ARG}${INDEX_ARG}"
+        install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "./data"
     fi
 
     log_debug "\t- Creating the folders"
