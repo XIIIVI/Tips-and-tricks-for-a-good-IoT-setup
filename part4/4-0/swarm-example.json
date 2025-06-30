@@ -1,0 +1,111 @@
+{
+    "swarm": {
+        "device-default-credentials": {
+            "username": "admin",
+            "password": "admin123"
+        },
+        "managers": {
+            "default-prefix": "orchestrator",
+            "members": [
+                {
+                    "ip-address": "192.168.2.191",
+                    "folders": [
+                        "/data/alloy",
+                        "/data/database",
+                        "/data/telegraf"
+                    ],
+                    "labels": [
+                        {
+                            "key": "mqtt",
+                            "value": "true"
+                        }
+                    ],
+                    "has-display": true
+                },
+                {
+                    "ip-address": "192.168.2.244",
+                    "hostname": "orchestrator2",
+                    "folders": [
+                        "/data/alloy",
+                        "/data/database",
+                        "/data/telegraf"
+                    ],
+                    "labels": [
+                        {
+                            "key": "mqtt",
+                            "value": "true"
+                        },
+                        {
+                            "key": "level",
+                            "value": "0"
+                        }
+                    ],
+                    "has-display": true
+                },
+                {
+                    "ip-address": "192.168.2.229",
+                    "folders": [
+                        "/data/alloy",
+                        "/data/database",
+                        "/data/telegraf"
+                    ],
+                    "labels": [
+                        {
+                            "key": "mqtt",
+                            "value": "true"
+                        },
+                        {
+                            "key": "level",
+                            "value": "0"
+                        }
+                    ],
+                    "has-display": true
+                }
+            ]
+        },
+        "workers": [
+            {
+                "ip-address": "192.168.2.118",
+                "hostname": "sat1",
+                "folders": [
+                    "/data/alloy",
+                    "/data/telegraf"
+                ],
+                "labels": [
+                    {
+                        "key": "level",
+                        "value": "1"
+                    }
+                ],
+                "has-display": true
+            },
+            {
+                "ip-address": "192.168.2.124",
+                "hostname": "sat2",
+                "folders": [
+                    "/data/alloy",
+                    "/data/telegraf"
+                ],
+                "labels": [
+                    {
+                        "key": "level",
+                        "value": "1"
+                    }
+                ],
+                "has-display": true
+            }
+        ],
+        "secrets": {
+            "passwords": [
+                "mqtt-password",
+                "telegraf-password"
+            ],
+            "certificates": [
+                "mqtt-tls-certificate",
+                "telegraf-tls-certificate"
+            ]
+        },
+        "networks": [],
+        "exposed-ports": []
+    }
+}

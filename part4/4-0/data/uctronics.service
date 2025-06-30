@@ -1,0 +1,10 @@
+[Unit]
+Description=Uctronics display
+After=multi-user.target
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/bin/python3 /opt/ssd1306_stats.py
+
+[Install]
+WantedBy=multi-user.target  
