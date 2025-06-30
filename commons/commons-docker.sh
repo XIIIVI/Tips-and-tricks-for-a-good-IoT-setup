@@ -12,20 +12,10 @@ if command -v docker &> /dev/null; then
     echo "Docker is already installed."
 else
     set -e
-    echo "+-------------------+"
-    echo "| Installing Docker |"
-    echo "+-------------------+"
+    echo "+------------------------------+"
+    echo "| Installing required packages |"
+    echo "+------------------------------+"
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git 1>/dev/null
-    sudo curl -sL https://raw.githubusercontent.com/ezekeal/scripts/main/docker-pi.sh | bash
-    sudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
-    sudo chmod a+r /etc/apt/keyrings/docker.asc
-    echo "+---------------------------------------------+"
-    echo "| Adding Docker repository to sources list... |"
-    echo "+---------------------------------------------+"
-    sudo echo \
-    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
     echo "+-------------------------------+"
     echo "| Updating and upgrading the OS |"
     echo "+-------------------------------+"
@@ -34,7 +24,8 @@ else
     echo "+---------------------------+"
     echo "| Installing Docker modules |"
     echo "+---------------------------+"
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin 1>/dev/null
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
 
 # Setup a 10 MiB rolling log with 3 files
     echo "+--------------------------------------------+"
