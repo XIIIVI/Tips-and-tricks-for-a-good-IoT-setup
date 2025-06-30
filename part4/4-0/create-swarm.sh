@@ -34,65 +34,71 @@ create_single_manager() {
     local JSON_OBJECT_ARG="$4"
     local INDEX_ARG="$5"
     local IP_ADDRESS
-    local FOLDER_LIST
-    local HAS_DISPLAY
-    local NODE_HOSTNAME
-    local LABEL_STRING
 
-    LABEL_STRING=$(echo "$JSON_OBJECT_ARG" | jq -r '[.labels[] | "--label-add \(.key)=\(.value)"] | join(" ")')
     IP_ADDRESS=$(echo "$JSON_OBJECT_ARG" | jq -r '.["ip-address"]')
-    FOLDER_LIST=$(echo "$JSON_OBJECT_ARG" | jq -r '.folders | join(" ")')
-    HAS_DISPLAY=$(echo "$JSON_OBJECT_ARG" | jq -r '.["has-display"]')
-    NODE_HOSTNAME=$(echo "$JSON_OBJECT_ARG" | jq -r '.hostname // empty')
 
-    if [ -z "$NODE_HOSTNAME" ]; then
-        NODE_HOSTNAME="${HOSTNAME_DEFAULT_PREFIX_ARG}${INDEX_ARG}"
-    fi
-    
-    remove_ssh_host "${IP_ADDRESS}"
+    if ping -c 1 -W 1 "$IP_ADDRESS" >/dev/null 2>&1; then
+        local FOLDER_LIST
+        local HAS_DISPLAY
+        local NODE_HOSTNAME
+        local LABEL_STRING
 
-    if [ -z "${JOIN_WORKER_CMD}" ]; then
-        log_debug "\t- Creating the main Swarm manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
-        set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_ADDRESS}"
-        install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
+        LABEL_STRING=$(echo "$JSON_OBJECT_ARG" | jq -r '[.labels[] | "--label-add \(.key)=\(.value)"] | join(" ")')
+        FOLDER_LIST=$(echo "$JSON_OBJECT_ARG" | jq -r '.folders | join(" ")')
+        HAS_DISPLAY=$(echo "$JSON_OBJECT_ARG" | jq -r '.["has-display"]')
+        NODE_HOSTNAME=$(echo "$JSON_OBJECT_ARG" | jq -r '.hostname // empty')
 
-        JOIN_WORKER_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo docker swarm init --advertise-addr ${IP_ADDRESS} | grep -Po 'docker swarm join --token .* \d+\.\d+\.\d+\.\d+:\d+'")
-        MAIN_MANAGER_IP_ADDRESS="${IP_ADDRESS}"
-        JOIN_MGR_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo docker swarm join-token manager | grep -A 1 'docker swarm join' | tr -d '\\\\' | xargs")
+        if [ -z "$NODE_HOSTNAME" ]; then
+            NODE_HOSTNAME="${HOSTNAME_DEFAULT_PREFIX_ARG}${INDEX_ARG}"
+        fi
 
-        log_debug "\t- Saving the Swarm join command for workers to ${JOIN_WORKER_CMD_FILE}"
-        echo "${JOIN_WORKER_CMD}" >"${JOIN_WORKER_CMD_FILE}"
+        remove_ssh_host "${IP_ADDRESS}"
 
-        log_debug "\t- Saving the manager's IP address to ${MANAGER_IP_ADDRESS_FILE}"
-        echo "${MAIN_MANAGER_IP_ADDRESS}" >"${MANAGER_IP_ADDRESS_FILE}"
+        if [ -z "${JOIN_WORKER_CMD}" ]; then
+            log_debug "\t- Creating the main Swarm manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
+            set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_ADDRESS}"
+            install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
 
-        log_debug "\t- Saving the join manager command for managers to ${JOIN_MANAGER_CMD_FILE}"
-        echo "${JOIN_MGR_CMD}" >"${JOIN_MANAGER_CMD_FILE}"
+            JOIN_WORKER_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo docker swarm init --advertise-addr ${IP_ADDRESS} | grep -Po 'docker swarm join --token .* \d+\.\d+\.\d+\.\d+:\d+'")
+            MAIN_MANAGER_IP_ADDRESS="${IP_ADDRESS}"
+            JOIN_MGR_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo docker swarm join-token manager | grep -A 1 'docker swarm join' | tr -d '\\\\' | xargs")
+
+            log_debug "\t- Saving the Swarm join command for workers to ${JOIN_WORKER_CMD_FILE}"
+            echo "${JOIN_WORKER_CMD}" >"${JOIN_WORKER_CMD_FILE}"
+
+            log_debug "\t- Saving the manager's IP address to ${MANAGER_IP_ADDRESS_FILE}"
+            echo "${MAIN_MANAGER_IP_ADDRESS}" >"${MANAGER_IP_ADDRESS_FILE}"
+
+            log_debug "\t- Saving the join manager command for managers to ${JOIN_MANAGER_CMD_FILE}"
+            echo "${JOIN_MGR_CMD}" >"${JOIN_MANAGER_CMD_FILE}"
+        else
+            log_debug "\t- Swarm already created, using existing token to add a new manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
+            set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_ADDRESS}"
+            install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
+
+            log_debug "\t- Adding the manager ${NODE_HOSTNAME} to the Swarm"
+            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo ${JOIN_MGR_CMD}"
+        fi
+
+        if [ "$HAS_DISPLAY" == "true" ]; then
+            install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "./data"
+        fi
+
+        log_debug "\t- Creating the folders"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo mkdir -p ${FOLDER_LIST}"
+
+        reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${NODE_HOSTNAME}"
+
+        log_debug "\t- Adding the labels to the manager"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo docker node update ${LABEL_STRING} ${NODE_HOSTNAME}"
+
+        log_warning "########################"
+        log_warning "# Content of the Swarm #"
+        log_warning "########################"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node ls"
     else
-        log_debug "\t- Swarm already created, using existing token to add a new manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
-        set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_ADDRESS}"
-        install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
-
-        log_debug "\t- Adding the manager ${NODE_HOSTNAME} to the Swarm"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo ${JOIN_MGR_CMD}"
+        log_error "$IP_ADDRESS is unreachable"
     fi
-
-    if [ "$HAS_DISPLAY" == "true" ]; then
-        install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "./data"
-    fi
-
-    log_debug "\t- Creating the folders"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo mkdir -p ${FOLDER_LIST}"
-
-    reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${NODE_HOSTNAME}"
-
-    log_debug "\t- Adding the labels to the manager"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo docker node update ${LABEL_STRING} ${NODE_HOSTNAME}"
-
-    log_warning "########################"
-    log_warning "# Content of the Swarm #"
-    log_warning "########################"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node ls"
 }
 
 #
@@ -129,46 +135,53 @@ create_single_worker() {
     local PASSWORD_ARG="$2"
     local JSON_OBJECT_ARG="$3"
     local INDEX_ARG="$4"
-    local FOLDER_LIST
-    local HAS_DISPLAY
     local IP_ADDRESS
-    local NODE_HOSTNAME
-    local LABEL_STRING
 
-    LABEL_STRING=$(echo "$JSON_OBJECT_ARG" | jq -r '[.labels[] | "--label-add \(.key)=\(.value)"] | join(" ")')
     IP_ADDRESS=$(echo "$JSON_OBJECT_ARG" | jq -r '.["ip-address"]')
-    NODE_HOSTNAME=$(echo "$JSON_OBJECT_ARG" | jq -r '.hostname')
 
-    if [ -z "$IP_ADDRESS" ] || [ -z "$NODE_HOSTNAME" ]; then
-        log_error "Worker at index $INDEX_ARG is missing required fields." >&2
-        return 1
+    if ping -c 1 -W 1 "$IP_ADDRESS" >/dev/null 2>&1; then
+        local FOLDER_LIST
+        local HAS_DISPLAY
+        local NODE_HOSTNAME
+        local LABEL_STRING
+
+        LABEL_STRING=$(echo "$JSON_OBJECT_ARG" | jq -r '[.labels[] | "--label-add \(.key)=\(.value)"] | join(" ")')
+        IP_ADDRESS=$(echo "$JSON_OBJECT_ARG" | jq -r '.["ip-address"]')
+        NODE_HOSTNAME=$(echo "$JSON_OBJECT_ARG" | jq -r '.hostname')
+
+        if [ -z "$IP_ADDRESS" ] || [ -z "$NODE_HOSTNAME" ]; then
+            log_error "Worker at index $INDEX_ARG is missing required fields." >&2
+            return 1
+        fi
+
+        remove_ssh_host "${IP_ADDRESS}"
+
+        FOLDER_LIST=$(echo "$JSON_OBJECT_ARG" | jq -r '.folders | join(" ")')
+        HAS_DISPLAY=$(echo "$JSON_OBJECT_ARG" | jq -r '.["has-display"]')
+
+        if [ "$HAS_DISPLAY" == "true" ]; then
+            install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "./data"
+        fi
+
+        set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_ADDRESS}"
+        install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo ${JOIN_WORKER_CMD}"
+
+        log_debug "\t- Creating the folders on worker ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo mkdir -p ${FOLDER_LIST}"
+
+        reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${NODE_HOSTNAME}"
+
+        log_debug "\t- Adding the labels to the worker"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node update ${LABEL_STRING} ${NODE_HOSTNAME}"
+
+        log_warning "########################"
+        log_warning "# Content of the Swarm #"
+        log_warning "########################"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node ls"
+    else
+        log_error "$IP_ADDRESS is unreachable"
     fi
-
-    remove_ssh_host "${IP_ADDRESS}"
-
-    FOLDER_LIST=$(echo "$JSON_OBJECT_ARG" | jq -r '.folders | join(" ")')
-    HAS_DISPLAY=$(echo "$JSON_OBJECT_ARG" | jq -r '.["has-display"]')
-
-    if [ "$HAS_DISPLAY" == "true" ]; then
-        install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "./data"
-    fi
-
-    set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_ADDRESS}"
-    install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo ${JOIN_WORKER_CMD}"
-
-    log_debug "\t- Creating the folders on worker ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo mkdir -p ${FOLDER_LIST}"
-
-    reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${NODE_HOSTNAME}"
-
-    log_debug "\t- Adding the labels to the worker"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node update ${LABEL_STRING} ${NODE_HOSTNAME}"
-
-    log_warning "########################"
-    log_warning "# Content of the Swarm #"
-    log_warning "########################"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node ls"
 }
 
 #

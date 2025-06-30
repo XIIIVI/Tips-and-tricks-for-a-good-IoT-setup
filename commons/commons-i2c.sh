@@ -53,6 +53,7 @@ sudo dpkg --configure -a
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3-pip git
 cd "/tmp"
 git clone https://github.com/UCTRONICS/U6143_ssd1306.git
+sudo pip3 install --upgrade pip setuptools
 sudo pip3 install pillow Adafruit-Blinka Adafruit-SSD1306 adafruit-circuitpython-ssd1306 --break-system-packages --quiet
 
 sudo systemctl daemon-reload
