@@ -7,7 +7,7 @@ install_docker() {
 
     log_debug "\t- Installing Docker on $HOST_IP_ARG ..."
 
-    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" << 'EOF_SSH'
+    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_SSH'
 if command -v docker &> /dev/null; then
     echo "Docker is already installed."
 else
@@ -22,6 +22,7 @@ else
   $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
     sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
     sudo apt-get update -y -qq
+    sudo apt-get upgrade -y -qq
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 # Setup a 10 MiB rolling log with 3 files

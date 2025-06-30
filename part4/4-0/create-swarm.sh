@@ -56,7 +56,6 @@ create_single_manager() {
 
         if [ -z "${JOIN_MGR_CMD}" ]; then
             log_debug "\t- Creating the main Swarm manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
-            set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_ADDRESS}"
             install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
 
             JOIN_WORKER_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo docker swarm init --advertise-addr ${IP_ADDRESS} | grep -Po 'docker swarm join --token .* \d+\.\d+\.\d+\.\d+:\d+'")
@@ -73,10 +72,9 @@ create_single_manager() {
             echo "${JOIN_MGR_CMD}" >"${JOIN_MANAGER_CMD_FILE}"
         else
             log_debug "\t- Swarm already created, using existing token to add a new manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
-            set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_ADDRESS}"
             install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
 
-            log_debug "\t- Adding the manager ${NODE_HOSTNAME} to the Swarm: sudo ${JOIN_MGR_CMD}"
+            log_debug "\t- Adding the manager ${NODE_HOSTNAME} to the Swarm"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo ${JOIN_MGR_CMD}"
         fi
 
@@ -87,6 +85,7 @@ create_single_manager() {
         log_debug "\t- Creating the folders"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo mkdir -p ${FOLDER_LIST}"
 
+        set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_ADDRESS}"
         reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${NODE_HOSTNAME}"
 
         log_debug "\t- Adding the labels to the manager"
@@ -119,11 +118,11 @@ create_managers() {
     HOSTNAME_DEFAULT_PREFIX=$(echo "$JSON_ARG" | jq -r '.swarm.managers["hostname-default-prefix"]')
 
     log_info "Creating the Swarm managers by using the default prefix: ${HOSTNAME_DEFAULT_PREFIX}"
-    mapfile -t WORKER_ARRAY < <(echo "$JSON_ARG" | jq -c '.swarm.managers.members[]')
+    mapfile -t MANAGER_ARRAY < <(echo "$JSON_ARG" | jq -c '.swarm.managers.members[]')
 
-    for index in "${!WORKER_ARRAY[@]}"; do
-        log_info "Creating the manager #$((index + 1))"
-        create_single_manager "$LOGIN_ARG" "$PASSWORD_ARG" "$HOSTNAME_DEFAULT_PREFIX" "${WORKER_ARRAY[$i]}" "$((index + 1))" || log_error "Manager #$((index + 1)) failed, continuing..."
+    for index in "${!MANAGER_ARRAY[@]}"; do
+        log_info "Creating the manager #${index}"
+        create_single_manager "$LOGIN_ARG" "$PASSWORD_ARG" "$HOSTNAME_DEFAULT_PREFIX" "${MANAGER_ARRAY[$index]}" "${index}" || log_error "Manager #$((index + 1)) failed, continuing..."
     done
 }
 
@@ -163,15 +162,15 @@ create_single_worker() {
             install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "./data"
         fi
 
-        set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_ADDRESS}"
         install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
 
-        log_debug "\t- Adding the worker ${NODE_HOSTNAME} to the Swarm: sudo ${JOIN_WORKER_CMD}"
+        log_debug "\t- Adding the worker ${NODE_HOSTNAME} to the Swarm"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo ${JOIN_WORKER_CMD}"
 
         log_debug "\t- Creating the folders on worker ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo mkdir -p ${FOLDER_LIST}"
 
+        set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_ADDRESS}"
         reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${NODE_HOSTNAME}"
 
         log_debug "\t- Adding the labels to the worker"
@@ -204,8 +203,8 @@ create_workers() {
     mapfile -t WORKER_ARRAY < <(echo "$JSON_ARG" | jq -c '.swarm.workers[]')
 
     for index in "${!WORKER_ARRAY[@]}"; do
-        log_info "Creating the worker #$((index + 1))"
-        create_single_worker "$LOGIN_ARG" "$PASSWORD_ARG" "$worker" "$((index + 1))" || log_error "Worker #$((index + 1)) failed, continuing..."
+        log_info "Creating the worker #${index}"
+        create_single_worker "$LOGIN_ARG" "$PASSWORD_ARG" "${WORKER_ARRAY[$index]}" "${index}" || log_error "Worker #${index} failed, continuing..."
     done
 }
 
