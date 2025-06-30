@@ -76,7 +76,7 @@ create_single_manager() {
             set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_ADDRESS}"
             install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
 
-            log_debug "\t- Adding the manager ${NODE_HOSTNAME} to the Swarm"
+            log_debug "\t- Adding the manager ${NODE_HOSTNAME} to the Swarm: sudo ${JOIN_MGR_CMD}"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo ${JOIN_MGR_CMD}"
         fi
 
@@ -120,8 +120,9 @@ create_managers() {
 
     log_info "Creating the Swarm managers by using the default prefix: ${HOSTNAME_DEFAULT_PREFIX}"
 
-    local i=0
+    local i=1
     echo "$JSON_ARG" | jq -c '.swarm.managers.members[]' | while read -r manager; do
+        log_info "Creating the manager #${i}"
         create_single_manager "$LOGIN_ARG" "$PASSWORD_ARG" "$HOSTNAME_DEFAULT_PREFIX" "$manager" "$i"
         ((i++))
     done
@@ -165,6 +166,8 @@ create_single_worker() {
 
         set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_ADDRESS}"
         install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
+
+        log_debug "\t- Adding the worker ${NODE_HOSTNAME} to the Swarm: sudo ${JOIN_WORKER_CMD}"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo ${JOIN_WORKER_CMD}"
 
         log_debug "\t- Creating the folders on worker ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
@@ -199,8 +202,9 @@ create_workers() {
     log_info "++++++++++++++++++++++++++"
 
     log_info "Creating the Swarm workers"
-    local i=0
+    local i=1
     echo "$JSON_ARG" | jq -c '.swarm.workers[]' | while read -r worker; do
+        log_info "Creating the worker #{i}"
         create_single_worker "$LOGIN_ARG" "$PASSWORD_ARG" "$worker" "$i"
         ((i++))
     done
