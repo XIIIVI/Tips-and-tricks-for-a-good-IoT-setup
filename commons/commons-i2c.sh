@@ -11,8 +11,6 @@ activate_i2c() {
     log_debug "\t- Activating I2C on $HOST_IP_ARG ..."
 
     sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" 'bash -s' <<'EOF_I2C'
-set -e
-
 # Ensure i2c-dev is in /etc/modules
 if ! grep -q "^i2c-dev" /etc/modules; then
     echo "i2c-dev" | sudo tee -a /etc/modules

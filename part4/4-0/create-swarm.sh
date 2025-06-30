@@ -119,11 +119,11 @@ create_managers() {
     HOSTNAME_DEFAULT_PREFIX=$(echo "$JSON_ARG" | jq -r '.swarm.managers["hostname-default-prefix"]')
 
     log_info "Creating the Swarm managers by using the default prefix: ${HOSTNAME_DEFAULT_PREFIX}"
-
     local i=1
+    
     while read -r manager; do
         log_info "Creating the manager #${i}"
-        create_single_manager "$LOGIN_ARG" "$PASSWORD_ARG" "$HOSTNAME_DEFAULT_PREFIX" "$manager" "$i"
+        create_single_manager "$LOGIN_ARG" "$PASSWORD_ARG" "$HOSTNAME_DEFAULT_PREFIX" "$manager" "$i" || log_warn "Manager #$i failed, continuing..."
         ((i++))
     done < <(echo "$JSON_ARG" | jq -c '.swarm.managers.members[]')
 }
@@ -205,8 +205,8 @@ create_workers() {
     local i=1
     
     while read -r worker; do
-        log_info "Creating the worker ${i}"
-        create_single_worker "$LOGIN_ARG" "$PASSWORD_ARG" "$worker" "$i"
+        log_info "Creating the worker #${i}"
+        create_single_worker "$LOGIN_ARG" "$PASSWORD_ARG" "$worker" "$i" || log_warn "Worker #$i failed, continuing..."
         ((i++))
     done < <(echo "$JSON_ARG" | jq -c '.swarm.workers[]')
 }
