@@ -5,7 +5,7 @@
             "password": "admin123"
         },
         "managers": {
-            "default-prefix": "orchestrator",
+            "hostname-default-prefix": "orchestrator",
             "members": [
                 {
                     "ip-address": "192.168.2.191",
