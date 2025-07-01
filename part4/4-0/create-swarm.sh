@@ -125,7 +125,7 @@ create_managers() {
 
     for index in "${!MANAGER_ARRAY[@]}"; do
         log_info "Creating the manager #$((index + 1))"
-        create_single_manager "$LOGIN_ARG" "$PASSWORD_ARG" "$HOSTNAME_DEFAULT_PREFIX" "${MANAGER_ARRAY[$index]}" "${index}" || log_error "❌ Manager #$((index + 1)) failed, continuing..."
+        create_single_manager "$LOGIN_ARG" "$PASSWORD_ARG" "$HOSTNAME_DEFAULT_PREFIX" "${MANAGER_ARRAY[$index]}" "$(( index + 1 ))" || log_error "❌ Manager #$((index + 1)) failed, continuing..."
     done
 }
 
@@ -207,7 +207,7 @@ create_workers() {
 
     for index in "${!WORKER_ARRAY[@]}"; do
         log_info "Creating the worker #$(( index + 1))"
-        create_single_worker "$LOGIN_ARG" "$PASSWORD_ARG" "${WORKER_ARRAY[$index]}" "${index}" || log_error "❌ Worker #$(( index + 1 )) failed, continuing..."
+        create_single_worker "$LOGIN_ARG" "$PASSWORD_ARG" "${WORKER_ARRAY[$index]}" "$(( index + 1))" || log_error "❌ Worker #$(( index + 1 )) failed, continuing..."
     done
 }
 
