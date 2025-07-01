@@ -5,6 +5,32 @@ START_IP_ADDRESS=
 declare -A HOSTMAP
 
 #
+# check_hostname_conflict
+#
+check_hostname_conflict() {
+  local HOSTNAME_TO_CHECK_ARG="$1"
+
+  if [[ -z "$HOSTNAME_TO_CHECK_ARG" ]]; then
+    return 1
+  fi
+
+  local LOCAL_IPS RESOLVED_IP
+  LOCAL_IPS=$(hostname -I)
+  RESOLVED_IP=$(getent hosts "$HOSTNAME_TO_CHECK_ARG" | awk '{ print $1 }')
+
+  # Hostname not found on LAN
+  if [[ -z "$RESOLVED_IP" ]]; then
+    return 2
+  # Hostname points to this machine.  
+  elif [[ $LOCAL_IPS =~ $RESOLVED_IP ]]; then
+    return 0
+  # Hostname is already in use by a different host on the LAN
+  else
+    return 3
+  fi
+}
+
+#
 # set_hostname
 #
 set_hostname() {
