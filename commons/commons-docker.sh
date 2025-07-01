@@ -25,10 +25,10 @@ else
     [ -f /var/lib/dpkg/lock-frontend ] && sudo rm /var/lib/dpkg/lock-frontend
 
     # Step 4: Reconfigure dpkg
-    sudo dpkg --configure -a
+    sudo dpkg --configure -a 1>/dev/null
 
     # Step 5: Update package list
-    sudo DEBIAN_FRONTEND=noninteractive apt update
+    sudo DEBIAN_FRONTEND=noninteractive apt update 1>/dev/null
     
     echo "      - Installing required packages"
 
