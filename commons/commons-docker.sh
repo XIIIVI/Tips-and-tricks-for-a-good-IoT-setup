@@ -18,7 +18,7 @@ else
     sudo DEBIAN_FRONTEND=noninteractive apt-get update -y -qq 1>/dev/null
     sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq 1>/dev/null
     echo "\t\t- Installing Docker modules"
-    curl -fsSL https://get.docker.com -o get-docker.sh
+    curl --retry 5 --retry-delay 2 --retry-max-time 60 --retry-all-errors -fsSL https://get.docker.com -o get-docker.sh
     sudo sh get-docker.sh
 
 # Setup a 10 MiB rolling log with 3 files
