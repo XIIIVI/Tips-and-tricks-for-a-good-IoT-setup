@@ -130,7 +130,7 @@ services:
 
 
   vminsert:
-    image: ${PRIVATE_REPO}/victoriametrics/vminsert:v1.119.0-cluster
+    image: ${PRIVATE_REPO}/vminsert:v1.119.0-cluster
     deploy:
       mode: replicated
       replicas: 2
@@ -151,7 +151,7 @@ services:
       - /etc/hostname:/etc/hostname:ro
 
   vmstorage:
-    image: ${PRIVATE_REPO}/victoriametrics/vmstorage:v1.119.0-cluster
+    image: ${PRIVATE_REPO}/vmstorage:v1.119.0-cluster
     deploy:
       mode: global
       restart_policy:
@@ -166,10 +166,10 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
-      - /data/victoriametrics:/vmstorage
+      - /data/database:/vmstorage
 
   vmselect:
-    image: ${PRIVATE_REPO}/victoriametrics/vmselect:v1.119.0-cluster
+    image: ${PRIVATE_REPO}/vmselect:v1.119.0-cluster
     deploy:
       mode: replicated
       replicas: 2 
@@ -191,7 +191,7 @@ services:
 
 
   vmauth:
-    image: ${PRIVATE_REPO}/victoriametrics/vmauth:v1.119.0
+    image: ${PRIVATE_REPO}/vmauth:v1.119.0
     deploy:
       mode: replicated
       replicas: 1
@@ -204,7 +204,16 @@ services:
       - vmselect
     ports:
       - "8428:8428"
+    configs:
+      - source: vmauth_config
+        target: /etc/vmauth/auth.config.yml
+    command:
+      - "-auth.config=/etc/vmauth/auth.config.yml"
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
+
+configs:
+  vmauth_config:
+    file: ./auth.config.yml

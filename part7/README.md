@@ -42,10 +42,8 @@ If the deployment does not work (CURRENT STATE set to Rejected), check this cont
 
 sudo mkdir -p /usr/local/share/ca-certificates/ && vi /usr/local/share/ca-certificates/registry.crt
 
-sudo mkdir -p /etc/docker/certs.d/<IP_ADDRESS_OF_THE_REPO>:4443/ && sudo vi /etc/docker/certs.d/<IP_ADDRESS_OF_THE_REPO>:4443/ca.crt
-
+sudo update-ca-certificates
 sudo systemctl restart docker
-
 sudo systemctl status docker
 
 ```
