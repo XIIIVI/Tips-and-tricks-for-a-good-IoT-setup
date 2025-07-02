@@ -154,12 +154,6 @@ main() {
     log_debug "Copying the file Dockerfile"
     cp "./Dockerfile" "level${LEVEL_NUMBER}/Dockerfile"
 
-    # commons_telegraf.conf
-    log_debug "Copying and customizing the file commons_telegraf.conf"
-    mv "level${LEVEL_NUMBER}/telegraf.conf" "level${LEVEL_NUMBER}/telegraf.tmp"
-    cp "./commons_telegraf.conf" "level${LEVEL_NUMBER}/telegraf.conf"
-    cat "level${LEVEL_NUMBER}/telegraf.tmp" >> "level${LEVEL_NUMBER}/telegraf.conf"
-
     # Build the Telegraf image
     cd "level${LEVEL_NUMBER}/" || exit
     log_debug "Importing the image from the folder ${PWD}"

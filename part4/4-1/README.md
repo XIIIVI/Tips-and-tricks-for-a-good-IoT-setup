@@ -3,6 +3,27 @@
 Before deploying this stack, ensure you are using the private repo. You can use one of the following methods
 
 1) update the file .env and then call ```sudo docker stack deploy --compose-file docker-compose.yml iot-stack```,
-2) or use this command line ```PRIVATE_REPO=<IP_ADDRESS_OF_THE_REPO>:4443 sudo docker stack deploy --compose-file docker-compose.yml iot-stack```,
+2) or use this command line ```sudo PRIVATE_REPO=<IP_ADDRESS_OF_THE_REPO>:4443 docker stack deploy --compose-file docker-compose.yml iot-stack```,
+
+To list the services on a given node: ```sudo docker node ps <Node's name>```
 
 To remove the stack, type ```sudo docker stack rm iot-stack```
+
+---
+Troubleshootings
+
+If the deployment does not work (CURRENT STATE set to Rejected), check this contraint 
+
+⚠️ ON ALL THE CLIENTS, copy $REGISTRY_DIR/certs/registry.crt into /usr/local/share/ca-certificates/registry.crt
+
+```bash
+
+sudo mkdir -p /usr/local/share/ca-certificates/ && vi /usr/local/share/ca-certificates/registry.crt
+
+sudo mkdir -p /etc/docker/certs.d/<IP_ADDRESS_OF_THE_REPO>:4443/ && sudo vi /etc/docker/certs.d/<IP_ADDRESS_OF_THE_REPO>:4443/ca.crt
+
+sudo systemctl restart docker
+
+sudo systemctl status docker
+
+```
