@@ -88,7 +88,7 @@ check_all_mandatory_parameters() {
 # main
 #
 main() {
-    MANDATORY_PARAMETER_LIST=( "LOCAL_REGISTRY_ADDRESS")
+    MANDATORY_PARAMETER_LIST=("LOCAL_REGISTRY_ADDRESS")
 
     # Parses the parameters
     while (("$#")); do
@@ -119,7 +119,7 @@ main() {
     done
 
     LOCAL_REGISTRY_PORT=${LOCAL_REGISTRY_PORT:="4443"}
-    local DIR_PART5=../../part5
+    local DIR_PART5=../../../part5/telegraf
 
     # Check all mandatory parameter are set
     check_all_mandatory_parameters "${MANDATORY_PARAMETER_LIST[@]}"
@@ -129,12 +129,13 @@ main() {
     log_info "Preparing the environment from ${DIR_PART5}"
     log_debug "\t- Copying files from ${DIR_PART5} to the current directory"
     cp "${DIR_PART5}"/build-telegraf-images.sh .
-    cp "${DIR_PART5}"/Dockerfile.sh .
+    cp "${DIR_PART5}"/Dockerfile .
     cp "${DIR_PART5}"/entrypoint.sh .
+    cp "${DIR_PART5}"/level0/telegraf.conf ./level0/telegraf.conf
     log_debug "\t- Removing the dummy output plugin"
     sed -i '/# Send metrics to nowhere at all/{N;N;d}' "${DIR_PART5}"/level0/telegraf.conf
     log_debug "\t- Adding the addon \"prometheus_remote_write\" to the telegraf configuration file"
-    cat "${DIR_PART5}"/level0/telegraf.conf ./level0/telegraf.addon > ./level0/telegraf.conf
+    cat ./level0/telegraf.addon >>./level0/telegraf.conf
     chmod +x build-telegraf-images.sh
 
     ./build-telegraf-images.sh --local-registry-address "${LOCAL_REGISTRY_ADDRESS}" --local-registry-port "${LOCAL_REGISTRY_PORT}" --level-number 0
