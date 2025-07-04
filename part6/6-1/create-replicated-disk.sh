@@ -190,9 +190,9 @@ main() {
             HOSTNAME=$(dig +short -x "$IP" | sed 's/\.$//')
 
             if [[ "$HOSTNAME" =~ ${MANAGER_HOSTNAME_PREFIX} ]]; then
-                log_warning "\t\t- Setup GlusterFS server on ${HOSTNAME} (${IP})" "${DISK_INDEX}"
+                log_warning "\t\t- Setup GlusterFS server on ${HOSTNAME} (${IP})"
 
-                setup_glusterfs "$LOGIN" "$PASSWORD" "$IP"
+                setup_glusterfs "$LOGIN" "$PASSWORD" "$IP" "${DISK_INDEX}"
 
                 BRICKS+=("${HOSTNAME}:/mnt/glusterfs/brick")
                 DISK_INDEX=$((DISK_INDEX + 1))
