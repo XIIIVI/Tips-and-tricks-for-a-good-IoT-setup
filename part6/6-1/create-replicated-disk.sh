@@ -8,7 +8,7 @@ source "../../commons/commons-net.sh"
 usage() {
     log_debug "Usage: $0 --login=<LOGIN>"
     log_debug "          --password=<PASSWORD>" 
-    log_debug "         [--disk_label=<MYDISK> (default: database)]"
+    log_debug "         [--disk-label=<MYDISK> (default: database)]"
     log_debug "         [--size-gib=<NUMBER> (5 GiB by default)]"
     log_debug
     log_debug "Available devices:"

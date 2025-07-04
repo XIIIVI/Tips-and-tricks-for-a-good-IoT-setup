@@ -5,7 +5,9 @@ source "../../commons/commons-log.sh"
 
 # === Usage function ===
 usage() {
-  log_debug "Usage: $0 --device-name=sdX --disk-label=<MYDISK> [--size-gib=<NUMBER> (5 GiB by default)]"
+  log_debug "Usage: $0 [--device-name=sdX]"
+  log_debug "                    --disk-label=<MYDISK>"
+  log_debug "                   [--size-gib=<NUMBER> (5 GiB by default)]"
   log_debug
   log_debug "Available devices:"
   lsblk -dno NAME,SIZE,MODEL
@@ -24,7 +26,7 @@ display_settings() {
 
 # === Main logic ===
 create_disk() {
-  MANDATORY_PARAMETER_LIST=("DEVICE" "SIZE_GIB" "DISK_LABEL")
+  MANDATORY_PARAMETER_LIST=("SIZE_GIB" "DISK_LABEL")
 
   for ARG in "$@"; do
     case $ARG in
@@ -50,7 +52,7 @@ create_disk() {
   check_all_mandatory_parameters "${MANDATORY_PARAMETER_LIST[@]}"
   display_settings
 
-  DEVICE="${DEVICE:-$(lsblk -b -l -o NAME,SIZE,TYPE | awk '$3 == "part" {print $1, $2}' | sort -k2 -nr | head -n1 | awk '{print $1}')}"  # Default to sdb if not set
+  DEVICE="${DEVICE:-$(lsblk -b -l -o NAME,SIZE,TYPE | awk '$3 == "part" {print $1, $2}' | sort -k2 -nr | head -n1 | awk '{print $1}')}"
   SIZE_GIB="${SIZE_GIB:-5}"  # Default to 5 GiB if not set
   FULL_DEV="/dev/$DEVICE"
   PARTITION="${FULL_DEV}1"
