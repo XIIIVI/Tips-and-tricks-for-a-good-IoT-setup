@@ -184,7 +184,7 @@ main() {
         IP="${SUBNET}.${i}"
 
         # Print current IP being checked (overwrites the same line)
-        log_progress "🔍 Testing ${IP} ..." 
+        log_progress_bar "🔍 Testing ${IP} ..." "$((i + 1))" 254
 
         if ping -c 1 -W 1 "$IP" &>/dev/null; then
             HOSTNAME=$(dig +short -x "$IP" | sed 's/\.$//')

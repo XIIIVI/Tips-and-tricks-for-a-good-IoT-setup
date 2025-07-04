@@ -9,6 +9,22 @@ log_progress() {
 }
 
 #
+# log_progress
+#   - param: message
+#
+log_progress_bar() {
+    local MESSAGE_ARG="${1}"
+    local CURRENT_VALUE_ARG="${2}"
+    local TOTAL_VALUE_ARG="${3}"
+    local BAR_WIDTH=50
+    local PROGRESS=$((CURRENT_VALUE_ARG * BAR_WIDTH / TOTAL_VALUE_ARG))
+    local BAR=$(printf "%-${BAR_WIDTH}s" "#" | cut -c1-${PROGRESS})
+    local PERCENT=$((CURRENT_VALUE_ARG * 100 / TOTAL_VALUE_ARG))
+
+    printf "\r[%s] %3d%% - %s" "$BAR" "$PERCENT" "${MESSAGE_ARG}"
+}
+
+#
 # log_error
 #   - param: message
 #
