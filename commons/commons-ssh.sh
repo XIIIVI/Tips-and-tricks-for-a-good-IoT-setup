@@ -52,9 +52,9 @@ execute_command() {
 # execute_script
 #
 execute_script() {
-  local USER_ARG="$1"
-  local PASSWORD_ARG="$2"
-  local TARGET_ARG="$3"
+  local TARGET_ARG="$1"
+  local USER_ARG="$2"
+  local PASSWORD_ARG="$3"
   local SCRIPT_PATH_ARG="$4"
   shift 4
   local SCRIPT_ARGS=("$@")
