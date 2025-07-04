@@ -1,6 +1,14 @@
 #!/bin/bash
 
 #
+# log_progress
+#   - param: message
+#
+log_progress() {
+    printf "\r%s" "${1}"
+}
+
+#
 # log_error
 #   - param: message
 #

@@ -40,31 +40,30 @@ create_xfs_partition() {
     local DISK_INDEX_ARG="${5}"
     local PARTITION="${DISK}${DISK_INDEX_ARG}"
     local MOUNT_POINT="/mnt/gluster"
-    local DISK=$(lsblk -b -l -o NAME,SIZE,TYPE | awk '$3 == "part" {print $1, $2}' | sort -k2 -nr | head -n1 | awk '{print $1}')
 
     log_info " - 🔧 Creating partition..."
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "(\
-        echo n                 # new partition \
-        echo p                 # primary \
-        echo 1                 # partition number \
-        echo                   # default first sector \
-        echo +${SIZE_MIB_ARG}M # last sector \
-        echo w                 # write and exit \
-    ) | fdisk ${DISK}"
+    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo bash -s" <<EOF
+set -x
 
-    log_debug "\t- ⌛ Waiting for partition to be recognized ..."
-    sleep 2
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "partprobe ${DISK}"
+# Get largest disk (not partition!)
+DISK_NAME=$(lsblk -b -l -o NAME,SIZE,TYPE | awk '$3 == "disk" {print $1, $2}' | sort -k2 -nr | head -n1 | awk '{print $1}')
+DISK="/dev/${DISK_NAME}"
+
+# Partition it
+echo -e "n\np\n1\n\n+${SIZE_MIB_ARG}M\nw" | fdisk "$DISK"
+sleep 2
+partprobe "$DISK"
+EOF
 
     log_debug "\t- 🧼 Formatting with XFS ..."
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "mkfs.xfs ${PARTITION}"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo mkfs.xfs ${PARTITION}"
 
     log_debug "\t- 📁 Creating mount point at ${MOUNT_POINT} ..."
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "mkdir -p ${MOUNT_POINT}"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "mount ${PARTITION} ${MOUNT_POINT}"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo mkdir -p ${MOUNT_POINT}"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo mount ${PARTITION} ${MOUNT_POINT}"
 
     log_debug "🔁 Adding to /etc/fstab ..."
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "echo \"UUID=$(blkid -s UUID -o value "${PARTITION}") ${MOUNT_POINT} xfs defaults 0 0\" >>/etc/fstab"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo echo \"UUID=$(blkid -s UUID -o value "${PARTITION}") ${MOUNT_POINT} xfs defaults 0 0\" >>/etc/fstab"
 }
 
 #
@@ -74,21 +73,54 @@ setup_glusterfs() {
     local LOGIN_ARG="${1}"
     local PASSWORD_ARG="${2}"
     local IP_ADDRESS_ARG="${3}"
+    local DISK_INDEX_ARG="${4}"
+    local MOUNT_POINT="/mnt/gluster${DISK_INDEX_ARG}"
+    local BRICK_SOURCE="/data/gluster-brick${DISK_INDEX_ARG}" # Fallback or real data dir
 
-    local MOUNT_POINT="/mnt/gluster"
+    log_debug "📦 Installing GlusterFS on ${IP_ADDRESS_ARG}..."
+    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_ADDRESS_ARG}" <<'EOF_GLUSTERFS'
+    set -e
+    
+    # Step 1 & 2: Identify and kill the first apt-related process
+    kill_pid=$(ps aux | grep -i apt | grep -v grep | awk '{print $2}' | head -n 1)
+    
+    if [ -n "$kill_pid" ]; then
+        sudo kill -9 "$kill_pid"
+        echo "Killed apt process with PID $kill_pid"
+    fi
 
-    log_debug "📦 Installing GlusterFS ..."
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "apt update"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "apt upgrade -y -qq"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "apt install -qq -y xfsprogs attr glusterfs-server glusterfs-common glusterfs-client"
+    # Step 3: Remove the lock file if it exists
+    [ -f /var/lib/dpkg/lock-frontend ] && sudo rm /var/lib/dpkg/lock-frontend
 
-    log_debug "\t- 🚀 Starting GlusterFS server service ..."
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "systemctl enable glusterfs-server"
+    # Step 4: Reconfigure dpkg
+    sudo dpkg --configure -a 1>/dev/null
+    
+    sudo apt update -qq && sudo apt install -qq -y xfsprogs attr glusterfs-server glusterfs-common glusterfs-client
+EOF_GLUSTERFS
 
-    log_debug "\t- 🧱 Creating GlusterFS brick directory ..."
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "mkdir -p $MOUNT_POINT/brick"
+    log_debug "\t- 🚀 Enabling and starting GlusterFS service ..."
+    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo systemctl enable --now glusterd"
 
-    log_debug "\t- ✅ Done!"
+    log_debug "\t- 📁 Preparing brick mount point at ${MOUNT_POINT}/brick ..."
+
+    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "bash -s" <<EOF
+set -e
+
+sudo mkdir -p "${BRICK_SOURCE}"
+sudo mkdir -p "${MOUNT_POINT}/brick"
+
+# If MOUNT_POINT isn't already mounted, bind BRICK_SOURCE
+if ! mountpoint -q "${MOUNT_POINT}/brick"; then
+    sudo mount --bind "${BRICK_SOURCE}" "${MOUNT_POINT}/brick"
+
+    # Persist in /etc/fstab if not already present
+    if ! grep -q "${MOUNT_POINT}/brick" /etc/fstab; then
+        echo "${BRICK_SOURCE} ${MOUNT_POINT}/brick none bind 0 0" | sudo tee -a /etc/fstab > /dev/null
+    fi
+fi
+EOF
+
+    log_debug "\t- ✅ GlusterFS setup complete on ${IP_ADDRESS_ARG}!"
 }
 
 #
@@ -147,24 +179,26 @@ main() {
     apt-get install -qq -y dnsutils
 
     log_info "Looking for managers with prefix ${MANAGER_HOSTNAME_PREFIX} in the subnet ${SUBNET} ..."
+
     for i in {1..254}; do
-        IP="$SUBNET.$i"
-        (
-            if ping -c 1 -W 1 "$IP" &>/dev/null; then
-                HOSTNAME=$(dig +short -x "$IP" | sed 's/\.$//')
-                if [[ "$HOSTNAME" =~ ${MANAGER_HOSTNAME_PREFIX} ]]; then
-                    log_warning "\t\t- Setup GlusterFS server on ${HOSTNAME} (${IP})"
-                    create_xfs_partition "$LOGIN" "$PASSWORD" "$IP" "$SIZE_MIB" "$DISK_INDEX"
-                    setup_glusterfs "$LOGIN" "$PASSWORD" "$IP"
+        IP="${SUBNET}.${i}"
 
-                    BRICKS+=("${HOST}:/mnt/glusterfs/brick")
-                    DISK_INDEX=$((DISK_INDEX + 1))
-                fi
+        # Print current IP being checked (overwrites the same line)
+        log_progress "🔍 Testing ${IP} ..." 
+
+        if ping -c 1 -W 1 "$IP" &>/dev/null; then
+            HOSTNAME=$(dig +short -x "$IP" | sed 's/\.$//')
+
+            if [[ "$HOSTNAME" =~ ${MANAGER_HOSTNAME_PREFIX} ]]; then
+                log_warning "\t\t- Setup GlusterFS server on ${HOSTNAME} (${IP})" "${DISK_INDEX}"
+
+                setup_glusterfs "$LOGIN" "$PASSWORD" "$IP"
+
+                BRICKS+=("${HOSTNAME}:/mnt/glusterfs/brick")
+                DISK_INDEX=$((DISK_INDEX + 1))
             fi
-        ) &
+        fi
     done
-
-    wait
 
     if [[ ${#BRICKS[@]} -eq 0 ]]; then
         log_error "❌ No devices found with prefix ${MANAGER_HOSTNAME_PREFIX}. Aborting."
