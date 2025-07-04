@@ -39,6 +39,8 @@ execute_command() {
   local TARGET_ARG="$3"
   local CMD="$4"
 
+  install_runoverssh
+
   if [[ -z "$TARGET_ARG" || -z "$USER_ARG" || -z "$PASSWORD_ARG" || -z "$CMD" ]]; then
     log_error "Usage: execute_command <target> <login> <password> <command>"
     return 1
@@ -58,6 +60,8 @@ execute_script() {
   local SCRIPT_PATH_ARG="$4"
   shift 4
   local SCRIPT_ARGS=("$@")
+
+  install_runoverssh
 
   if [[ -z "$TARGET_ARG" || -z "$USER_ARG" || -z "$PASSWORD_ARG" || -z "$SCRIPT_PATH_ARG" ]]; then
     log_error "Usage: execute_script <target> <login> <password> <script_path>"
