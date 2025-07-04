@@ -179,6 +179,7 @@ main() {
     apt-get install -qq -y dnsutils
 
     log_info "Looking for managers with prefix ${MANAGER_HOSTNAME_PREFIX} in the subnet ${SUBNET} ..."
+    unset MASTER_IP # Ensure it's clean before the loop
 
     for i in {1..254}; do
         IP="${SUBNET}.${i}"
@@ -191,6 +192,12 @@ main() {
 
             if [[ "$HOSTNAME" =~ ${MANAGER_HOSTNAME_PREFIX} ]]; then
                 log_warning "\t\t- Setup GlusterFS server on ${HOSTNAME} (${IP})"
+
+                # Capture the first matching IP
+                if [[ -z "$MASTER_IP" ]]; then
+                    MASTER_IP="$IP"
+                    log_info "\t\t🔑 Master node selected: $MASTER_IP"
+                fi
 
                 setup_glusterfs "$LOGIN" "$PASSWORD" "$IP" "${DISK_INDEX}"
 
@@ -212,9 +219,18 @@ main() {
             IFS=' '
             echo "${BRICKS[*]}"
         )
-        gluster volume create "${VOLUME_NAME}" replica "${#BRICKS[@]}" "${BRICK_LIST}" force
-        gluster volume start "${VOLUME_NAME}"
-        gluster volume info "${VOLUME_NAME}"
+
+        sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${MASTER_IP}" bash -s <<EOF
+set -e
+echo "Creating GlusterFS volume '${VOLUME_NAME}'..."
+sudo gluster volume create "${VOLUME_NAME}" replica ${#BRICKS[@]} ${BRICK_LIST} force
+
+echo "Starting GlusterFS volume '${VOLUME_NAME}'..."
+sudo gluster volume start "${VOLUME_NAME}"
+
+echo "Volume Info:"
+sudo gluster volume info "${VOLUME_NAME}"
+EOF
     fi
 }
 
