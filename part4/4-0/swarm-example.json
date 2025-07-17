@@ -8,6 +8,9 @@
                     "folders": [
                         "/data/alloy",
                         "/data/database",
+                        "/data/mosquitto/config",
+                        "/data/mosquitto/data",
+                        "/data/mosquitto/log",
                         "/data/telegraf"
                     ],
                     "labels": [
@@ -28,6 +31,9 @@
                     "folders": [
                         "/data/alloy",
                         "/data/database",
+                        "/data/mosquitto/config",
+                        "/data/mosquitto/data",
+                        "/data/mosquitto/log",
                         "/data/telegraf"
                     ],
                     "labels": [
@@ -47,6 +53,9 @@
                     "folders": [
                         "/data/alloy",
                         "/data/database",
+                        "/data/mosquitto/config",
+                        "/data/mosquitto/data",
+                        "/data/mosquitto/log",
                         "/data/telegraf"
                     ],
                     "labels": [
@@ -96,9 +105,12 @@
             }
         ],
         "secrets": {
-            "passwords": [
-                "mqtt-password",
-                "telegraf-password"
+            "credentials": [
+                {
+                    "name": "mqtt",
+                    "login": "mqtt-user",
+                    "password": "mqtt-password"
+                }
             ],
             "certificates": [
                 "mqtt-tls-certificate",
