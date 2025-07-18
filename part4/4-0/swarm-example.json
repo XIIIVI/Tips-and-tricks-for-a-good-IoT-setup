@@ -104,17 +104,38 @@
                 "has-display": true
             }
         ],
+        "configurations": [
+            {
+                "name": "mosquitto.conf",
+                "file": "./data/mosquitto.conf"
+            }
+        ],
         "secrets": {
             "credentials": [
                 {
-                    "name": "mqtt",
-                    "login": "mqtt-user",
-                    "password": "mqtt-password"
+                    "name": "mosquitto",
+                    "login": "mqtt-user"
                 }
             ],
             "certificates": [
-                "mqtt-tls-certificate",
-                "telegraf-tls-certificate"
+                {
+                    "name": "mosquitto",
+                    "days-valid": 3650,
+                    "country": "FR",
+                    "state": "Isère",
+                    "locality": "Grenoble",
+                    "organization": "IoT-MQTT",
+                    "common-name": "mosquitto"
+                },
+                {
+                    "name": "telegraf",
+                    "days-valid": 3650,
+                    "country": "FR",
+                    "state": "Isère",
+                    "locality": "Grenoble",
+                    "organization": "IoT-Telegraf",
+                    "common-name": "telegraf"
+                }
             ]
         },
         "networks": [],

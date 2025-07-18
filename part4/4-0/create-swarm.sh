@@ -79,6 +79,10 @@ create_single_manager() {
 
                 log_debug "\t- Saving the join manager command for managers to ${JOIN_MANAGER_CMD_FILE}"
                 echo "${JOIN_MGR_CMD}" >"${JOIN_MANAGER_CMD_FILE}"
+
+               log_debug "\t- Creating the secrets"
+               create_credentials  "$LOGIN" "$PASSWORD" "${IP_ADDRESS}" "$JSON_CONTENT"
+               create_certificates  "$LOGIN" "$PASSWORD" "${IP_ADDRESS}" "$JSON_CONTENT"
             else
                 log_debug "\t- Swarm already created, using existing token to add a new manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
                 install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
@@ -228,6 +232,91 @@ create_workers() {
 }
 
 #
+# create_credentials
+#
+create_credentials() {
+    local LOGIN_ARG="$1"
+    local PASSWORD_ARG="$2"
+    local IP_ADDRESS_ARG="$3"
+    local JSON_ARG="$4"
+
+    log_debug "\t- Creating the secrets for credentials on ${IP_ADDRESS_ARG}"
+
+    # Parse credentials
+    echo "${JSON_ARG}" | jq -r '.swarm.secrets.credentials[] | "NAME=\(.name) USER=\(.login)"' | while read line; do
+       local GENERATED_PASSWORD
+       local HASH
+       local PASSWORD_FILENAME
+       eval "$line"
+
+       log_warning "\t\t- Creating the secret ${NAME} for user ${USER}"
+       PASSWORD_FILENAME="${NAME}.passwd"
+       GENERATED_PASSWORD=$(openssl rand -base64 16)
+       HASH=$(htpasswd -bnB "${USER}" "${GENERATED_PASSWORD}" | cut -d ':' -f2)
+       echo "${USER}:${HASH}" > ./"${PASSWORD_FILENAME}"
+       
+       log_warning "\t\t- Importing the secret ${NAME} for user ${USER} on ${IP_ADDRESS_ARG}"
+       copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" ./"${PASSWORD_FILENAME}" "/tmp/${PASSWORD_FILENAME}"
+       rm -f ./"${PASSWORD_FILENAME}"
+       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME} /tmp/${PASSWORD_FILENAME}"
+       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${PASSWORD_FILENAME}"
+   done
+}
+
+#
+# create_certificates
+#
+create_certificates() {
+    local LOGIN_ARG="$1"
+    local PASSWORD_ARG="$2"
+    local IP_ADDRESS_ARG="$3"
+    local JSON_ARG="$4"
+
+    log_debug "\t- Creating the secrets for certificates on ${IP_ADDRESS_ARG}"
+
+    # Parse certificates
+    echo "${JSON_ARG}" | jq -r '.swarm.secrets.certificates[] | 
+        "NAME=\(.name) DAYS_VALID=\(.["days-valid"]) COUNTRY=\(.country) STATE=\(.state) LOCALITY=\(.locality) ORGANIZATION=\(.organization) COMMON_NAME=\(.["common-name"])"' | while read line; do
+        eval "$line"
+
+        log_warning "\t\t- Creating the secret ${NAME} with common name ${COMMON_NAME} valid for ${DAYS_VALID} days"
+        openssl req -new -x509 -days "${DAYS_VALID}" -nodes \
+                -subj "/C=${COUNTRY}/ST=$STATE/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}" \
+                -out "${NAME}".crt \
+                -keyout "${NAME}".key
+
+        log_warning "\t\t- Importing the secret ${NAME} with common name ${COMMON_NAME} on ${IP_ADDRESS_ARG}"        
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.crt" "/tmp/${NAME}.crt"
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.key" "/tmp/${NAME}.key"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}-crt /tmp/${NAME}.crt"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}-key /tmp/${NAME}.key"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${NAME}.crt /tmp/${NAME}.key"
+    done
+}
+
+#
+# create_configurations
+#
+create_configurations() {
+    local LOGIN_ARG="$1"
+    local PASSWORD_ARG="$2"
+    local IP_ADDRESS_ARG="$3"
+    local JSON_ARG="$4"
+
+    log_debug "\t- Creating the configurations on ${IP_ADDRESS_ARG}"
+
+    # Parse configurations
+    echo "${JSON_ARG}" | jq -r '.swarm.configurations[] | "NAME=\(.name) FILE=\(.file)"' | while read line; do
+        eval "$line"
+
+        log_warning "\t\t- Creating the configuration ${NAME}"
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${FILE}" "/tmp/${NAME}"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker config create ${NAME} /tmp/${NAME}"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${NAME}"
+    done
+}
+
+#
 # main
 #
 main() {
@@ -301,7 +390,7 @@ main() {
     display_settings
 
     # Installing required packages
-    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sshpass
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq apache2-utils sshpass
 
     # Check if the file exists and is not empty
     if [ ! -s "$CONFIGURATION_FILE" ]; then

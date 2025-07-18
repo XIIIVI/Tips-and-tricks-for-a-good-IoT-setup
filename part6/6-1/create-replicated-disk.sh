@@ -10,7 +10,7 @@ display_help() {
     log_debug "          --password=<PASSWORD>"
     log_debug "          --subnet=<xxx.xxx.xxx>"
     log_debug "         [--manager-hostname-prefix=<PREFIX> (orchestrator by default)]"
-    log_debug "         [--size-gib=<NUMBER> (1 GiB by default)]"
+    log_debug "         [--size-mib=<NUMBER> (1024 MiB=1 GiB by default)]"
     log_debug "         [--volume-name=<VOLUME_NAME> (gulsterdb by default)"]
     log_debug
     log_debug "Available devices:"
@@ -73,9 +73,8 @@ setup_glusterfs() {
     local LOGIN_ARG="${1}"
     local PASSWORD_ARG="${2}"
     local IP_ADDRESS_ARG="${3}"
-    local DISK_INDEX_ARG="${4}"
-    local MOUNT_POINT="/mnt/gluster${DISK_INDEX_ARG}"
-    local BRICK_SOURCE="/data/gluster-brick${DISK_INDEX_ARG}" # Fallback or real data dir
+    local MOUNT_POINT="/mnt/gluster"
+    local BRICK_SOURCE="/data/gluster-brick" # Fallback or real data dir
 
     log_debug "📦 Installing GlusterFS on ${IP_ADDRESS_ARG}..."
     sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_ADDRESS_ARG}" <<'EOF_GLUSTERFS'
@@ -143,7 +142,7 @@ main() {
             PASSWORD="${ARG#*=}"
             shift
             ;;
-        --size-gib=*)
+        --size-mib=*)
             SIZE_MIB="${ARG#*=}"
             shift
             ;;
@@ -169,7 +168,6 @@ main() {
     local MANAGER_HOSTNAME_PREFIX="${MANAGER_HOSTNAME_PREFIX:-orchestrator}"
     local VOLUME_NAME="${VOLUME_NAME:-glusterdb}"
     SIZE_MIB="${SIZE_MIB:-1024}" # Default size in MiB (1 GiB)
-    local DISK_INDEX=1
     local BRICKS=()
 
     check_all_mandatory_parameters "${MANDATORY_PARAMETER_LIST[@]}"
@@ -199,10 +197,9 @@ main() {
                     log_info "\t\t🔑 Master node selected: $MASTER_IP"
                 fi
 
-                setup_glusterfs "$LOGIN" "$PASSWORD" "$IP" "${DISK_INDEX}"
+                setup_glusterfs "$LOGIN" "$PASSWORD" "$IP" 
 
                 BRICKS+=("${HOSTNAME}:/mnt/glusterfs/brick")
-                DISK_INDEX=$((DISK_INDEX + 1))
             fi
         fi
     done
