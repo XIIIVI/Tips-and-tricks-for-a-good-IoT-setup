@@ -108,6 +108,10 @@
             {
                 "name": "mosquitto.conf",
                 "file": "./data/mosquitto.conf"
+            },
+            {
+                "name": "vmauth-config.yml",
+                "file": "./data/auth.config.yml"
             }
         ],
         "secrets": {

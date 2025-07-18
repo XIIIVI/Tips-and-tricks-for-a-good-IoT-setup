@@ -207,7 +207,7 @@ services:
     ports:
       - "8428:8428"
     configs:
-      - source: vmauth_config
+      - source: vmauth-config.yml
         target: /etc/vmauth/auth.config.yml
     command:
       - "-auth.config=/etc/vmauth/auth.config.yml"
@@ -217,5 +217,6 @@ services:
       - /etc/hostname:/etc/hostname:ro
 
 configs:
-  vmauth_config:
-    file: ./auth.config.yml
+  vmauth-config.yml:
+    external: true
+

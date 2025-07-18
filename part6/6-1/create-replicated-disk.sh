@@ -199,7 +199,7 @@ main() {
 
                 setup_glusterfs "$LOGIN" "$PASSWORD" "$IP" 
 
-                BRICKS+=("${HOSTNAME}:/mnt/glusterfs/brick")
+                BRICKS+=("${HOSTNAME}:/mnt/gluster/brick")
             fi
         fi
     done

@@ -85,7 +85,7 @@ create_single_manager() {
                create_certificates  "$LOGIN" "$PASSWORD" "${IP_ADDRESS}" "$JSON_CONTENT"
                create_configurations "$LOGIN" "$PASSWORD" "${IP_ADDRESS}" "$JSON_CONTENT"
             else
-                log_debug "\t- Swarm already created, using existing token to add a new manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
+                log_debug "\t- Swarm already created, using the existing token to add a new manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
                 install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
 
                 log_debug "\t- Adding the manager ${NODE_HOSTNAME} to the Swarm"

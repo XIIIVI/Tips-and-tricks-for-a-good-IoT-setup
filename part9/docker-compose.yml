@@ -251,6 +251,8 @@ services:
 configs:
   mosquitto.conf:
     external: true
+  vmauth-config.yml:
+    external: true
 
 secrets:
   mosquitto.crt:

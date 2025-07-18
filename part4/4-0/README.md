@@ -17,3 +17,29 @@ It uses a JSON file as a configuration file. When configuring each nodes, it tak
 ---
 # Configuration file format
 
+## Configuration files `configurations`
+
+You can directly import configuration files thru the section `configurations`
+
+ ```json
+ {
+    "swarm": {
+        "managers": {
+             ...
+        },
+        "workers": [
+             ...
+        ],
+        "configurations": [
+            {
+                "name": ...,
+                "file": ...
+            }
+        ]
+    }
+}
+```
+
+`name` is the name of the configuration file in the Swarm. this is the value to use when referencing the file.
+
+`file` is the path to the file to import.
