@@ -83,6 +83,7 @@ create_single_manager() {
                log_debug "\t- Creating the secrets"
                create_credentials  "$LOGIN" "$PASSWORD" "${IP_ADDRESS}" "$JSON_CONTENT"
                create_certificates  "$LOGIN" "$PASSWORD" "${IP_ADDRESS}" "$JSON_CONTENT"
+               create_configurations "$LOGIN" "$PASSWORD" "${IP_ADDRESS}" "$JSON_CONTENT"
             else
                 log_debug "\t- Swarm already created, using existing token to add a new manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
                 install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
@@ -139,6 +140,11 @@ create_managers() {
         log_info "Creating the manager #$((index + 1))"
         create_single_manager "$LOGIN_ARG" "$PASSWORD_ARG" "$HOSTNAME_DEFAULT_PREFIX" "${MANAGER_ARRAY[$index]}" "$((index + 1))" || log_error "❌ Manager #$((index + 1)) failed, continuing..."
     done
+
+    log_info "Swarm configurations"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker config ls"
+    log_info "Swarm secrets"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker secret ls"
 }
 
 #
@@ -256,10 +262,10 @@ create_credentials() {
        echo "${USER}:${HASH}" > ./"${PASSWORD_FILENAME}"
        
        log_warning "\t\t- Importing the secret ${NAME} for user ${USER} on ${IP_ADDRESS_ARG}"
-       copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" ./"${PASSWORD_FILENAME}" "/tmp/${PASSWORD_FILENAME}"
+       copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" ./"${PASSWORD_FILENAME}" "/tmp/${PASSWORD_FILENAME}2"
        rm -f ./"${PASSWORD_FILENAME}"
-       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME} /tmp/${PASSWORD_FILENAME}"
-       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${PASSWORD_FILENAME}"
+       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.passwd /tmp/${PASSWORD_FILENAME}2"
+       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${PASSWORD_FILENAME}*"
    done
 }
 
@@ -286,11 +292,11 @@ create_certificates() {
                 -keyout "${NAME}".key
 
         log_warning "\t\t- Importing the secret ${NAME} with common name ${COMMON_NAME} on ${IP_ADDRESS_ARG}"        
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.crt" "/tmp/${NAME}.crt"
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.key" "/tmp/${NAME}.key"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}-crt /tmp/${NAME}.crt"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}-key /tmp/${NAME}.key"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${NAME}.crt /tmp/${NAME}.key"
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.crt" "/tmp/${NAME}2.crt"
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.key" "/tmp/${NAME}2.key"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.crt /tmp/${NAME}2.crt"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.key /tmp/${NAME}2.key"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${NAME}*.crt /tmp/${NAME}*.key"
     done
 }
 
