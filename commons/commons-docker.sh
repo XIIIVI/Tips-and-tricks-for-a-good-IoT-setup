@@ -12,8 +12,16 @@ install_docker() {
 if command -v docker &> /dev/null; then
     echo "Docker is already installed."
 else
-    set -e
-    
+    set -euo pipefail
+    export DEBIAN_FRONTEND=noninteractive
+
+    echo "🔧 Cleaning up broken apt states..."
+    sudo rm -f /var/lib/dpkg/lock*
+    sudo rm -f /var/cache/apt/archives/lock
+    sudo rm -f /var/lib/apt/lists/lock
+    sudo rm -f /var/lib/dpkg/lock-frontend
+    sudo dpkg --configure -a || true
+
     # Step 1 & 2: Identify and kill the first apt-related process
     kill_pid=$(ps aux | grep -i apt | grep -v grep | awk '{print $2}' | head -n 1)
     
@@ -39,7 +47,7 @@ else
     sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq 1>/dev/null
     echo "      - Installing Docker modules"
     curl --retry 5 --retry-delay 2 --retry-max-time 60 --retry-all-errors -fsSL https://get.docker.com -o get-docker.sh
-    sudo sh get-docker.sh
+    sudo DEBIAN_FRONTEND=noninteractive sh get-docker.sh
 
 # Setup a 10 MiB rolling log with 3 files
     echo "      - Setting up Docker logging configuration..."
