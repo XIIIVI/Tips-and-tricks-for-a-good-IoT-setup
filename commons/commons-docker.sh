@@ -8,12 +8,12 @@ install_docker() {
     log_debug "\t- Installing Docker on $HOST_IP_ARG ..."
 
        sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_SSH'
-if command -v docker &> /dev/null; then
-    echo "Docker is already installed."
-else
     set -euo pipefail
     export DEBIAN_FRONTEND=noninteractive
 
+if command -v docker &> /dev/null; then
+    echo "Docker is already installed."
+else
     echo "🔧 Cleaning up broken apt states..."
     sudo rm -f /var/lib/dpkg/lock*
     sudo rm -f /var/cache/apt/archives/lock
@@ -34,19 +34,15 @@ else
 
     # Step 4: Reconfigure dpkg
     sudo dpkg --configure -a 1>/dev/null
-
-    # Step 5: Update package list
-    sudo DEBIAN_FRONTEND=noninteractive apt update 1>/dev/null
     
     echo "      - Installing required packages"
-
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git 1>/dev/null
     echo "      - Updating and upgrading the OS"
     sudo DEBIAN_FRONTEND=noninteractive apt-get update -y -qq 1>/dev/null
     sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq 1>/dev/null
     echo "      - Installing Docker modules"
-    sudo DEBIAN_FRONTEND=noninteractive apt-get update -y
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
 
     # Setup a 10 MiB rolling log with 3 files
     echo "      - Setting up Docker logging configuration..."

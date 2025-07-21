@@ -43,3 +43,86 @@ You can directly import configuration files thru the section `configurations`
 `name` is the name of the configuration file in the Swarm. this is the value to use when referencing the file.
 
 `file` is the path to the file to import.
+
+## Secrets
+
+### Credentials
+
+You can add a file containing credentials thru the array `credentials` in the section `secrets`
+
+```json
+{
+    "swarm": {
+        "managers": {
+             ...
+        },
+        "workers": [
+             ...
+        ],
+        "secrets": {
+           "credentials": [
+                {
+                    "name": "...",
+                    "login": "..."
+                }
+            ],
+            "certificates": [
+               ...
+            ]
+        }
+    }
+}
+```
+
+`name`is the filename.
+
+`login` is the account to use.
+
+> :warning: The password is automatically generated for security reason.
+
+### Certificates
+
+You can add a file containing credentials thru the array `credentials` in the section `secrets`
+
+```json
+{
+    "swarm": {
+        "managers": {
+             ...
+        },
+        "workers": [
+             ...
+        ],
+        "secrets": {
+           "credentials": [
+             ...
+            ],
+            "certificates": [
+                {
+                    "name": "...",
+                    "days-valid": ...,
+                    "country": "...",
+                    "state": "...",
+                    "locality": "...",
+                    "organization": "...",
+                    "common-name": "..."
+                },
+            ]
+        }
+    }
+}
+```
+
+`name` is the name of the certificate and the name of the files containing the certificate (.crt) and the public key (.key).
+
+`days-valid` is the number of days before before expiration.
+
+`country` is the country where the certificate is delivered.
+
+`state` is the state where the certificate is delivered.
+
+`locality` is the city where the certificate is delivered.
+
+`organization` is the organization delivering the certificate.
+
+`common-name` is the common-name of the certificate.
