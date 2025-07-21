@@ -102,6 +102,21 @@
                     }
                 ],
                 "has-display": true
+            },
+            {
+                "ip-address": "192.168.2.120",
+                "hostname": "drone",
+                "folders": [
+                    "/data/alloy",
+                    "/data/telegraf"
+                ],
+                "labels": [
+                    {
+                        "key": "level",
+                        "value": "1"
+                    }
+                ],
+                "has-display": true
             }
         ],
         "configurations": [
@@ -142,7 +157,18 @@
                 }
             ]
         },
-        "networks": [],
+        "networks": [
+            {
+                "overlays": [
+                    {
+                        "name": "secured-network",
+                        "encrypted": true,
+                        "attachable": true,
+                        "internal": true
+                    }
+                ]
+            }
+        ],
         "exposed-ports": []
     }
 }

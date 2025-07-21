@@ -84,6 +84,7 @@ create_single_manager() {
                create_credentials  "$LOGIN" "$PASSWORD" "${IP_ADDRESS}" "$JSON_CONTENT"
                create_certificates  "$LOGIN" "$PASSWORD" "${IP_ADDRESS}" "$JSON_CONTENT"
                create_configurations "$LOGIN" "$PASSWORD" "${IP_ADDRESS}" "$JSON_CONTENT"
+               create_overlay_networks "$LOGIN" "$PASSWORD" "${IP_ADDRESS}" "$JSON_CONTENT"
             else
                 log_debug "\t- Swarm already created, using the existing token to add a new manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
                 install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
@@ -320,6 +321,54 @@ create_configurations() {
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker config create ${NAME} /tmp/${NAME}"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${NAME}"
     done
+}
+
+#
+# create_overlay_network
+#
+create_overlay_network() {
+    local LOGIN_ARG="$1"
+    local PASSWORD_ARG="$2"
+    local IP_ADDRESS_ARG="$3"
+    local NAME_ARG="$4"
+    local ENCRYPTED_ARG="$5"
+    local ATTACHABLE_ARG="$6"
+    local INTERNAL_ARG="$7"
+
+    log_debug "\t\t- Creating the overlay network ${NAME_ARG} on ${IP_ADDRESS_ARG}"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker network create --driver overlay --attachable=${ATTACHABLE_ARG} --internal=${INTERNAL_ARG} --opt encrypted=${ENCRYPTED_ARG} ${NAME_ARG}"
+}
+
+#
+# create_overlay_networks
+#
+create_overlay_networks() {
+    local LOGIN_ARG="$1"
+    local PASSWORD_ARG="$2"
+    local IP_ADDRESS_ARG="$3"
+    local JSON_ARG="$4"
+
+    log_debug "\t- Creating the overlay networks on ${IP_ADDRESS_ARG}"
+
+    # Parse overlays and invoke function
+    echo "${JSON_ARG}" | jq -c '.swarm.networks[].overlays[]' | while read -r overlay; do
+        local NAME
+        local ENCRYPTED
+        local ATTACHABLE
+        local INTERNAL
+
+        NAME=$(echo "$overlay" | jq -r '.name')
+        ENCRYPTED=$(echo "$overlay" | jq -r '.encrypted')
+        ATTACHABLE=$(echo "$overlay" | jq -r '.attachable')
+        INTERNAL=$(echo "$overlay" | jq -r '.internal')
+
+        create_overlay_network "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${NAME}" "${ENCRYPTED}" "${ATTACHABLE}" "${INTERNAL}"
+    done
+
+    log_warning "#################################"
+    log_warning "# Overlay networks of the Swarm #"
+    log_warning "#################################"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker network ls"
 }
 
 #

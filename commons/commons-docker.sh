@@ -5,9 +5,10 @@ install_docker() {
     local ROOT_PASS_ARG="$2"
     local HOST_IP_ARG="$3"
 
-    log_debug "\t- Installing Docker on $HOST_IP_ARG ..."
+    for ATTEMPT in {1..5}; do
+       log_debug "\t- Installing Docker on $HOST_IP_ARG (attempt ${ATTEMPT}/5) ..."
 
-    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_SSH'
+       sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_SSH'
 if command -v docker &> /dev/null; then
     echo "Docker is already installed."
 else
@@ -61,5 +62,14 @@ EOF_DOCKER_DAEMON
     sudo docker run hello-world    
 fi
 EOF_SSH
-    log_debug "\t✅ Docker installation completed successfully."
+
+        # If the SSH command succeeds, exit the loop
+        if [ $? -eq 0 ]; then
+           log_debug "\t✅ Docker installation completed successfully."
+           break
+        else
+           log_debug "\t❌ Docker installation failed, retrying ..."
+           sleep 2
+        fi
+    done
 }
