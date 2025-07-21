@@ -5,8 +5,7 @@ install_docker() {
     local ROOT_PASS_ARG="$2"
     local HOST_IP_ARG="$3"
 
-    for ATTEMPT in {1..5}; do
-       log_debug "\t- Installing Docker on $HOST_IP_ARG (attempt ${ATTEMPT}/5) ..."
+    log_debug "\t- Installing Docker on $HOST_IP_ARG ..."
 
        sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_SSH'
 if command -v docker &> /dev/null; then
@@ -46,10 +45,10 @@ else
     sudo DEBIAN_FRONTEND=noninteractive apt-get update -y -qq 1>/dev/null
     sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq 1>/dev/null
     echo "      - Installing Docker modules"
-    curl --retry 5 --retry-delay 2 --retry-max-time 60 --retry-all-errors -fsSL https://get.docker.com -o get-docker.sh
-    sudo DEBIAN_FRONTEND=noninteractive sh get-docker.sh
+    sudo DEBIAN_FRONTEND=noninteractive apt-get update -y
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-# Setup a 10 MiB rolling log with 3 files
+    # Setup a 10 MiB rolling log with 3 files
     echo "      - Setting up Docker logging configuration..."
 sudo tee /etc/docker/daemon.json > /dev/null << 'EOF_DOCKER_DAEMON'
 {
@@ -71,13 +70,5 @@ EOF_DOCKER_DAEMON
 fi
 EOF_SSH
 
-        # If the SSH command succeeds, exit the loop
-        if [ $? -eq 0 ]; then
-           log_debug "\t✅ Docker installation completed successfully."
-           break
-        else
-           log_debug "\t❌ Docker installation failed, retrying ..."
-           sleep 2
-        fi
-    done
+    log_debug "\t✅ Docker installation completed successfully."
 }
