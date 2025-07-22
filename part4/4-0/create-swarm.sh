@@ -81,10 +81,10 @@ create_single_manager() {
                 echo "${JOIN_MGR_CMD}" >"${JOIN_MANAGER_CMD_FILE}"
 
                log_debug "\t- Creating the secrets"
-               create_credentials  "$LOGIN" "$PASSWORD" "${IP_ADDRESS}" "$JSON_CONTENT"
-               create_certificates  "$LOGIN" "$PASSWORD" "${IP_ADDRESS}" "$JSON_CONTENT"
-               create_configurations "$LOGIN" "$PASSWORD" "${IP_ADDRESS}" "$JSON_CONTENT"
-               create_overlay_networks "$LOGIN" "$PASSWORD" "${IP_ADDRESS}" "$JSON_CONTENT"
+               create_credentials  "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
+               create_certificates  "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
+               create_configurations "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
+               create_overlay_networks "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
             else
                 log_debug "\t- Swarm already created, using the existing token to add a new manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
                 install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
@@ -139,7 +139,7 @@ create_managers() {
 
     for index in "${!MANAGER_ARRAY[@]}"; do
         log_info "Creating the manager #$((index + 1))"
-        create_single_manager "$LOGIN_ARG" "$PASSWORD_ARG" "$HOSTNAME_DEFAULT_PREFIX" "${MANAGER_ARRAY[$index]}" "$((index + 1))" || log_error "❌ Manager #$((index + 1)) failed, continuing..."
+        create_single_manager "${LOGIN}_ARG" "${PASSWORD}_ARG" "$HOSTNAME_DEFAULT_PREFIX" "${MANAGER_ARRAY[$index]}" "$((index + 1))" || log_error "❌ Manager #$((index + 1)) failed, continuing..."
     done
 
     log_info "Swarm configurations"
@@ -205,6 +205,13 @@ create_single_worker() {
             log_debug "\t- Adding the labels to the worker"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node update ${LABEL_STRING} ${NODE_HOSTNAME}"
 
+            log_debug "\t- Creating the configuration file"
+            echo "$JSON_OBJECT_ARG" | jq -c 'select(.config != null) | {hostname, config}' | while read -r entry; do
+                 hostname=$(echo "$entry" | jq -r '.hostname')
+                 echo "$entry" | jq -r '.config[] | "\(.key)=\(.value)"' > "${CONFIG_DIR}/${hostname}.config"
+                 create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}" "${hostname}.config" "${CONFIG_DIR}/${hostname}.config"
+            done
+
             log_warning "########################"
             log_warning "# Content of the Swarm #"
             log_warning "########################"
@@ -234,7 +241,7 @@ create_workers() {
 
     for index in "${!WORKER_ARRAY[@]}"; do
         log_info "Creating the worker #$((index + 1))"
-        create_single_worker "$LOGIN_ARG" "$PASSWORD_ARG" "${WORKER_ARRAY[$index]}" "$((index + 1))" || log_error "❌ Worker #$((index + 1)) failed, continuing..."
+        create_single_worker "${LOGIN}_ARG" "${PASSWORD}_ARG" "${WORKER_ARRAY[$index]}" "$((index + 1))" || log_error "❌ Worker #$((index + 1)) failed, continuing..."
     done
 }
 
@@ -302,6 +309,22 @@ create_certificates() {
 }
 
 #
+# create_single_configuration
+#
+create_single_configuration() {
+    local LOGIN_ARG="$1"
+    local PASSWORD_ARG="$2"
+    local IP_ADDRESS_ARG="$3"
+    local NAME_ARG="$4"
+    local FILE_ARG="$5"
+
+    log_warning "\t\t- Creating the configuration ${NAME_ARG} on ${IP_ADDRESS_ARG}"
+    copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${FILE_ARG}" "/tmp/${NAME_ARG}"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker config create ${NAME_ARG} /tmp/${NAME_ARG}"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${NAME_ARG}"
+}
+
+#
 # create_configurations
 #
 create_configurations() {
@@ -316,10 +339,7 @@ create_configurations() {
     echo "${JSON_ARG}" | jq -r '.swarm.configurations[] | "NAME=\(.name) FILE=\(.file)"' | while read line; do
         eval "$line"
 
-        log_warning "\t\t- Creating the configuration ${NAME}"
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${FILE}" "/tmp/${NAME}"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker config create ${NAME} /tmp/${NAME}"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${NAME}"
+        create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${NAME}" "${FILE}"
     done
 }
 
@@ -379,6 +399,7 @@ main() {
     JOIN_WORKER_CMD_FILE="./join_worker_cmd.swarm"
     MANAGER_IP_ADDRESS_FILE="./ip.swarm"
     JOIN_MANAGER_CMD_FILE="./join_mgr_cmd.swarm"
+    CONFIG_DIR=$(mktemp -d -t "swarm-config")
 
     # Parses the parameters
     while (("$#")); do
@@ -456,8 +477,8 @@ main() {
     local JSON_CONTENT
     JSON_CONTENT=$(cat "$CONFIGURATION_FILE")
 
-    create_managers "$LOGIN" "$PASSWORD" "$JSON_CONTENT"
-    create_workers "$LOGIN" "$PASSWORD" "$JSON_CONTENT"
+    create_managers "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}"
+    create_workers "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}"
 
     log_info "✅ The swarm has been successfully created"
     log_warning "DO NOT FORGET TO CHANGE THE PASSWORD OF THE ROOT USER ON ALL NODES !!!"

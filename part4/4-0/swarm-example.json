@@ -116,6 +116,12 @@
                         "value": "1"
                     }
                 ],
+                "config": [
+                    {
+                        "key": "PARENT",
+                        "value": "sat1"
+                    }
+                ],
                 "has-display": true
             }
         ],
