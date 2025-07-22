@@ -68,7 +68,7 @@ source "/$HOME/uctronics-env/bin/activate"
 pip install --upgrade pip setuptools --quiet
 
 # 📦 Install required Python packages
-pip install pillow Adafruit-Blinka Adafruit-SSD1306 adafruit-circuitpython-ssd1306 --quiet
+pip install pillow Adafruit-Blinka Adafruit-SSD1306 adafruit-circuitpython-ssd1306 RPi.GPIO --quiet
 
 # 🛠️ Enable and start service
 sudo systemctl daemon-reload

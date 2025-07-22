@@ -40,8 +40,22 @@ else
     
     echo "      - Installing required packages"
     sudo -E apt-get install -y -qq git 1>/dev/null
-    echo "      - Updating and upgrading the OS"
-    sudo -E apt-get update -y -qq 1>/dev/null
+    echo "      - Updating the OS"
+    MAX_RETRIES=5
+    DELAY=10  # seconds between retries
+    COUNT=0
+
+    until sudo apt-get update -y -qq; do
+       COUNT=$((COUNT + 1))
+       if [ "$COUNT" -ge "$MAX_RETRIES" ]; then
+           echo "❌ apt-get update failed after $MAX_RETRIES attempts."
+           exit 1
+       fi
+       echo "⚠️ Retry $COUNT/$MAX_RETRIES in $DELAY seconds..."
+       sleep "$DELAY"
+    done    
+
+    echo "      - Upgrading the OS"
     sudo -E apt-get upgrade -y -qq -o Dpkg::Options::="--force-confnew" -o Dpkg::Options::="--force-confdef" 1>/dev/null
     echo "      - Installing Docker modules"
     curl -fsSL https://get.docker.com -o get-docker.sh
