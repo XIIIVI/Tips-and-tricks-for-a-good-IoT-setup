@@ -38,7 +38,7 @@ else
     sudo apt-get install -y -qq git 1>/dev/null
     echo "      - Updating and upgrading the OS"
     sudo apt-get update -y -qq 1>/dev/null
-    sudo apt-get upgrade -y -qq 1>/dev/null
+    sudo apt-get upgrade -y -o Dpkg::Options::="--force-confnew" -o Dpkg::Options::="--force-confdef" -qq 1>/dev/null
     echo "      - Installing Docker modules"
     curl -fsSL https://get.docker.com -o get-docker.sh
     sudo sh get-docker.sh
