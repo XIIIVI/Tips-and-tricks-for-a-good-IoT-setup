@@ -21,6 +21,7 @@ else
     sudo dpkg --configure -a || true
 
     # Step 1 & 2: Identify and kill the first apt-related process
+    echo "Killing an apt related processes"
     kill_pid=$(ps aux | grep -i apt | grep -v grep | awk '{print $2}' | head -n 1)
     
     if [ -n "$kill_pid" ]; then
@@ -29,16 +30,18 @@ else
     fi
 
     # Step 3: Remove the lock file if it exists
+    echo "Removing the lock file if it exists"
     [ -f /var/lib/dpkg/lock-frontend ] && sudo rm /var/lib/dpkg/lock-frontend
 
     # Step 4: Reconfigure dpkg
+    echo "Reconfiguring dpkg"
     sudo dpkg --configure -a 1>/dev/null
     
     echo "      - Installing required packages"
     sudo apt-get install -y -qq git 1>/dev/null
     echo "      - Updating and upgrading the OS"
     sudo apt-get update -y -qq 1>/dev/null
-    sudo apt-get upgrade -y -o Dpkg::Options::="--force-confnew" -o Dpkg::Options::="--force-confdef" -qq 1>/dev/null
+    sudo apt-get upgrade -y -qq -o Dpkg::Options::="--force-confnew" -o Dpkg::Options::="--force-confdef" 1>/dev/null
     echo "      - Installing Docker modules"
     curl -fsSL https://get.docker.com -o get-docker.sh
     sudo sh get-docker.sh
