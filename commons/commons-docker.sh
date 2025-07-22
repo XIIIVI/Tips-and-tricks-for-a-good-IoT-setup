@@ -7,7 +7,7 @@ install_docker() {
 
     log_debug "\t- Installing Docker on $HOST_IP_ARG ..."
 
-       sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_SSH'
+    sshpass -p "$ROOT_PASS_ARG" ssh -tt -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_SSH'
     set -euo pipefail
     export DEBIAN_FRONTEND=noninteractive
 
@@ -36,10 +36,10 @@ else
     sudo dpkg --configure -a 1>/dev/null
     
     echo "      - Installing required packages"
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git 1>/dev/null
+    sudo apt-get install -y -qq git 1>/dev/null
     echo "      - Updating and upgrading the OS"
-    sudo DEBIAN_FRONTEND=noninteractive apt-get update -y -qq 1>/dev/null
-    sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq 1>/dev/null
+    sudo apt-get update -y -qq 1>/dev/null
+    sudo apt-get upgrade -y -qq 1>/dev/null
     echo "      - Installing Docker modules"
     curl -fsSL https://get.docker.com -o get-docker.sh
     sudo sh get-docker.sh
@@ -62,7 +62,7 @@ EOF_DOCKER_DAEMON
     sudo systemctl restart docker
 
     # Test the Docker installation
-    sudo docker run hello-world    
+    sudo docker run hello-world
 fi
 EOF_SSH
 
