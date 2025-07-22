@@ -249,7 +249,7 @@ services:
 
 
 configs:
-  mosquitto.conf:
+  mqtt.conf:
     external: true
   vmauth-config.yml:
     external: true
