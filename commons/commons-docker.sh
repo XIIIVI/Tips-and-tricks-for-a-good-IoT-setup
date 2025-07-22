@@ -9,6 +9,7 @@ install_docker() {
 
     sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_SSH'
     export DEBIAN_FRONTEND=noninteractive
+    export DEBCONF_NOWARNINGS=yes 
 
 if command -v docker &> /dev/null; then
     echo "Docker is already installed."
@@ -18,7 +19,7 @@ else
     sudo rm -f /var/cache/apt/archives/lock
     sudo rm -f /var/lib/apt/lists/lock
     sudo rm -f /var/lib/dpkg/lock-frontend
-    sudo dpkg --force-confnew --force-confdef --configure -a || true
+    sudo -E dpkg --force-confnew --force-confdef --configure -a || true
 
     # Step 1 & 2: Identify and kill the first apt-related process
     echo "Killing an apt related processes"
@@ -35,7 +36,7 @@ else
 
     # Step 4: Reconfigure dpkg
     echo "Reconfiguring dpkg"
-    sudo dpkg --force-confnew --force-confdef --configure -a 1>/dev/null
+    sudo -E dpkg --force-confnew --force-confdef --configure -a 1>/dev/null
     
     echo "      - Installing required packages"
     sudo apt-get install -y -qq git 1>/dev/null
