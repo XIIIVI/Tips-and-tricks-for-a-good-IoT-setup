@@ -7,7 +7,7 @@ install_docker() {
 
     log_debug "\t- Installing Docker on $HOST_IP_ARG ..."
 
-    sshpass -p "$ROOT_PASS_ARG" ssh -tt -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_SSH'
+    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_SSH'
     export DEBIAN_FRONTEND=noninteractive
 
 if command -v docker &> /dev/null; then
