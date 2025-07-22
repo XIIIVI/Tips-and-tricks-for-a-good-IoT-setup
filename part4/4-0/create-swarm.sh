@@ -134,7 +134,7 @@ create_managers() {
 
     HOSTNAME_DEFAULT_PREFIX=$(echo "$JSON_ARG" | jq -r '.swarm.managers["hostname-default-prefix"]')
 
-    log_info "Creating the Swarm managers by using the default prefix: ${HOSTNAME_DEFAULT_PREFIX}"
+    log_info "Creating the Swarm managers using the default prefix: ${HOSTNAME_DEFAULT_PREFIX}"
     mapfile -t MANAGER_ARRAY < <(echo "$JSON_ARG" | jq -c '.swarm.managers.members[]')
 
     for index in "${!MANAGER_ARRAY[@]}"; do

@@ -55,8 +55,8 @@ export DEBCONF_NOWARNINGS=yes
 sudo -E dpkg --force-confnew --force-confdef --configure -a 1>/dev/null
 
 # ⚙️ Install Python tools and git without interaction
-sudo apt-get update -qq
-sudo apt-get install -y -qq python3-pip python3-venv git 1>/dev/null
+sudo -E apt-get update -qq
+sudo -E apt-get install -y -qq python3-pip python3-venv git 1>/dev/null
 
 # 📁 Clone the UCTRONICS SSD1306 repo
 cd /tmp
