@@ -18,7 +18,7 @@ else
     sudo rm -f /var/cache/apt/archives/lock
     sudo rm -f /var/lib/apt/lists/lock
     sudo rm -f /var/lib/dpkg/lock-frontend
-    sudo dpkg --configure -a || true
+    sudo dpkg --force-confnew --force-confdef --configure -a || true
 
     # Step 1 & 2: Identify and kill the first apt-related process
     echo "Killing an apt related processes"
@@ -35,7 +35,7 @@ else
 
     # Step 4: Reconfigure dpkg
     echo "Reconfiguring dpkg"
-    sudo dpkg --configure -a 1>/dev/null
+    sudo dpkg --force-confnew --force-confdef --configure -a 1>/dev/null
     
     echo "      - Installing required packages"
     sudo apt-get install -y -qq git 1>/dev/null
