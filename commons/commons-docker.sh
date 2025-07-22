@@ -22,7 +22,7 @@ else
     sudo -E dpkg --force-confnew --force-confdef --configure -a || true
 
     # Step 1 & 2: Identify and kill the first apt-related process
-    echo "Killing an apt related processes"
+    echo "Killing any apt related processes"
     kill_pid=$(ps aux | grep -i apt | grep -v grep | awk '{print $2}' | head -n 1)
     
     if [ -n "$kill_pid" ]; then
