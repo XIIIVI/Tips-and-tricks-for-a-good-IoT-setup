@@ -47,13 +47,30 @@ install_uctronics_pi_rack() {
     copy_file_to_host "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" "${DIR_DATA_ARG}/ssd1306_stats.py" "/opt"
 
     sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" 'bash -s' <<'EOF_UCTRONICS'
-sudo dpkg --configure -a  1>/dev/null
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3-pip git 1>/dev/null
-cd "/tmp"
-git clone https://github.com/UCTRONICS/U6143_ssd1306.git
-sudo pip3 install --upgrade pip setuptools 1>/dev/null
-sudo pip3 install pillow Adafruit-Blinka Adafruit-SSD1306 adafruit-circuitpython-ssd1306 --break-system-packages --quiet  1>/dev/null
+# 🧩 Prevent config prompts during dpkg
+export DEBIAN_FRONTEND=noninteractive
+export DEBCONF_NOWARNINGS=yes
 
+# 📦 Reconfigure any unpacked packages, quietly and safely
+sudo -E dpkg --force-confnew --force-confdef --configure -a 1>/dev/null
+
+# ⚙️ Install Python tools and git without interaction
+sudo apt-get update -qq
+sudo apt-get install -y -qq python3-pip python3-venv git 1>/dev/null
+
+# 📁 Clone the UCTRONICS SSD1306 repo
+cd /tmp
+git clone https://github.com/UCTRONICS/U6143_ssd1306.git
+
+# 🐍 Upgrade pip safely (inside virtualenv to avoid system conflicts)
+python3 -m venv "/$HOME/uctronics-env"
+source "/$HOME/uctronics-env/bin/activate"
+pip install --upgrade pip setuptools --quiet
+
+# 📦 Install required Python packages
+pip install pillow Adafruit-Blinka Adafruit-SSD1306 adafruit-circuitpython-ssd1306 --quiet
+
+# 🛠️ Enable and start service
 sudo systemctl daemon-reload
 sudo systemctl enable uctronics.service
 sudo systemctl start uctronics.service
