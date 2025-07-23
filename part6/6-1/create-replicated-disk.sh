@@ -3,6 +3,7 @@
 source "../../commons/commons-cli.sh"
 source "../../commons/commons-log.sh"
 source "../../commons/commons-net.sh"
+source "../../commons/commons-ssh.sh"
 
 # === Usage function ===
 display_help() {
@@ -96,7 +97,7 @@ main() {
             HOSTNAME=$(dig +short -x "$IP" | sed 's/\.$//')
 
             if [[ "$HOSTNAME" =~ ${MANAGER_HOSTNAME_PREFIX} ]]; then
-                log_warning "\t\t- Setup GlusterFS server on ${HOSTNAME} (${IP})"
+                log_warning "\t\t- Found ${HOSTNAME} (${IP})"
 
                 # Capture the first matching IP
                 if [[ -z "$MASTER_IP" ]]; then
@@ -104,7 +105,7 @@ main() {
                     log_info "\t\t🔑 Master node selected: $MASTER_IP"
                 fi
 
-                DISCOVERED_HOSTS+=("$HOSTNAME")
+                DISCOVERED_HOSTS+=("${IP}")
             fi
         fi
     done
@@ -115,11 +116,13 @@ main() {
         log_info "Setting up GlusterFS on discovered hosts: ${DISCOVERED_HOSTS[*]}"
 
         for HOST_INDEX in "${DISCOVERED_HOSTS[@]}"; do
-            log_debug "\t📦 Copying setup script to $HOST_INDEX ..."
+            remove_ssh_host "${HOST_INDEX}"
+            
+            log_debug "\t📦 Copying setup script to ${HOST_INDEX} ..."
             copy_file_to_host "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" "./data/glusterfs_node_setup.sh" "/tmp/"
 
-            log_debug "\t🚀 Executing script on $HOST_INDEX with sudo ..."
-            sshpass -p "${ROOT_PASS_ARG}" ssh "$HOST_INDEX" "sudo bash $SCRIPT_PATH ${DISCOVERED_HOSTS[*]}"
+            log_debug "\t🚀 Executing script on ${HOST_INDEX} with sudo ..."
+            sshpass -p "${ROOT_PASS_ARG}" ssh "${HOST_INDEX}" "sudo bash $SCRIPT_PATH ${DISCOVERED_HOSTS[*]}"
         done
     fi
 }
