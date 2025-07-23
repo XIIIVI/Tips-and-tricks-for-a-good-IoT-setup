@@ -96,7 +96,7 @@ main() {
             HOSTNAME=$(dig +short -x "$IP" | sed 's/\.$//')
 
             if [[ "$HOSTNAME" =~ ${MANAGER_HOSTNAME_PREFIX} ]]; then
-                log_warning "\t\t- Found the candidate ${HOSTNAME} (${IP})"
+                log_progress_bar "🔍 Testing ${IP} ..." "$((i + 1))" 254 " => Found the candidate ${HOSTNAME} (${IP})"
 
                 DISCOVERED_IPS+=("${IP}")
             fi
