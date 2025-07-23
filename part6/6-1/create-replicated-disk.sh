@@ -111,12 +111,21 @@ main() {
         for HOST_INDEX in "${DISCOVERED_IPS[@]}"; do
             remove_ssh_host "${HOST_INDEX}"
 
-            log_debug "\t📦 Copying setup script to ${HOST_INDEX} ..."
             copy_file_to_host "${LOGIN}" "${PASSWORD}" "$HOST_INDEX" "./data/glusterfs_node_setup.sh" "/tmp/"
-
-            log_debug "\t🚀 Executing script on ${HOST_INDEX} with sudo ..."
+            log_warning "\t\t🚀 Executing script on ${HOST_INDEX} with sudo ..."
             sshpass -p "${PASSWORD}" ssh "${LOGIN}@${HOST_INDEX}" "sudo bash /tmp/glusterfs_node_setup.sh ${DISCOVERED_IPS[*]}"
         done
+
+        for ((i = 1; i < ${#DISCOVERED_IPS[@]}; i++)); do
+            HOST_INDEX="${DISCOVERED_IPS[$i]}"
+            log_info "Probing host ${HOST_INDEX} ..."
+            sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster peer probe ${HOST_INDEX}"
+        done
+
+        # ─── WAIT FOR PEERS TO CONNECT ─────────────────────────────────────
+        echo "⏳ Waiting for peers to join trusted pool..."
+        sleep 5
+        sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster peer status"        
     fi
 }
 

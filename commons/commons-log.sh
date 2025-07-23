@@ -30,9 +30,10 @@ log_progress_bar() {
     if ((PROGRESS > 0)); then
         BAR=$(printf "%${PROGRESS}s" | tr ' ' '#')
     fi
-    BAR=$(printf "%-${BAR_WIDTH}s" "$BAR")
 
-    printf "\r[%s] %3d%% - %s" "$BAR" "$PERCENT" "${MESSAGE_ARG}" "${SUBMESSAGE_ARG}"
+    BAR=$(printf "%-${BAR_WIDTH}s" "${BAR}")
+
+    printf "\r[%s] %3d%% - %s %s" "${BAR}" "${PERCENT}" "${MESSAGE_ARG}" "${SUBMESSAGE_ARG}"
 }
 
 #

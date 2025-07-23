@@ -9,8 +9,13 @@ REPLICA_COUNT=${#PEERS[@]}
 REPLICA_COUNT=$((REPLICA_COUNT + 1))  # Including self
 
 # ─── INSTALL GLUSTERFS ─────────────────────────────────────────────
-apt update
-apt install glusterfs-server -y
+export DEBIAN_FRONTEND=noninteractive
+export DEBCONF_NOWARNINGS=yes 
+
+apt update -qq
+apt install glusterfs-server -y -qq \
+  -o Dpkg::Progress-Fancy="0" \
+  -o Dpkg::Use-Pty="0"
 systemctl enable glusterd
 systemctl start glusterd
 
@@ -28,16 +33,6 @@ done
 BRICK_DIR="$LARGEST/glusterfs/$BRICK_NAME"
 mkdir -p "$BRICK_DIR"
 chown -R gluster:gluster "$BRICK_DIR"
-
-# ─── PEER PROBE ─────────────────────────────────────────────────────
-for peer in "${PEERS[@]}"; do
-    gluster peer probe "$peer"
-done
-
-# ─── WAIT FOR PEERS TO CONNECT ─────────────────────────────────────
-echo "⏳ Waiting for peers to join trusted pool..."
-sleep 5
-gluster peer status
 
 # ─── CREATE BRICK LIST ─────────────────────────────────────────────
 BRICKS=()
