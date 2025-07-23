@@ -76,7 +76,7 @@ main() {
     local MANAGER_HOSTNAME_PREFIX="${MANAGER_HOSTNAME_PREFIX:-orchestrator}"
     local VOLUME_NAME="${VOLUME_NAME:-glusterdb}"
     SIZE_MIB="${SIZE_MIB:-1024}" # Default size in MiB (1 GiB)
-    DISCOVERED_HOSTS=()
+    DISCOVERED_IPS=()
 
     check_all_mandatory_parameters "${MANDATORY_PARAMETER_LIST[@]}"
     display_settings
@@ -85,7 +85,6 @@ main() {
     apt-get install -qq -y dnsutils
 
     log_info "Looking for managers with prefix ${MANAGER_HOSTNAME_PREFIX} in the subnet ${SUBNET} ..."
-    unset MASTER_IP # Ensure it's clean before the loop
 
     for i in {1..254}; do
         IP="${SUBNET}.${i}"
@@ -97,32 +96,26 @@ main() {
             HOSTNAME=$(dig +short -x "$IP" | sed 's/\.$//')
 
             if [[ "$HOSTNAME" =~ ${MANAGER_HOSTNAME_PREFIX} ]]; then
-                log_warning "\t\t- Found ${HOSTNAME} (${IP})"
+                log_warning "\t\t- Found the candidate ${HOSTNAME} (${IP})"
 
-                # Capture the first matching IP
-                if [[ -z "$MASTER_IP" ]]; then
-                    MASTER_IP="$IP"
-                    log_info "\t\t🔑 Master node selected: $MASTER_IP"
-                fi
-
-                DISCOVERED_HOSTS+=("${IP}")
+                DISCOVERED_IPS+=("${IP}")
             fi
         fi
     done
 
-    if [ ${#DISCOVERED_HOSTS[@]} -eq 0 ]; then
+    if [ ${#DISCOVERED_IPS[@]} -eq 0 ]; then
         log_error "⚠️ No orchestrator nodes found. Aborting setup."
     else
-        log_info "Setting up GlusterFS on discovered hosts: ${DISCOVERED_HOSTS[*]}"
+        log_info "\n\nSetting up GlusterFS on discovered hosts: ${DISCOVERED_IPS[*]}"
 
-        for HOST_INDEX in "${DISCOVERED_HOSTS[@]}"; do
+        for HOST_INDEX in "${DISCOVERED_IPS[@]}"; do
             remove_ssh_host "${HOST_INDEX}"
-            
+
             log_debug "\t📦 Copying setup script to ${HOST_INDEX} ..."
-            copy_file_to_host "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" "./data/glusterfs_node_setup.sh" "/tmp/"
+            copy_file_to_host "$LOGIN" "$PASSWORD" "$HOST_INDEX" "./data/glusterfs_node_setup.sh" "/tmp/"
 
             log_debug "\t🚀 Executing script on ${HOST_INDEX} with sudo ..."
-            sshpass -p "${ROOT_PASS_ARG}" ssh "${HOST_INDEX}" "sudo bash $SCRIPT_PATH ${DISCOVERED_HOSTS[*]}"
+            sshpass -p "${PASSWORD}" ssh "${HOST_INDEX}" "sudo bash $SCRIPT_PATH ${DISCOVERED_IPS[*]}"
         done
     fi
 }
