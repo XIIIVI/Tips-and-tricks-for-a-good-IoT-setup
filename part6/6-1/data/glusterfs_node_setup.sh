@@ -8,19 +8,8 @@ PEERS=("orchestrator2" "orchestrator3")  # Add more peers as needed
 REPLICA_COUNT=${#PEERS[@]}
 REPLICA_COUNT=$((REPLICA_COUNT + 1))  # Including self
 
-# ─── INSTALL GLUSTERFS ─────────────────────────────────────────────
-export DEBIAN_FRONTEND=noninteractive
-export DEBCONF_NOWARNINGS=yes 
-
-apt update -qq
-apt install glusterfs-server -y -qq \
-  -o Dpkg::Progress-Fancy="0" \
-  -o Dpkg::Use-Pty="0"
-systemctl enable glusterd
-systemctl start glusterd
-
 # ─── DETECT LARGEST ELIGIBLE PARTITION ─────────────────────────────
-PARTITIONS=$(df -T --output=avail,fstype,target | tail -n +2 | grep -E ' (nfs4|xfs|btrfs) ' | sort -hr | awk '{print $3}')
+PARTITIONS=$(df --output=avail,fstype,target | tail -n +2 | awk '$2 ~ /^(nfs4|xfs|btrfs)$/ {print $3}' | sort -hr)
 LARGEST=""
 for mp in $PARTITIONS; do
     if mountpoint -q "$mp"; then
