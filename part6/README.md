@@ -28,7 +28,7 @@ sudo ./update-telegraf-level0.sh --local-registry-address <LOCAL_REGISTRY_ADDRES
 
 > ⚠️ This required to make the instances of level0 work with Victoriametrics.
 
-4) Then update the stack ```sudo PRIVATE_REPO=<IP_ADDRESS_OF_THE_REPO>:4443 docker stack deploy --compose-file docker-compose.yml iot-stack --with-registry-auth```
+3) Then update the stack ```sudo PRIVATE_REPO=<IP_ADDRESS_OF_THE_REPO>:4443 docker stack deploy --compose-file docker-compose.yml iot-stack --with-registry-auth```
 
 To list the services on a given node: ```sudo docker node ps <Node's name>```
 

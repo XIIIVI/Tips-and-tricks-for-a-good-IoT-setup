@@ -113,7 +113,7 @@ main() {
 
             log_warning "\t\t- Installing GlusterFS"
 
-            sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_GLUSTERFS'
+            sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "$LOGIN@$HOST_INDEX" <<'EOF_GLUSTERFS'
     export DEBIAN_FRONTEND=noninteractive
     export DEBCONF_NOWARNINGS=yes 
 
@@ -130,6 +130,7 @@ EOF_GLUSTERFS
             HOST_INDEX="${DISCOVERED_IPS[$i]}"
             log_info "\t\t- Probing host ${HOST_INDEX} ..."
             sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster peer probe ${HOST_INDEX}"
+            sleep 5
         done
 
         for HOST_INDEX in "${DISCOVERED_IPS[@]}"; do
