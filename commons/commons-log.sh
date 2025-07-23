@@ -18,38 +18,6 @@ log_progress_bar() {
     local SUBMESSAGE_ARG="${4}"
     local BAR_WIDTH=50
 
-    # Ensure valid total
-    if [[ "$TOTAL_VALUE_ARG" -eq 0 ]]; then
-        TOTAL_VALUE_ARG=1
-    fi
-
-    local PROGRESS=$((CURRENT_VALUE_ARG * BAR_WIDTH / TOTAL_VALUE_ARG))
-    local PERCENT=$((CURRENT_VALUE_ARG * 100 / TOTAL_VALUE_ARG))
-    local BAR=""
-
-    # Build the progress bar
-    if ((PROGRESS > 0)); then
-        BAR=$(printf "%${PROGRESS}s" | tr ' ' '#')
-    fi
-    BAR=$(printf "%-${BAR_WIDTH}s" "$BAR")
-
-    # Move the cursor to the bottom of the terminal
-    tput cup "$(tput lines)" 0
-
-    # Print the progress bar at the bottom
-    printf "[%s] %3d%% - %s %s\n" "$BAR" "$PERCENT" "${MESSAGE_ARG}" "${SUBMESSAGE_ARG}"
-}
-
-#
-# log_progress_bar
-#
-log_progress_bar1() {
-    local MESSAGE_ARG="${1}"
-    local CURRENT_VALUE_ARG="${2}"
-    local TOTAL_VALUE_ARG="${3}"
-    local SUBMESSAGE_ARG="${4}"
-    local BAR_WIDTH=50
-
     # Cap values to avoid division by zero or negative cut ranges
     if [[ "$TOTAL_VALUE_ARG" -eq 0 ]]; then
         TOTAL_VALUE_ARG=1

@@ -112,10 +112,10 @@ main() {
             remove_ssh_host "${HOST_INDEX}"
 
             log_debug "\t📦 Copying setup script to ${HOST_INDEX} ..."
-            copy_file_to_host "$LOGIN" "$PASSWORD" "$HOST_INDEX" "./data/glusterfs_node_setup.sh" "/tmp/"
+            copy_file_to_host "${LOGIN}" "${PASSWORD}" "$HOST_INDEX" "./data/glusterfs_node_setup.sh" "/tmp/"
 
             log_debug "\t🚀 Executing script on ${HOST_INDEX} with sudo ..."
-            sshpass -p "${PASSWORD}" ssh "${HOST_INDEX}" "sudo bash /tmp/glusterfs_node_setup.sh ${DISCOVERED_IPS[*]}"
+            sshpass -p "${PASSWORD}" ssh "${LOGIN}@${HOST_INDEX}" "sudo bash /tmp/glusterfs_node_setup.sh ${DISCOVERED_IPS[*]}"
         done
     fi
 }
