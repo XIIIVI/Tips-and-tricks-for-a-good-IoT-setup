@@ -24,15 +24,15 @@ services:
     ports:
       - "8883:3888"
     configs:
-      - source: mosquitto_conf
+      - source: mosquitto.conf
         target: /mosquitto/config/mosquitto.conf
     secrets:
       - source: mosquitto.crt
-        target: mosquitto.crt
+        target: /etc/mosquitto/mosquitto.crt
       - source: mosquitto.key
-        target: mosquitto.key
+        target: /etc/mosquitto/mosquitto.key
       - source: mosquitto.pwd
-        target: mosquitto.pwd
+        target: /etc/mosquitto/mosquitto.pwd
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -249,7 +249,7 @@ services:
 
 
 configs:
-  mqtt.conf:
+  mosquitto.conf:
     external: true
   vmauth-config.yml:
     external: true

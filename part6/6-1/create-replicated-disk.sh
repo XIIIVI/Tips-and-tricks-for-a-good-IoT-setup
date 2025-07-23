@@ -30,99 +30,6 @@ display_settings() {
 }
 
 #
-# create_xfs_partition
-#
-create_xfs_partition() {
-    local LOGIN_ARG="${1}"
-    local PASSWORD_ARG="${2}"
-    local IP_ADDRESS_ARG="${3}"
-    local SIZE_MIB_ARG="${4}"
-    local DISK_INDEX_ARG="${5}"
-    local PARTITION="${DISK}${DISK_INDEX_ARG}"
-    local MOUNT_POINT="/mnt/gluster"
-
-    log_info " - 🔧 Creating partition..."
-    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo bash -s" <<EOF
-set -x
-
-# Get largest disk (not partition!)
-DISK_NAME=$(lsblk -b -l -o NAME,SIZE,TYPE | awk '$3 == "disk" {print $1, $2}' | sort -k2 -nr | head -n1 | awk '{print $1}')
-DISK="/dev/${DISK_NAME}"
-
-# Partition it
-echo -e "n\np\n1\n\n+${SIZE_MIB_ARG}M\nw" | fdisk "$DISK"
-sleep 2
-partprobe "$DISK"
-EOF
-
-    log_debug "\t- 🧼 Formatting with XFS ..."
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo mkfs.xfs ${PARTITION}"
-
-    log_debug "\t- 📁 Creating mount point at ${MOUNT_POINT} ..."
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo mkdir -p ${MOUNT_POINT}"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo mount ${PARTITION} ${MOUNT_POINT}"
-
-    log_debug "🔁 Adding to /etc/fstab ..."
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo echo \"UUID=$(blkid -s UUID -o value "${PARTITION}") ${MOUNT_POINT} xfs defaults 0 0\" >>/etc/fstab"
-}
-
-#
-# setup_glusterfs
-#
-setup_glusterfs() {
-    local LOGIN_ARG="${1}"
-    local PASSWORD_ARG="${2}"
-    local IP_ADDRESS_ARG="${3}"
-    local MOUNT_POINT="/mnt/gluster"
-    local BRICK_SOURCE="/data/gluster-brick" # Fallback or real data dir
-
-    log_debug "📦 Installing GlusterFS on ${IP_ADDRESS_ARG}..."
-    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_ADDRESS_ARG}" <<'EOF_GLUSTERFS'
-    set -e
-    
-    # Step 1 & 2: Identify and kill the first apt-related process
-    kill_pid=$(ps aux | grep -i apt | grep -v grep | awk '{print $2}' | head -n 1)
-    
-    if [ -n "$kill_pid" ]; then
-        sudo kill -9 "$kill_pid"
-        echo "Killed apt process with PID $kill_pid"
-    fi
-
-    # Step 3: Remove the lock file if it exists
-    [ -f /var/lib/dpkg/lock-frontend ] && sudo rm /var/lib/dpkg/lock-frontend
-
-    # Step 4: Reconfigure dpkg
-    sudo dpkg --configure -a 1>/dev/null
-    
-    sudo apt update -qq && sudo apt install -qq -y xfsprogs attr glusterfs-server glusterfs-common glusterfs-client
-EOF_GLUSTERFS
-
-    log_debug "\t- 🚀 Enabling and starting GlusterFS service ..."
-    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo systemctl enable --now glusterd"
-
-    log_debug "\t- 📁 Preparing brick mount point at ${MOUNT_POINT}/brick ..."
-
-    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "bash -s" <<EOF
-set -e
-
-sudo mkdir -p "${BRICK_SOURCE}"
-sudo mkdir -p "${MOUNT_POINT}/brick"
-
-# If MOUNT_POINT isn't already mounted, bind BRICK_SOURCE
-if ! mountpoint -q "${MOUNT_POINT}/brick"; then
-    sudo mount --bind "${BRICK_SOURCE}" "${MOUNT_POINT}/brick"
-
-    # Persist in /etc/fstab if not already present
-    if ! grep -q "${MOUNT_POINT}/brick" /etc/fstab; then
-        echo "${BRICK_SOURCE} ${MOUNT_POINT}/brick none bind 0 0" | sudo tee -a /etc/fstab > /dev/null
-    fi
-fi
-EOF
-
-    log_debug "\t- ✅ GlusterFS setup complete on ${IP_ADDRESS_ARG}!"
-}
-
-#
 # main
 #
 main() {
@@ -168,7 +75,7 @@ main() {
     local MANAGER_HOSTNAME_PREFIX="${MANAGER_HOSTNAME_PREFIX:-orchestrator}"
     local VOLUME_NAME="${VOLUME_NAME:-glusterdb}"
     SIZE_MIB="${SIZE_MIB:-1024}" # Default size in MiB (1 GiB)
-    local BRICKS=()
+    DISCOVERED_HOSTS=()
 
     check_all_mandatory_parameters "${MANDATORY_PARAMETER_LIST[@]}"
     display_settings
@@ -197,37 +104,23 @@ main() {
                     log_info "\t\t🔑 Master node selected: $MASTER_IP"
                 fi
 
-                setup_glusterfs "$LOGIN" "$PASSWORD" "$IP" 
-
-                BRICKS+=("${HOSTNAME}:/mnt/gluster/brick")
+                DISCOVERED_HOSTS+=("$HOSTNAME")
             fi
         fi
     done
 
-    if [[ ${#BRICKS[@]} -eq 0 ]]; then
-        log_error "❌ No devices found with prefix ${MANAGER_HOSTNAME_PREFIX}. Aborting."
-        exit 1
+    if [ ${#DISCOVERED_HOSTS[@]} -eq 0 ]; then
+        log_error "⚠️ No orchestrator nodes found. Aborting setup."
     else
-        log_debug "\t📦 Devices found:"
-        log_debug "\t🔗 Creating GlusterFS volume '$VOLUME_NAME'..."
+        log_info "Setting up GlusterFS on discovered hosts: ${DISCOVERED_HOSTS[*]}"
 
-        # Build the brick list string
-        BRICK_LIST=$(
-            IFS=' '
-            echo "${BRICKS[*]}"
-        )
+        for HOST_INDEX in "${DISCOVERED_HOSTS[@]}"; do
+            log_debug "\t📦 Copying setup script to $HOST_INDEX ..."
+            copy_file_to_host "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" "./data/glusterfs_node_setup.sh" "/tmp/"
 
-        sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${MASTER_IP}" bash -s <<EOF
-set -e
-echo "Creating GlusterFS volume '${VOLUME_NAME}'..."
-sudo gluster volume create "${VOLUME_NAME}" replica ${#BRICKS[@]} ${BRICK_LIST} force
-
-echo "Starting GlusterFS volume '${VOLUME_NAME}'..."
-sudo gluster volume start "${VOLUME_NAME}"
-
-echo "Volume Info:"
-sudo gluster volume info "${VOLUME_NAME}"
-EOF
+            log_debug "\t🚀 Executing script on $HOST_INDEX with sudo ..."
+            sshpass -p "${ROOT_PASS_ARG}" ssh "$HOST_INDEX" "sudo bash $SCRIPT_PATH ${DISCOVERED_HOSTS[*]}"
+        done
     fi
 }
 
