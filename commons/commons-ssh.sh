@@ -126,5 +126,5 @@ wait_for_device() {
 
   # Optional: wait a bit longer to ensure services are up
   sleep 10
-  log_warning "\t- ${REMOTE_HOST_ARG} is back online !"
+  log_debug "\t- ${REMOTE_HOST_ARG} is back online !"
 }

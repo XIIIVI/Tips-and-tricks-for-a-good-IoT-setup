@@ -62,9 +62,9 @@ else
     ATTEMPT=1
 
     while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-        echo "\t\t- Attempt $ATTEMPT of $MAX_ATTEMPTS..."
+        echo "Attempt $ATTEMPT of $MAX_ATTEMPTS..."
         curl -fsSL https://get.docker.com -o get-docker.sh && break
-        echo "\t\t  ❌ Download failed. Retrying in 3 seconds..."
+        echo "  ❌ Download failed. Retrying in 3 seconds..."
         sleep 3
         ATTEMPT=$((ATTEMPT + 1))
     done
@@ -73,7 +73,25 @@ else
         echo "❌ Failed to download get-docker.sh after $MAX_ATTEMPTS attempts."
         exit 1
     else    
-        sudo sh get-docker.sh
+        ATTEMPT=1
+
+        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "Attempt $ATTEMPT of $MAX_ATTEMPTS: Running get-docker.sh..."
+    
+            if sudo sh get-docker.sh; then
+                echo "✅ Docker installation script ran successfully!"
+                break
+            else
+                echo "❌ Script failed. Retrying in 5 seconds..."
+                sleep 5
+                ATTEMPT=$((ATTEMPT + 1))
+            fi
+        done
+
+        if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
+            echo "😵 Gave up after $MAX_ATTEMPTS attempts. Something’s still off."
+            exit 1
+        fi
 
         # Setup a 10 MiB rolling log with 3 files
         echo "      - Setting up Docker logging configuration..."
