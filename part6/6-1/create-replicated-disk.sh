@@ -88,7 +88,7 @@ main() {
     display_settings
 
     # Initializing the script glusterfs_volume_creation_script.sh
-    cat << "${VOLUME_CREATION_SCRIPT}" >> SCRIPT_EOF
+    cat << SCRIPT_EOF >> "${VOLUME_CREATION_SCRIPT}"
 #!/bin/bash
 
 gluster volume create ${VOLUME_NAME} replica 3 
