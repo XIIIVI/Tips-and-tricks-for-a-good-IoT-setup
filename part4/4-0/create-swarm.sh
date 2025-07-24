@@ -270,9 +270,9 @@ create_credentials() {
        echo "${USER}:${HASH}" > ./"${PASSWORD_FILENAME}"
        
        log_warning "\t\t- Importing the secret ${NAME} for user ${USER} on ${IP_ADDRESS_ARG}"
-       copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" ./"${PASSWORD_FILENAME}" "/tmp/${PASSWORD_FILENAME}2"
+       copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" ./"${PASSWORD_FILENAME}" "/tmp/${PASSWORD_FILENAME}"
        rm -f ./"${PASSWORD_FILENAME}"
-       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.passwd /tmp/${PASSWORD_FILENAME}2"
+       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.passwd /tmp/${PASSWORD_FILENAME}"
        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${PASSWORD_FILENAME}*"
    done
 }

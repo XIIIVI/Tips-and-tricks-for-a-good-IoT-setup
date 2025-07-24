@@ -88,8 +88,8 @@ copy_file_to_host() {
   local TARGET_DIR_ARG="$5"
 
   log_warning "\t\t- Copying file ${SOURCE_FILE_ARG} to ${TARGET_DIR_ARG} on ${HOST_IP_ARG}..."
-  sshpass -p "${ROOT_PASS_ARG}" scp -o StrictHostKeyChecking=no "${SOURCE_FILE_ARG}" "${ROOT_USER_ARG}@${HOST_IP_ARG}:/tmp/$(basename ${SOURCE_FILE_ARG}.tmp)"
-  sshpass -p "${ROOT_PASS_ARG}" ssh "${ROOT_USER_ARG}@${HOST_IP_ARG}" sudo mv /tmp/"$(basename ${SOURCE_FILE_ARG}.tmp)" "${TARGET_DIR_ARG}/$(basename ${SOURCE_FILE_ARG})"
+  sshpass -p "${ROOT_PASS_ARG}" scp -o StrictHostKeyChecking=no "${SOURCE_FILE_ARG}" "${ROOT_USER_ARG}@${HOST_IP_ARG}:/tmp/$(basename ${SOURCE_FILE_ARG}).tmp"
+  sshpass -p "${ROOT_PASS_ARG}" ssh "${ROOT_USER_ARG}@${HOST_IP_ARG}" sudo mv /tmp/"$(basename ${SOURCE_FILE_ARG}).tmp" "${TARGET_DIR_ARG}/$(basename ${SOURCE_FILE_ARG})"
 }
 
 #
