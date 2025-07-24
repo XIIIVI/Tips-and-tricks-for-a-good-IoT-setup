@@ -58,30 +58,50 @@ else
     echo "      - Upgrading the OS"
     sudo -E apt-get upgrade -y -qq -o Dpkg::Options::="--force-confnew" -o Dpkg::Options::="--force-confdef" 1>/dev/null
     echo "      - Installing Docker modules"
-    curl -fsSL https://get.docker.com -o get-docker.sh
-    sudo sh get-docker.sh
+    MAX_ATTEMPTS=5
+    ATTEMPT=1
 
-    # Setup a 10 MiB rolling log with 3 files
-    echo "      - Setting up Docker logging configuration..."
-sudo tee /etc/docker/daemon.json > /dev/null << 'EOF_DOCKER_DAEMON'
-{
-    "log-driver": "local",
-    "log-opts": {
-        "max-size": "10m",
-        "max-file": "3"
-    },
-    "deprecated-key-path": "/var/lib/docker/key.json"
-}
+    while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+        echo "Attempt $ATTEMPT of $MAX_ATTEMPTS..."
+        curl -fsSL https://get.docker.com -o get-docker.sh && break
+        echo "Download failed. Retrying in 3 seconds..."
+        sleep 3
+        ATTEMPT=$((ATTEMPT + 1))
+    done
+
+    if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
+        echo "❌ Failed to download get-docker.sh after $MAX_ATTEMPTS attempts."
+        exit 1
+    else    
+        sudo sh get-docker.sh
+
+        # Setup a 10 MiB rolling log with 3 files
+        echo "      - Setting up Docker logging configuration..."
+            sudo tee /etc/docker/daemon.json > /dev/null << 'EOF_DOCKER_DAEMON'
+            {
+                "log-driver": "local",
+                "log-opts": {
+                "max-size": "10m",
+                "max-file": "3"
+            },
+            "deprecated-key-path": "/var/lib/docker/key.json"
+        }
 EOF_DOCKER_DAEMON
 
-    # Restarts Docker to take in charge the new configuration
-    echo "      - Restarting Docker service... |"
-    sudo systemctl restart docker
+        # Restarts Docker to take in charge the new configuration
+        echo "      - Restarting Docker service... |"
+        sudo systemctl restart docker
 
-    # Test the Docker installation
-    sudo docker run hello-world
+        # Test the Docker installation
+        sudo docker run hello-world
+    fi
 fi
 EOF_SSH
 
-    log_debug "\t✅ Docker installation completed successfully."
+    if [ $? -eq 0 ]; then
+       log_debug "\t✅ Docker installation completed successfully."
+    else
+       log_debug "\t❌ Docker installation has failed ..."
+       exit 1
+    fi
 }
