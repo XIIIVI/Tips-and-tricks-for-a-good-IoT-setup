@@ -74,7 +74,7 @@ main() {
     done
 
     local MANAGER_HOSTNAME_PREFIX="${MANAGER_HOSTNAME_PREFIX:-orchestrator}"
-    local VOLUME_NAME="${VOLUME_NAME:-glusterdb}"
+    local VOLUME_NAME="${VOLUME_NAME:-gfs}"
     SIZE_MIB="${SIZE_MIB:-1024}" # Default size in MiB (1 GiB)
     DISCOVERED_IPS=()
     ETC_HOSTS_FILE=/tmp/etc_hosts.addon
@@ -82,12 +82,11 @@ main() {
     GLUSTER_DIR="/gluster/bricks"
     COUNTER=1
     VOLUME_CREATION_SCRIPT=/tmp/glusterfs_volume_creation_script.sh
-    VOLUME_NAME="gfs"
 
     # Clean up temp files
     rm -Rf "${ETC_HOSTS_FILE}" "${ETC_FSTAB_FILE}" "${VOLUME_CREATION_SCRIPT}"
     touch "${ETC_HOSTS_FILE}" "${ETC_FSTAB_FILE}" "${VOLUME_CREATION_SCRIPT}"
-    
+
     check_all_mandatory_parameters "${MANDATORY_PARAMETER_LIST[@]}"
     display_settings
 
@@ -102,6 +101,7 @@ SCRIPT_EOF
     apt-get install -qq -y dnsutils
 
     log_info "Looking for managers with prefix ${MANAGER_HOSTNAME_PREFIX} in the subnet ${SUBNET} ..."
+    COUNTER=1
 
     for i in {1..254}; do
         IP="${SUBNET}.${i}"
@@ -116,11 +116,13 @@ SCRIPT_EOF
                 log_progress_bar "🔍 Testing ${IP} ..." "$((i + 1))" 254 " => Found the candidate ${HOSTNAME} (${IP})"
 
                 DISCOVERED_IPS+=("${IP}")
-            fi
             
-            echo "${IP} ${HOSTNAME}" >>"${ETC_HOSTS_FILE}"
-            echo "${HOSTNAME}:/$VOLUME_NAME  ${GLUSTER_DIR}/${COUNTER}  glusterfs  defaults,_netdev  0  0" >> "${ETC_FSTAB_FILE}"
-            printf "%s"  "${HOSTNAME}:${GLUSTER_DIR}/${COUNTER}/brick" >> "${VOLUME_CREATION_SCRIPT}"
+                echo "${IP} ${HOSTNAME}" >>"${ETC_HOSTS_FILE}"
+                echo "${HOSTNAME}:/$VOLUME_NAME  ${GLUSTER_DIR}/${COUNTER}  glusterfs  defaults,_netdev  0  0" >> "${ETC_FSTAB_FILE}"
+                printf "%s" "${HOSTNAME}:${GLUSTER_DIR}/${COUNTER}/brick" >> "${VOLUME_CREATION_SCRIPT}"
+                
+                COUNTER=$((COUNTER + 1))
+            fi
         fi
     done
 
@@ -135,11 +137,11 @@ SCRIPT_EOF
 
             log_info "\t\t- Declaring the GlusterFS member to /etc/hosts"
             copy_file_to_host "${LOGIN}" "${PASSWORD}" "${IP_INDEX}" "${ETC_HOSTS_FILE}" "/tmp"
-            sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${IP_INDEX}" "sudo cat /tmp/$(basename ${ETC_HOSTS_FILE}) >> /etc/hosts"
+            sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${IP_INDEX}" "sudo tee -a /etc/hosts < /tmp/$(basename ${ETC_HOSTS_FILE})"
 
             log_info "\t\t- Declaring the GlusterFS member to /etc/fstab"
             copy_file_to_host "${LOGIN}" "${PASSWORD}" "${IP_INDEX}" "${ETC_FSTAB_FILE}" "/tmp"
-            sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${IP_INDEX}" "sudo cat /tmp/$(basename ${ETC_FSTAB_FILE}) >> /etc/fstab"
+            sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${IP_INDEX}" "sudo tee -a /etc/fstab < /tmp/$(basename ${ETC_FSTAB_FILE})"
 
             log_warning "\t\t- Installing GlusterFS on ${IP_INDEX}"
             sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "$LOGIN@$IP_INDEX" <<EOF_GLUSTERFS
