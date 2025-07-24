@@ -87,7 +87,7 @@ main() {
     cat << SCRIPT_EOF >> "${VOLUME_CREATION_SCRIPT}"
 #!/bin/bash
 
-gluster volume create ${VOLUME_NAME} replica 3 \
+gluster volume create ${VOLUME_NAME} replica 3 \\
 SCRIPT_EOF
 
     log_info "Installing required packages"
