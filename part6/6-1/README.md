@@ -1,9 +1,20 @@
 This section provides a convenient way to build a cluster for VictoriaMetrics (time series) as described in [part #6](https://medium.com/p/aeedbf038511).
 
-This version is based on replicated volumes managed with GlusterFS.
+This version is based on replicated volumes managed with GlusterFS. GlusterFS is a fast shared filesystem that can keep the container volume in sync.
 
+1) Set up replicated volumes
 
-```
+To create the replicated volumes, use the script `create-replicated-disks.sh` that will create the disks on all the host whose hostname start with a given prefix (e.g "orchestrator").
+
+> :warning: This script does not work if hosts have the same hostname (e.g undefined).
+
+| Parameter | Default value | Description |
+|--|--|--|
+| `login` | - | The login to use with SSH calls |
+| `manager-hostname-prefix` | orchestrator | The prefix to check in the hostname |
+| `password` | - | The password to use with SSH calls |
+| `subnet` | - | The first 3 numbers of your subnet (e.g 192.168.1) |
+| `volume-name` | gfs | The name of GlusterFS volume |
 
 2) Import the VictoriaMetrics images
 

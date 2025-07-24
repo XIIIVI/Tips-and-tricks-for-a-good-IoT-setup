@@ -11,7 +11,7 @@ display_help() {
     log_debug "          --password=<PASSWORD>"
     log_debug "          --subnet=<xxx.xxx.xxx>"
     log_debug "         [--manager-hostname-prefix=<PREFIX> (orchestrator by default)]"
-    log_debug "         [--volume-name=<VOLUME_NAME> (gulsterdb by default)"]
+    log_debug "         [--volume-name=<VOLUME_NAME> (gfs by default)"]
     log_debug
     log_debug "Available devices:"
     lsblk -dno NAME,SIZE,MODEL
@@ -119,6 +119,8 @@ SCRIPT_EOF
         fi
     done
 
+    printf "%s" " force" >> "${VOLUME_CREATION_SCRIPT}"
+
     unset COUNTER
 
     if [ ${#DISCOVERED_IPS[@]} -eq 0 ]; then
@@ -130,11 +132,11 @@ SCRIPT_EOF
         for IP_INDEX in "${DISCOVERED_IPS[@]}"; do
             remove_ssh_host "${IP_INDEX}"
 
-            log_info "\t\t- Declaring the GlusterFS member to /etc/hosts"
+            log_warning "\t\t- Declaring the GlusterFS member to /etc/hosts"
             copy_file_to_host "${LOGIN}" "${PASSWORD}" "${IP_INDEX}" "${ETC_HOSTS_FILE}" "/tmp"
             sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${IP_INDEX}" "sudo tee -a /etc/hosts < /tmp/$(basename ${ETC_HOSTS_FILE})"
 
-            log_info "\t\t- Declaring the GlusterFS member to /etc/fstab"
+            log_warning "\t\t- Declaring the GlusterFS member to /etc/fstab"
             copy_file_to_host "${LOGIN}" "${PASSWORD}" "${IP_INDEX}" "${ETC_FSTAB_FILE}" "/tmp"
             sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${IP_INDEX}" "sudo tee -a /etc/fstab < /tmp/$(basename ${ETC_FSTAB_FILE})"
 
@@ -163,7 +165,7 @@ EOF_GLUSTERFS
         # Probing the peers
         for ((INDEX = 1; INDEX < ${#DISCOVERED_IPS[@]}; INDEX++)); do
             IP_INDEX="${DISCOVERED_IPS[$INDEX]}"
-            log_info "\t\t- Probing host ${IP_INDEX} ..."
+            log_debug "\t\t- Probing host ${IP_INDEX} ..."
             sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster peer probe ${IP_INDEX}"
             sleep 5
         done
@@ -174,24 +176,25 @@ EOF_GLUSTERFS
         sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster peer status"        
 
         # Creating the volume
-        log_info "\t\t- Settng up th GlusterFS volume with the following script: ${VOLUME_CREATION_SCRIPT}"
-        log_debug "\t\t\t- Creating the volume ${VOLUME_NAME}"
+        log_debug "\t\t- Settng up th GlusterFS volume with the following script: ${VOLUME_CREATION_SCRIPT}"
+        log_warning "\t\t\t- Creating the volume ${VOLUME_NAME}"
         copy_file_to_host "${LOGIN}" "${PASSWORD}" "${DISCOVERED_IPS[0]}" "${VOLUME_CREATION_SCRIPT}" "/tmp"
         sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo bash /tmp/$(basename ${VOLUME_CREATION_SCRIPT})"
-        log_debug "\t\t\t- Starting the volume ${VOLUME_NAME}"
+        log_warning "\t\t\t- Starting the volume ${VOLUME_NAME}"
         sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster volume start ${VOLUME_NAME}"
-        log_debug "\t\t\t- Status of the volume ${VOLUME_NAME}"
+        log_warning "\t\t\t- Status of the volume ${VOLUME_NAME}"
         sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster volume status ${VOLUME_NAME}"
-        log_debug "\t\t\t- Info of the volume ${VOLUME_NAME}"
+        log_warning "\t\t\t- Info of the volume ${VOLUME_NAME}"
         sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster volume info ${VOLUME_NAME}"
-        log_debug "\t\t\t- Setup security and authentication for the volume ${VOLUME_NAME}"
+        log_warning "\t\t\t- Setup security and authentication for the volume ${VOLUME_NAME}"
         sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster volume set ${VOLUME_NAME} auth.allow $(IFS=, ; echo "${DISCOVERED_IPS[*]}")"
 
         # Mount the glusterFS volume where applications can access the files
         log_info "Mounting the GlusterFS volume ${VOLUME_NAME} on all nodes" 
         for IP_INDEX in "${DISCOVERED_IPS[@]}"; do
-            log_info "\t\t- Mounting the GlusterFS volume ${VOLUME_NAME} on ${IP_INDEX}"
-            sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${IP_INDEX}" "sudo echo \"localhost:/${VOLUME_NAME} /mnt glusterfs defaults,_netdev,backupvolfile-server=localhost 0 0\" >> /etc/fstab"
+            log_debug "\t\t- Mounting the GlusterFS volume ${VOLUME_NAME} on ${IP_INDEX}"
+            sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${IP_INDEX}" \
+                    "echo \"localhost:/${VOLUME_NAME} /mnt glusterfs defaults,_netdev,backupvolfile-server=localhost 0 0\" | sudo tee -a /etc/fstab > /dev/null"
             sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${IP_INDEX}" "sudo mount.glusterfs localhost:/${VOLUME_NAME} /mnt"
             sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${IP_INDEX}" "df -Th"
         done
