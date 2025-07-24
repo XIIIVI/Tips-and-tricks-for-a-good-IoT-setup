@@ -111,7 +111,7 @@ main() {
         for HOST_INDEX in "${DISCOVERED_IPS[@]}"; do
             remove_ssh_host "${HOST_INDEX}"
 
-            log_warning "\t\t- Installing GlusterFS"
+            log_warning "\t\t- Installing GlusterFS on ${HOST_INDEX}"
 
             sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "$LOGIN@$HOST_INDEX" <<'EOF_GLUSTERFS'
     export DEBIAN_FRONTEND=noninteractive

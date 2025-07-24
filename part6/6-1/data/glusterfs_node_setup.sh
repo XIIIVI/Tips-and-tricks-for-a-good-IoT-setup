@@ -3,8 +3,8 @@
 # ─── CONFIG ────────────────────────────────────────────────────────
 VOLUME_NAME="gv0"
 MOUNT_POINT="/glusterfs"
-BRICK_NAME="brick1"
-PEERS=("orchestrator2" "orchestrator3")  # Add more peers as needed
+BRICK_NAME="brick"
+PEERS=("$@")
 REPLICA_COUNT=${#PEERS[@]}
 REPLICA_COUNT=$((REPLICA_COUNT + 1))  # Including self
 
@@ -30,16 +30,26 @@ for peer in "${PEERS[@]}"; do
     BRICKS+=("$peer:$BRICK_DIR")
 done
 
-# ─── CREATE & START VOLUME ─────────────────────────────────────────
-gluster volume create "$VOLUME_NAME" replica "$REPLICA_COUNT" "${BRICKS[@]}" force
-gluster volume start "$VOLUME_NAME"
-
 # ─── MOUNT VOLUME ──────────────────────────────────────────────────
 mkdir -p "$MOUNT_POINT/brick_$(hostname)"
 chown -R gluster:gluster "$MOUNT_POINT/brick_$(hostname)"
 mount -t glusterfs "$(hostname):/$VOLUME_NAME" "$MOUNT_POINT"
 
 # ─── UPDATE /etc/fstab ─────────────────────────────────────────────
-echo "$(hostname):/$VOLUME_NAME  $MOUNT_POINT  glusterfs  defaults,_netdev  0  0" >> /etc/fstab
+for HOST_INDEX in "${PEERS[@]}"; do
+   echo "${HOST_INDEX}:/$VOLUME_NAME  $MOUNT_POINT  glusterfs  defaults,_netdev  0  0" >> /etc/fstab
+done
+
+# ─── CREATE & START VOLUME ─────────────────────────────────────────
+gluster volume create "$VOLUME_NAME" replica "$REPLICA_COUNT" "${BRICKS[@]}" force
+gluster volume start "$VOLUME_NAME"
+gluster volume status "$VOLUME_NAME"
+gluster volume info "$VOLUME_NAME"
+
+# ____ SECURITY and PERMISSIONS ____
+IFS=',' 
+JOINED_STRING="${PEERS[*]}"
+
+gluster volume set gfs auth.allow "${JOINED_STRING}"
 
 echo "✅ GlusterFS '$VOLUME_NAME' mounted at '$MOUNT_POINT' using partition: $LARGEST with replica count: $REPLICA_COUNT"
