@@ -77,13 +77,17 @@ main() {
     local VOLUME_NAME="${VOLUME_NAME:-glusterdb}"
     SIZE_MIB="${SIZE_MIB:-1024}" # Default size in MiB (1 GiB)
     DISCOVERED_IPS=()
-    ETC_HOSTS_FILE=$(mktemp)/etc_hosts.addon
-    ETC_FSTAB_FILE=$(mktemp)/etc_fstab.addon
+    ETC_HOSTS_FILE=/tmp/etc_hosts.addon
+    ETC_FSTAB_FILE=/tmp/etc_fstab.addon
     GLUSTER_DIR="/gluster/bricks"
     COUNTER=1
-    VOLUME_CREATION_SCRIPT=$(mktemp)/glusterfs_volume_creation_script.sh
+    VOLUME_CREATION_SCRIPT=/tmp/glusterfs_volume_creation_script.sh
     VOLUME_NAME="gfs"
 
+    # Clean up temp files
+    rm -Rf "${ETC_HOSTS_FILE}" "${ETC_FSTAB_FILE}" "${VOLUME_CREATION_SCRIPT}"
+    touch "${ETC_HOSTS_FILE}" "${ETC_FSTAB_FILE}" "${VOLUME_CREATION_SCRIPT}"
+    
     check_all_mandatory_parameters "${MANDATORY_PARAMETER_LIST[@]}"
     display_settings
 
