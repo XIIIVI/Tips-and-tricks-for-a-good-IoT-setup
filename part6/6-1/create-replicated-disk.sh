@@ -11,7 +11,6 @@ display_help() {
     log_debug "          --password=<PASSWORD>"
     log_debug "          --subnet=<xxx.xxx.xxx>"
     log_debug "         [--manager-hostname-prefix=<PREFIX> (orchestrator by default)]"
-    log_debug "         [--size-mib=<NUMBER> (1024 MiB=1 GiB by default)]"
     log_debug "         [--volume-name=<VOLUME_NAME> (gulsterdb by default)"]
     log_debug
     log_debug "Available devices:"
@@ -25,7 +24,6 @@ display_help() {
 display_settings() {
     log_debug "S E T T I N G S"
     log_debug "MANAGER_HOSTNAME_PREFIX: ${MANAGER_HOSTNAME_PREFIX}"
-    log_debug "SIZE_MIB               : ${SIZE_MIB}"
     log_debug "SUBNET                 : ${SUBNET}"
     log_debug "VOLUME_NAME            : ${VOLUME_NAME}"
 }
@@ -50,10 +48,6 @@ main() {
             PASSWORD="${ARG#*=}"
             shift
             ;;
-        --size-mib=*)
-            SIZE_MIB="${ARG#*=}"
-            shift
-            ;;
         --subnet=*)
             SUBNET="${ARG#*=}"
             if [[ ! "$SUBNET" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
@@ -75,7 +69,6 @@ main() {
 
     local MANAGER_HOSTNAME_PREFIX="${MANAGER_HOSTNAME_PREFIX:-orchestrator}"
     local VOLUME_NAME="${VOLUME_NAME:-gfs}"
-    SIZE_MIB="${SIZE_MIB:-1024}" # Default size in MiB (1 GiB)
     DISCOVERED_IPS=()
     ETC_HOSTS_FILE=/tmp/etc_hosts.addon
     ETC_FSTAB_FILE=/tmp/etc_fstab.addon
@@ -94,7 +87,7 @@ main() {
     cat << SCRIPT_EOF >> "${VOLUME_CREATION_SCRIPT}"
 #!/bin/bash
 
-gluster volume create ${VOLUME_NAME} replica 3 
+gluster volume create ${VOLUME_NAME} replica 3 \
 SCRIPT_EOF
 
     log_info "Installing required packages"
@@ -119,12 +112,14 @@ SCRIPT_EOF
             
                 echo "${IP} ${HOSTNAME}" >>"${ETC_HOSTS_FILE}"
                 echo "${HOSTNAME}:/$VOLUME_NAME  ${GLUSTER_DIR}/${COUNTER}  glusterfs  defaults,_netdev  0  0" >> "${ETC_FSTAB_FILE}"
-                printf "%s" "${HOSTNAME}:${GLUSTER_DIR}/${COUNTER}/brick" >> "${VOLUME_CREATION_SCRIPT}"
+                printf "%s" "${HOSTNAME}:${GLUSTER_DIR}/${COUNTER}/brick " >> "${VOLUME_CREATION_SCRIPT}"
                 
                 COUNTER=$((COUNTER + 1))
             fi
         fi
     done
+
+    unset COUNTER
 
     if [ ${#DISCOVERED_IPS[@]} -eq 0 ]; then
         log_error "⚠️ No orchestrator nodes found. Aborting setup."
@@ -162,6 +157,8 @@ EOF_GLUSTERFS
 
             COUNTER=$((COUNTER + 1))
         done
+
+        unset COUNTER
 
         # Probing the peers
         for ((INDEX = 1; INDEX < ${#DISCOVERED_IPS[@]}; INDEX++)); do
