@@ -300,10 +300,10 @@ create_certificates() {
                 -keyout "${NAME}".key
 
         log_warning "\t\t- Importing the secret ${NAME} with common name ${COMMON_NAME} on ${IP_ADDRESS_ARG}"        
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.crt" "/tmp/${NAME}2.crt"
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.key" "/tmp/${NAME}2.key"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.crt /tmp/${NAME}2.crt"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.key /tmp/${NAME}2.key"
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.crt" "/tmp/${NAME}.crt"
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.key" "/tmp/${NAME}.key"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.crt /tmp/${NAME}.crt"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.key /tmp/${NAME}.key"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${NAME}*.crt /tmp/${NAME}*.key"
     done
 }

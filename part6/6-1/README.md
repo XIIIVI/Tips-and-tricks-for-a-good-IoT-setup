@@ -16,14 +16,13 @@ To create the replicated volumes, use the script `create-replicated-disks.sh` th
 | `subnet` | - | The first 3 numbers of your subnet (e.g 192.168.1) |
 | `volume-name` | gfs | The name of GlusterFS volume |
 
+>:warning Create the folder `victoria-metrics` in `/mnt`: `sudo mkdir -p /mnt/victoria-metrics`
+
 2) Import the VictoriaMetrics images
 
 ```bash
-cd ../commons
-sudo ./import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name victoriametrics/vminsert --image-version v1.119.0-cluster
-sudo ./import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name victoriametrics/vmstorage --image-version v1.119.0-cluster
-sudo ./import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name victoriametrics/vmselect --image-version v1.119.0-cluster
-sudo ./import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name victoriametrics/vmauth --image-version v1.119.0
+cd ../../commons
+sudo ./import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name victoriametrics/victoria-metrics --image-version v1.222.0
 ```
 
 3) To make Telegraf able to publish into VictoriaMetrics, run the commands 
@@ -44,7 +43,7 @@ To remove the stack, type ```sudo docker stack rm iot-stack```
 ---
 Troubleshootings
 
-If the deployment does not work (CURRENT STATE set to Rejected), check this contraint 
+If the deployment does not work (CURRENT STATE set to Rejected), check this constraint 
 
 ⚠️ ON ALL THE CLIENTS, copy $REGISTRY_DIR/certs/registry.crt into /usr/local/share/ca-certificates/registry.crt
 
