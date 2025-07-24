@@ -92,8 +92,9 @@ copy_file_to_host() {
   TARGET_FILE="${TARGET_DIR_ARG}/$(basename ${SOURCE_FILE_ARG})"
   TMP_FILE="/tmp/$(basename ${SOURCE_FILE_ARG}).tmp"
 
-  log_warning "\t\t- Copying file ${SOURCE_FILE_ARG} to ${TMP_FILE} on ${HOST_IP_ARG}..."
+  log_warning "\t\t- Copying file ${SOURCE_FILE_ARG} to the temporary file ${TMP_FILE} on ${HOST_IP_ARG}..."
   sshpass -p "${ROOT_PASS_ARG}" scp -o StrictHostKeyChecking=no "${SOURCE_FILE_ARG}" "${ROOT_USER_ARG}@${HOST_IP_ARG}:${TMP_FILE}"
+  log_warning "\t\t- Moving the temporary file ${TMP_FILE} to the file ${TARGET_FILE} on ${HOST_IP_ARG}..."
   sshpass -p "${ROOT_PASS_ARG}" ssh "${ROOT_USER_ARG}@${HOST_IP_ARG}" "sudo mv \"${TMP_FILE}\" \"${TARGET_FILE}\""
 }
 
