@@ -35,11 +35,6 @@ mkdir -p "$MOUNT_POINT/brick_$(hostname)"
 chown -R gluster:gluster "$MOUNT_POINT/brick_$(hostname)"
 mount -t glusterfs "$(hostname):/$VOLUME_NAME" "$MOUNT_POINT"
 
-# ─── UPDATE /etc/fstab ─────────────────────────────────────────────
-for HOST_INDEX in "${PEERS[@]}"; do
-   echo "${HOST_INDEX}:/$VOLUME_NAME  $MOUNT_POINT  glusterfs  defaults,_netdev  0  0" >> /etc/fstab
-done
-
 # ─── CREATE & START VOLUME ─────────────────────────────────────────
 gluster volume create "$VOLUME_NAME" replica "$REPLICA_COUNT" "${BRICKS[@]}" force
 gluster volume start "$VOLUME_NAME"

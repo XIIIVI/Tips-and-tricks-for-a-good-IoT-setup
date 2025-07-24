@@ -93,7 +93,26 @@ EOF_DOCKER_DAEMON
         sudo systemctl restart docker
 
         # Test the Docker installation
-        sudo docker run hello-world
+        ATTEMPT=1
+
+        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "Attempt $ATTEMPT of $MAX_ATTEMPTS: Pulling hello-world image..."
+    
+            if sudo docker pull hello-world; then
+                echo "✅ Docker image pulled successfully!"
+                sudo docker run hello-world
+                break
+            else
+                echo "❌ Failed to pull Docker image. Retrying in 5 seconds..."
+                sleep 5
+                ATTEMPT=$((ATTEMPT + 1))
+            fi
+        done
+
+        if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
+             echo "😓 Gave up after $MAX_ATTEMPTS attempts. Network might still be unreachable."
+             exit 1
+         fi
     fi
 fi
 EOF_SSH

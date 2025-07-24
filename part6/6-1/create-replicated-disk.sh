@@ -77,9 +77,22 @@ main() {
     local VOLUME_NAME="${VOLUME_NAME:-glusterdb}"
     SIZE_MIB="${SIZE_MIB:-1024}" # Default size in MiB (1 GiB)
     DISCOVERED_IPS=()
+    ETC_HOSTS_FILE=$(mktemp /tmp/etc_hosts.addon)
+    ETC_FSTAB_FILE=$(mktemp /tmp/etc_fstab.addon)
+    GLUSTER_DIR="/gluster/bricks"
+    COUNTER=1
+    VOLUME_CREATION_SCRIPT=$(mktemp /tmp/glusterfs_volume_creation_script.sh)
+    VOLUME_NAME="gfs"
 
     check_all_mandatory_parameters "${MANDATORY_PARAMETER_LIST[@]}"
     display_settings
+
+    # Initializing the script glusterfs_volume_creation_script.sh
+    cat << SCRIPT_EOF >> "${VOLUME_CREATION_SCRIPT}"
+#!/bin/bash
+
+gluster volume create ${VOLUME_NAME} replica 3 
+SCRIPT_EOF
 
     log_info "Installing required packages"
     apt-get install -qq -y dnsutils
@@ -100,6 +113,10 @@ main() {
 
                 DISCOVERED_IPS+=("${IP}")
             fi
+            
+            echo "${IP} ${HOSTNAME}" >>"${ETC_HOSTS_FILE}"
+            echo "${HOSTNAME}:/$VOLUME_NAME  ${GLUSTER_DIR}/${COUNTER}  glusterfs  defaults,_netdev  0  0" >> "${ETC_FSTAB_FILE}"
+            printf "%s"  "${HOSTNAME}:${GLUSTER_DIR}/${COUNTER}/brick" >> "${VOLUME_CREATION_SCRIPT}"
         fi
     done
 
@@ -107,15 +124,27 @@ main() {
         log_error "⚠️ No orchestrator nodes found. Aborting setup."
     else
         log_info "\n\nSetting up GlusterFS on discovered hosts: ${DISCOVERED_IPS[*]}"
+        COUNTER=1
 
-        for HOST_INDEX in "${DISCOVERED_IPS[@]}"; do
-            remove_ssh_host "${HOST_INDEX}"
+        for IP_INDEX in "${DISCOVERED_IPS[@]}"; do
+            remove_ssh_host "${IP_INDEX}"
 
-            log_warning "\t\t- Installing GlusterFS on ${HOST_INDEX}"
+            log_info "\t\t- Declaring the GlusterFS member to /etc/hosts"
+            copy_file_to_host "${LOGIN}" "${PASSWORD}" "${IP_INDEX}" "${ETC_HOSTS_FILE}" "/tmp"
+            sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${IP_INDEX}" "sudo cat /tmp/$(basename ${ETC_HOSTS_FILE}) >> /etc/hosts"
 
-            sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "$LOGIN@$HOST_INDEX" <<'EOF_GLUSTERFS'
+            log_info "\t\t- Declaring the GlusterFS member to /etc/fstab"
+            copy_file_to_host "${LOGIN}" "${PASSWORD}" "${IP_INDEX}" "${ETC_FSTAB_FILE}" "/tmp"
+            sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${IP_INDEX}" "sudo cat /tmp/$(basename ${ETC_FSTAB_FILE}) >> /etc/fstab"
+
+            log_warning "\t\t- Installing GlusterFS on ${IP_INDEX}"
+            sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "$LOGIN@$IP_INDEX" <<EOF_GLUSTERFS
     export DEBIAN_FRONTEND=noninteractive
     export DEBCONF_NOWARNINGS=yes 
+
+    sudo mkdir -p "${GLUSTER_DIR}/${COUNTER}"
+    sudo mount -a
+    sudo mkdir -p "${GLUSTER_DIR}/${COUNTER}/brick"
 
     sudo -E apt update -qq
     sudo -E apt install glusterfs-server -y -qq \
@@ -124,24 +153,55 @@ main() {
     sudo systemctl enable glusterd
     sudo systemctl start glusterd
 EOF_GLUSTERFS
+
+            COUNTER=$((COUNTER + 1))
         done
 
-        for ((i = 1; i < ${#DISCOVERED_IPS[@]}; i++)); do
-            HOST_INDEX="${DISCOVERED_IPS[$i]}"
-            log_info "\t\t- Probing host ${HOST_INDEX} ..."
-            sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster peer probe ${HOST_INDEX}"
+        # Probing the peers
+        for ((INDEX = 1; INDEX < ${#DISCOVERED_IPS[@]}; INDEX++)); do
+            IP_INDEX="${DISCOVERED_IPS[$INDEX]}"
+            log_info "\t\t- Probing host ${IP_INDEX} ..."
+            sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster peer probe ${IP_INDEX}"
             sleep 5
         done
 
-        for HOST_INDEX in "${DISCOVERED_IPS[@]}"; do
-            copy_file_to_host "${LOGIN}" "${PASSWORD}" "$HOST_INDEX" "./data/glusterfs_node_setup.sh" "/tmp/"
-            log_warning "\t\t🚀 Executing script on ${HOST_INDEX} with sudo ..."
-            sshpass -p "${PASSWORD}" ssh "${LOGIN}@${HOST_INDEX}" "sudo bash /tmp/glusterfs_node_setup.sh ${DISCOVERED_IPS[*]}"
-        done
-
+        # Waiting for the ppers
         log_info "⏳ Waiting for peers to join trusted pool..."
         sleep 5
         sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster peer status"        
+
+        # Creating the volume
+        log_info "\t\t- Settng up th GlusterFS volume with the following script: ${VOLUME_CREATION_SCRIPT}"
+        log_debug "\t\t\t- Creating the volume ${VOLUME_NAME}"
+        copy_file_to_host "${LOGIN}" "${PASSWORD}" "${DISCOVERED_IPS[0]}" "${VOLUME_CREATION_SCRIPT}" "/tmp"
+        sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo bash /tmp/$(basename ${VOLUME_CREATION_SCRIPT})"
+        log_debug "\t\t\t- Starting the volume ${VOLUME_NAME}"
+        sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster volume start ${VOLUME_NAME}"
+        log_debug "\t\t\t- Status of the volume ${VOLUME_NAME}"
+        sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster volume status ${VOLUME_NAME}"
+        log_debug "\t\t\t- Info of the volume ${VOLUME_NAME}"
+        sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster volume info ${VOLUME_NAME}"
+        log_debug "\t\t\t- Setup security and authentication for the volume ${VOLUME_NAME}"
+        sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster volume set ${VOLUME_NAME} auth.allow $(IFS=, ; echo "${DISCOVERED_IPS[*]}")"
+
+        # Mount the glusterFS volume where applications can access the files
+        log_info "Mounting the GlusterFS volume ${VOLUME_NAME} on all nodes" 
+        for IP_INDEX in "${DISCOVERED_IPS[@]}"; do
+            log_info "\t\t- Mounting the GlusterFS volume ${VOLUME_NAME} on ${IP_INDEX}"
+            sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${IP_INDEX}" "sudo echo \"localhost:/${VOLUME_NAME} /mnt glusterfs defaults,_netdev,backupvolfile-server=localhost 0 0\" >> /etc/fstab"
+            sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${IP_INDEX}" "sudo mount.glusterfs localhost:/${VOLUME_NAME} /mnt"
+            sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${IP_INDEX}" "df -Th"
+        done
+
+        # Testing
+        log_info "\t\t- Testing the GlusterFS volume ${VOLUME_NAME} on all nodes"
+        sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${DISCOVERED_IPS[0]}" "echo 'Hello World!' | sudo tee /mnt/test.txt"
+
+        for IP_INDEX in "${DISCOVERED_IPS[@]}"; do
+            log_info "\t\t- Checking test file on host ${IP_INDEX} ..."
+            sshpass -p "${PASSWORD}" ssh "${LOGIN}@${IP_INDEX}" "cat /mnt/test.txt"
+            sleep 5
+        done
     fi
 }
 

@@ -60,7 +60,7 @@ sudo -E apt-get install -y -qq python3-pip python3-venv git 1>/dev/null
 
 # 📁 Clone the UCTRONICS SSD1306 repo
 cd /tmp
-git clone https://github.com/UCTRONICS/U6143_ssd1306.git
+git clone --quiet https://github.com/UCTRONICS/U6143_ssd1306.git
 
 # 🐍 Upgrade pip safely (inside virtualenv to avoid system conflicts)
 python3 -m venv "/$HOME/uctronics-env"
