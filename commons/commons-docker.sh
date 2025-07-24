@@ -62,9 +62,9 @@ else
     ATTEMPT=1
 
     while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-        echo "Attempt $ATTEMPT of $MAX_ATTEMPTS..."
+        echo "\t\t- Attempt $ATTEMPT of $MAX_ATTEMPTS..."
         curl -fsSL https://get.docker.com -o get-docker.sh && break
-        echo "Download failed. Retrying in 3 seconds..."
+        echo "\t\t  ❌ Download failed. Retrying in 3 seconds..."
         sleep 3
         ATTEMPT=$((ATTEMPT + 1))
     done
