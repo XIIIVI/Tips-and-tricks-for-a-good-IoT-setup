@@ -152,7 +152,7 @@ EOF_SSH
         REGISTRY_URL="${REGISTRY_IP_ARG}:${REGISTRY_PORT_ARG}"
 
         log_debug "\t- Setting up the access to the Docker registry ${REGISTRY_IP_ARG}:${REGISTRY_PORT_ARG} ..."
-        sshpass -p "${ROOT_PASS_ARG}" ssh -o StrictHostKeyChecking=no "${ROOT_USER_ARG}@${HOST_IP_ARG}" "sudo jq --arg val \"${REGISTRY_URL}\" '.repositories = (.repositories // []) + [\$val]' /etc/docker/daemon.json > /tmp/daemon.json && sudo mv /tmp/daemon.json /etc/docker/daemon.json"
+        sshpass -p "${ROOT_PASS_ARG}" ssh -o StrictHostKeyChecking=no "${ROOT_USER_ARG}@${HOST_IP_ARG}" "sudo jq --arg val \"${REGISTRY_URL}\" '.insecure-registries = (.insecure-registries // []) + [\$val]' /etc/docker/daemon.json > /tmp/daemon.json && sudo mv /tmp/daemon.json /etc/docker/daemon.json"
         sshpass -p "${ROOT_PASS_ARG}" ssh -o StrictHostKeyChecking=no "${ROOT_USER_ARG}@${HOST_IP_ARG}" "cat /etc/docker/daemon.json"
 
         if [ -n "${REGISTRY_CERTIFICATE_ARG}" ]; then
