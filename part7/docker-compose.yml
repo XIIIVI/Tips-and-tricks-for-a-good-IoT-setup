@@ -223,9 +223,11 @@ services:
     image: ${PRIVATE_REPO}/grafana/alloy:v1.9.1
     deploy:
       mode: global  # Ensures one instance per eligible node
-      replicas: 1
       restart_policy:
         condition: on-failure
+      placement:
+        constraints:
+          - node.labels.level == 0
     ports:
       - "3100:3100"
     volumes:

@@ -22,7 +22,7 @@ To create the replicated volumes, use the script `create-replicated-disks.sh` th
 
 ```bash
 cd ../../commons
-sudo ./import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name victoriametrics/victoria-metrics --image-version v1.222.0
+sudo ./import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name victoriametrics/victoria-metrics --image-version v1.122.0
 ```
 
 3) To make Telegraf able to publish into VictoriaMetrics, run the commands 

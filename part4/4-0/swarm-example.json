@@ -176,5 +176,10 @@
             }
         ],
         "exposed-ports": []
+    },
+    "registry": {
+        "ip-address": "192.168.2.90",
+        "port": 4443,
+        "certificate-file": "/tmp/registry.crt"
     }
 }

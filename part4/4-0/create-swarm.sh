@@ -31,11 +31,14 @@ display_settings() {
 # create_single_manager
 #
 create_single_manager() {
-    local LOGIN_ARG="$1"
-    local PASSWORD_ARG="$2"
-    local HOSTNAME_DEFAULT_PREFIX_ARG="$3"
-    local JSON_OBJECT_ARG="$4"
-    local INDEX_ARG="$5"
+    local LOGIN_ARG="${1}"
+    local PASSWORD_ARG="${2}"
+    local HOSTNAME_DEFAULT_PREFIX_ARG="${3}"
+    local JSON_OBJECT_ARG="${4}"
+    local INDEX_ARG="${5}"
+    local REGISTRY_IP_ADDRESS_ARG="${6}"
+    local REGISTRY_PORT_ARG="${7}"
+    local REGISTRY_CERTIFICATE_FILE_ARG="$8"
     local IP_ADDRESS
 
     IP_ADDRESS=$(echo "$JSON_OBJECT_ARG" | jq -r '.["ip-address"]')
@@ -65,7 +68,7 @@ create_single_manager() {
 
             if [ -z "${JOIN_MGR_CMD}" ]; then
                 log_debug "\t- Creating the main Swarm manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
-                install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
+                install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${REGISTRY_IP_ADDRESS_ARG}" "${REGISTRY_PORT_ARG}" "${REGISTRY_CERTIFICATE_FILE_ARG}"
 
                 JOIN_WORKER_CMD=$(sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo docker swarm init --advertise-addr ${IP_ADDRESS} | grep -Po 'docker swarm join --token .* \d+\.\d+\.\d+\.\d+:\d+'")
                 MAIN_MANAGER_IP_ADDRESS="${IP_ADDRESS}"
@@ -87,7 +90,7 @@ create_single_manager() {
                create_overlay_networks "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
             else
                 log_debug "\t- Swarm already created, using the existing token to add a new manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
-                install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
+                install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${REGISTRY_IP_ADDRESS_ARG}" "${REGISTRY_PORT_ARG}" "${REGISTRY_CERTIFICATE_FILE_ARG}"
 
                 log_debug "\t- Adding the manager ${NODE_HOSTNAME} to the Swarm"
                 sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo ${JOIN_MGR_CMD}"
@@ -121,9 +124,12 @@ create_single_manager() {
 # create_managers
 #
 create_managers() {
-    local LOGIN_ARG="$1"
-    local PASSWORD_ARG="$2"
-    local JSON_ARG="$3"
+    local LOGIN_ARG="${1}"
+    local PASSWORD_ARG="${2}"
+    local JSON_ARG="${3}"
+    local REGISTRY_IP_ADDRESS_ARG="${4}"
+    local REGISTRY_PORT_ARG="${5}"
+    local REGISTRY_CERTIFICATE_FILE_ARG="${6}"
     local HOSTNAME_DEFAULT_PREFIX
 
     log_info "+++++++++++++++++++++++++++++++"
@@ -139,7 +145,7 @@ create_managers() {
 
     for index in "${!MANAGER_ARRAY[@]}"; do
         log_info "Creating the manager #$((index + 1))"
-        create_single_manager "${LOGIN_ARG}" "${PASSWORD_ARG}" "$HOSTNAME_DEFAULT_PREFIX" "${MANAGER_ARRAY[$index]}" "$((index + 1))" || log_error "❌ Manager #$((index + 1)) failed, continuing..."
+        create_single_manager "${LOGIN_ARG}" "${PASSWORD_ARG}" "$HOSTNAME_DEFAULT_PREFIX" "${MANAGER_ARRAY[$index]}" "$((index + 1))" "${REGISTRY_IP_ADDRESS_ARG}" "${REGISTRY_PORT_ARG}" "${REGISTRY_CERTIFICATE_FILE_ARG}" || log_error "❌ Manager #$((index + 1)) failed, continuing..."
     done
 
     log_info "Swarm configurations"
@@ -152,10 +158,13 @@ create_managers() {
 # create_single_worker
 #
 create_single_worker() {
-    local LOGIN_ARG="$1"
-    local PASSWORD_ARG="$2"
-    local JSON_OBJECT_ARG="$3"
-    local INDEX_ARG="$4"
+    local LOGIN_ARG="${1}"
+    local PASSWORD_ARG="${2}"
+    local JSON_OBJECT_ARG="${3}"
+    local INDEX_ARG="${4}"
+    local REGISTRY_IP_ADDRESS_ARG="${5}"
+    local REGISTRY_PORT_ARG="${6}"
+    local REGISTRY_CERTIFICATE_FILE_ARG="${7}"
     local IP_ADDRESS
 
     IP_ADDRESS=$(echo "$JSON_OBJECT_ARG" | jq -r '.["ip-address"]')
@@ -190,7 +199,7 @@ create_single_worker() {
                 install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "./data"
             fi
 
-            install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
+            install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${REGISTRY_IP_ADDRESS_ARG}" "${REGISTRY_PORT_ARG}" "${REGISTRY_CERTIFICATE_FILE_ARG}"
 
             log_debug "\t- Adding the worker ${NODE_HOSTNAME} to the Swarm"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo ${JOIN_WORKER_CMD}"
@@ -226,9 +235,12 @@ create_single_worker() {
 # create_workers
 #
 create_workers() {
-    local LOGIN_ARG="$1"
-    local PASSWORD_ARG="$2"
-    local JSON_ARG="$3"
+    local LOGIN_ARG="${1}"
+    local PASSWORD_ARG="${2}"
+    local JSON_ARG="${3}"
+    local REGISTRY_IP_ADDRESS_ARG="${4}"
+    local REGISTRY_PORT_ARG="${5}"
+    local REGISTRY_CERTIFICATE_FILE_ARG="${6}"
 
     log_info "++++++++++++++++++++++++++"
     log_info "|                        |"
@@ -241,7 +253,7 @@ create_workers() {
 
     for index in "${!WORKER_ARRAY[@]}"; do
         log_info "Creating the worker #$((index + 1))"
-        create_single_worker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${WORKER_ARRAY[$index]}" "$((index + 1))" || log_error "❌ Worker #$((index + 1)) failed, continuing..."
+        create_single_worker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${WORKER_ARRAY[$index]}" "$((index + 1))" "${REGISTRY_IP_ADDRESS_ARG}" "${REGISTRY_PORT_ARG}" "${REGISTRY_CERTIFICATE_FILE_ARG}" || log_error "❌ Worker #$((index + 1)) failed, continuing..."
     done
 }
 
@@ -249,10 +261,10 @@ create_workers() {
 # create_credentials
 #
 create_credentials() {
-    local LOGIN_ARG="$1"
-    local PASSWORD_ARG="$2"
-    local IP_ADDRESS_ARG="$3"
-    local JSON_ARG="$4"
+    local LOGIN_ARG="${1}"
+    local PASSWORD_ARG="${2}"
+    local IP_ADDRESS_ARG="${3}"
+    local JSON_ARG="${4}"
 
     log_debug "\t- Creating the secrets for credentials on ${IP_ADDRESS_ARG}"
 
@@ -281,10 +293,10 @@ create_credentials() {
 # create_certificates
 #
 create_certificates() {
-    local LOGIN_ARG="$1"
-    local PASSWORD_ARG="$2"
-    local IP_ADDRESS_ARG="$3"
-    local JSON_ARG="$4"
+    local LOGIN_ARG="${1}"
+    local PASSWORD_ARG="${2}"
+    local IP_ADDRESS_ARG="${3}"
+    local JSON_ARG="${4}"
 
     log_debug "\t- Creating the secrets for certificates on ${IP_ADDRESS_ARG}"
 
@@ -312,11 +324,11 @@ create_certificates() {
 # create_single_configuration
 #
 create_single_configuration() {
-    local LOGIN_ARG="$1"
-    local PASSWORD_ARG="$2"
-    local IP_ADDRESS_ARG="$3"
-    local NAME_ARG="$4"
-    local FILE_ARG="$5"
+    local LOGIN_ARG="${1}"
+    local PASSWORD_ARG="${2}"
+    local IP_ADDRESS_ARG="${3}"
+    local NAME_ARG="${4}"
+    local FILE_ARG="${5}"
 
     log_warning "\t\t- Creating the configuration ${NAME_ARG} on ${IP_ADDRESS_ARG}"
     copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${FILE_ARG}" "/tmp/"
@@ -328,10 +340,10 @@ create_single_configuration() {
 # create_configurations
 #
 create_configurations() {
-    local LOGIN_ARG="$1"
-    local PASSWORD_ARG="$2"
-    local IP_ADDRESS_ARG="$3"
-    local JSON_ARG="$4"
+    local LOGIN_ARG="${1}"
+    local PASSWORD_ARG="${2}"
+    local IP_ADDRESS_ARG="${3}"
+    local JSON_ARG="${4}"
 
     log_debug "\t- Creating the configurations on ${IP_ADDRESS_ARG}"
 
@@ -347,15 +359,15 @@ create_configurations() {
 # create_overlay_network
 #
 create_overlay_network() {
-    local LOGIN_ARG="$1"
-    local PASSWORD_ARG="$2"
-    local IP_ADDRESS_ARG="$3"
-    local NAME_ARG="$4"
-    local ENCRYPTED_ARG="$5"
-    local ATTACHABLE_ARG="$6"
-    local INTERNAL_ARG="$7"
+    local LOGIN_ARG="${1}"
+    local PASSWORD_ARG="${2}"
+    local IP_ADDRESS_ARG="${3}"
+    local NAME_ARG="${4}"
+    local ENCRYPTED_ARG="${5}"
+    local ATTACHABLE_ARG="${6}"
+    local INTERNAL_ARG="${7}"
 
-    log_debug "\t\t- Creating the overlay network ${NAME_ARG} on ${IP_ADDRESS_ARG}"
+    log_warning "\t\t- Creating the overlay network ${NAME_ARG} on ${IP_ADDRESS_ARG}"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker network create --driver overlay --attachable=${ATTACHABLE_ARG} --internal=${INTERNAL_ARG} --opt encrypted=${ENCRYPTED_ARG} ${NAME_ARG}"
 }
 
@@ -363,10 +375,10 @@ create_overlay_network() {
 # create_overlay_networks
 #
 create_overlay_networks() {
-    local LOGIN_ARG="$1"
-    local PASSWORD_ARG="$2"
-    local IP_ADDRESS_ARG="$3"
-    local JSON_ARG="$4"
+    local LOGIN_ARG="${1}"
+    local PASSWORD_ARG="${2}"
+    local IP_ADDRESS_ARG="${3}"
+    local JSON_ARG="${4}"
 
     log_debug "\t- Creating the overlay networks on ${IP_ADDRESS_ARG}"
 
@@ -403,7 +415,7 @@ main() {
 
     # Parses the parameters
     while (("$#")); do
-        case "$1" in
+        case "${1}" in
         --default-hostname)
             DEFAULT_HOSTNAME="${2}"
             shift # past argument
@@ -469,16 +481,25 @@ main() {
     DEBIAN_FRONTEND=noninteractive apt-get install -y -qq apache2-utils sshpass
 
     # Check if the file exists and is not empty
-    if [ ! -s "$CONFIGURATION_FILE" ]; then
-        log_error "❌ Error: Configuration file '$CONFIGURATION_FILE' is missing or empty." >&2
+    if [ ! -s "${CONFIGURATION_FILE}" ]; then
+        log_error "❌ Error: Configuration file '${CONFIGURATION_FILE}' is missing or empty." >&2
         exit 1
     fi
 
     local JSON_CONTENT
-    JSON_CONTENT=$(cat "$CONFIGURATION_FILE")
+    JSON_CONTENT=$(cat "${CONFIGURATION_FILE}")
 
-    create_managers "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}"
-    create_workers "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}"
+    # Extract the Docker registry settings
+    local REGISTRY_IP_ADDRESS
+    local REGISTRY_PORT
+    local REGISTRY_CERTIFICATE_FILE
+
+    REGISTRY_IP_ADDRESS=$(jq -r '.registry["ip-address"]' "${CONFIGURATION_FILE}")
+    REGISTRY_PORT=$(jq -r '.registry.port' "${CONFIGURATION_FILE}")
+    REGISTRY_CERTIFICATE_FILE=$(jq -r '.registry["certificate-file"]' "${CONFIGURATION_FILE}")
+
+    create_managers "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}" "${REGISTRY_IP_ADDRESS}" "${REGISTRY_PORT}" "${REGISTRY_CERTIFICATE_FILE}"
+    create_workers "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}" "${REGISTRY_IP_ADDRESS}" "${REGISTRY_PORT}" "${REGISTRY_CERTIFICATE_FILE}"
 
     log_info "✅ The swarm has been successfully created"
     log_warning "DO NOT FORGET TO CHANGE THE PASSWORD OF THE ROOT USER ON ALL NODES !!!"

@@ -11,6 +11,9 @@ display_help() {
     log_debug "            [--local-registry-port <Port of the local registry> (By default: 4443)]"
     log_debug "            --image-name <Name of the image to import>"
     log_debug "            --image-version <Version of the image to import>"
+    log_debug "            [--ssh-ip-address <IP address of the host to run on>]"
+    log_debug "            [--ssh-login <User of the host to run on>]"
+    log_debug "            [--ssh-password <Password of the host to run on>]"
 }
 
 #
@@ -18,10 +21,12 @@ display_help() {
 #
 display_settings() {
     log_debug "S E T T I N G S"
-    log_debug "IMAGE_NAME            : ${IMAGE_NAME}"
-    log_debug "IMAGE_VERSION         : ${IMAGE_VERSION}"
     log_debug "LOCAL_REGISTRY_ADDRESS: ${LOCAL_REGISTRY_ADDRESS}"
     log_debug "LOCAL_REGISTRY_PORT   : ${LOCAL_REGISTRY_PORT}"
+    log_debug "IMAGE_NAME            : ${IMAGE_NAME}"
+    log_debug "IMAGE_VERSION         : ${IMAGE_VERSION}"
+    log_debug "SSH_IP_ADDRESS        : ${SSH_IP_ADDRESS}"
+    log_debug "SSH_LOGIN             : ${SSH_LOGIN}"
 }
 
 #
@@ -55,6 +60,21 @@ main() {
             shift # past argument
             shift # past value
             ;;
+        --ssh-ip-address)
+            SSH_IP_ADDRESS="${2}"
+            shift # past argument
+            shift # past value
+            ;;
+        --ssh-login)
+            SSH_LOGIN="${2}"
+            shift # past argument
+            shift # past value
+            ;;
+        --ssh-password)
+            SSH_PASSWORD="${2}"
+            shift # past argument
+            shift # past value
+            ;;
         -h | --help)
             display_help
             shift # past argument
@@ -77,13 +97,28 @@ main() {
 
     display_settings
 
-    log_info "Importing image ${IMAGE_NAME}:${IMAGE_VERSION} into local registry ${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}"
-    log_debug "Creating the builder"
-    docker buildx create --name mybuilder --use --bootstrap
-    log_debug "Importing the image"
-    docker buildx imagetools create --tag="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/$(basename ${IMAGE_NAME}):${IMAGE_VERSION}" "docker.io/${IMAGE_NAME}:${IMAGE_VERSION}"
-    log_debug "Removing the builder"
-    docker buildx rm mybuilder
+    if [ -z "${SSH_IP_ADDRESS}" ]; then
+         docker buildx rm mybuilder
+         log_info "Importing image ${IMAGE_NAME}:${IMAGE_VERSION} into local registry ${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}"
+         log_debug "Creating the builder"
+         docker buildx create --name mybuilder --use --bootstrap
+         log_debug "Importing the image"
+         docker buildx imagetools create --tag="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/$(basename ${IMAGE_NAME}):${IMAGE_VERSION}" "docker.io/${IMAGE_NAME}:${IMAGE_VERSION}"
+         log_debug "Removing the builder"
+         docker buildx rm mybuilder
+    else
+         if [ -z "${SSH_PASSWORD}" ] || [ -z "${SSH_LOGIN}" ]; then
+             log_error "❌ SSH_IP_ADDRESS and SSH_PASSWORD must be set to import the image into the local registry"
+         else
+             log_info "Importing with SSH image ${IMAGE_NAME}:${IMAGE_VERSION} into local registry ${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}"
+             log_debug "Creating the builder"
+             sshpass -p "${SSH_PASSWORD}" ssh "${SSH_LOGIN}@${SSH_IP_ADDRESS}" "sudo docker buildx create --name mybuilder --use --bootstrap"             
+             log_debug "Importing the image"
+             sshpass -p "${SSH_PASSWORD}" ssh "${SSH_LOGIN}@${SSH_IP_ADDRESS}" "sudo docker buildx imagetools create --tag=\"${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/$(basename ${IMAGE_NAME}):${IMAGE_VERSION}\" \"docker.io/${IMAGE_NAME}:${IMAGE_VERSION}\""
+             log_debug "Removing the builder"
+             sshpass -p "${SSH_PASSWORD}" ssh "${SSH_LOGIN}@${SSH_IP_ADDRESS}" "sudo docker buildx rm mybuilder"
+         fi
+    fi
 }
 
 time main "$@"

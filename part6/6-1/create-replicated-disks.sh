@@ -146,8 +146,6 @@ SCRIPT_EOF
     export DEBCONF_NOWARNINGS=yes 
 
     sudo mkdir -p "${GLUSTER_DIR}/${COUNTER}"
-    sudo mount -a
-    sudo mkdir -p "${GLUSTER_DIR}/${COUNTER}/brick"
 
     sudo -E apt update -qq
     sudo -E apt install glusterfs-server -y -qq \
@@ -155,6 +153,9 @@ SCRIPT_EOF
          -o Dpkg::Use-Pty="0"
     sudo systemctl enable glusterd
     sudo systemctl start glusterd
+
+    sudo mount -a
+    sudo mkdir -p "${GLUSTER_DIR}/${COUNTER}/brick"
 EOF_GLUSTERFS
 
             COUNTER=$((COUNTER + 1))
@@ -176,7 +177,7 @@ EOF_GLUSTERFS
         sshpass -p "${PASSWORD}" ssh "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo gluster peer status"        
 
         # Creating the volume
-        log_debug "\t\t- Settng up th GlusterFS volume with the following script: ${VOLUME_CREATION_SCRIPT}"
+        log_debug "\t\t- Setting up th GlusterFS volume with the following script: ${VOLUME_CREATION_SCRIPT}"
         log_warning "\t\t\t- Creating the volume ${VOLUME_NAME}"
         copy_file_to_host "${LOGIN}" "${PASSWORD}" "${DISCOVERED_IPS[0]}" "${VOLUME_CREATION_SCRIPT}" "/tmp"
         sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no "${LOGIN}@${DISCOVERED_IPS[0]}" "sudo bash /tmp/$(basename ${VOLUME_CREATION_SCRIPT})"

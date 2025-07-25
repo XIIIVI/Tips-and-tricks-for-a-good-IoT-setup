@@ -1,9 +1,15 @@
 #!/bin/bash
 
+#
+# install_docker
+#
 install_docker() {
     local ROOT_USER_ARG="$1"
     local ROOT_PASS_ARG="$2"
     local HOST_IP_ARG="$3"
+    local REGISTRY_IP_ARG="$4"
+    local REGISTRY_PORT_ARG="$5"
+    local REGISTRY_CERTIFICATE_ARG="$6"
 
     log_debug "\t- Installing Docker on $HOST_IP_ARG ..."
 
@@ -39,7 +45,7 @@ else
     sudo -E dpkg --force-confnew --force-confdef --configure -a 1>/dev/null
     
     echo "      - Installing required packages"
-    sudo -E apt-get install -y -qq git 1>/dev/null
+    sudo -E apt-get install -y -qq git jq 1>/dev/null
     echo "      - Updating the OS"
     MAX_RETRIES=5
     DELAY=10  # seconds between retries
@@ -57,6 +63,11 @@ else
 
     echo "      - Upgrading the OS"
     sudo -E apt-get upgrade -y -qq -o Dpkg::Options::="--force-confnew" -o Dpkg::Options::="--force-confdef" 1>/dev/null
+    echo "      - Installing IPVS modules"
+    sudo modprobe ip_vs
+    sudo modprobe ip_vs_rr
+    sudo modprobe ip_vs_wrr
+    sudo modprobe ip_vs_sh
     echo "      - Installing Docker modules"
     MAX_ATTEMPTS=5
     ATTEMPT=1
@@ -96,14 +107,14 @@ else
         # Setup a 10 MiB rolling log with 3 files
         echo "      - Setting up Docker logging configuration..."
             sudo tee /etc/docker/daemon.json > /dev/null << 'EOF_DOCKER_DAEMON'
-            {
-                "log-driver": "local",
-                "log-opts": {
-                "max-size": "10m",
-                "max-file": "3"
-            },
-            "deprecated-key-path": "/var/lib/docker/key.json"
-        }
+{
+  "log-driver": "local",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  },
+  "deprecated-key-path": "/var/lib/docker/key.json"
+}
 EOF_DOCKER_DAEMON
 
         # Restarts Docker to take in charge the new configuration
@@ -134,6 +145,24 @@ EOF_DOCKER_DAEMON
     fi
 fi
 EOF_SSH
+   
+    if [ -n "${REGISTRY_IP_ARG}" ] && [ -n "${REGISTRY_PORT_ARG}" ]; then
+        local REGISTRY_URL
+
+        REGISTRY_URL="${REGISTRY_IP_ARG}:${REGISTRY_PORT_ARG}"
+
+        log_debug "\t- Setting up the access to the Docker registry ${REGISTRY_IP_ARG}:${REGISTRY_PORT_ARG} ..."
+        sshpass -p "${ROOT_PASS_ARG}" ssh -o StrictHostKeyChecking=no "${ROOT_USER_ARG}@${HOST_IP_ARG}" "sudo jq --arg val \"${REGISTRY_URL}\" '.repositories = (.repositories // []) + [\$val]' /etc/docker/daemon.json > /tmp/daemon.json && sudo mv /tmp/daemon.json /etc/docker/daemon.json"
+
+        if [ -n "${REGISTRY_CERTIFICATE_ARG}" ]; then
+           log_warning "\t\t- Adding the certificate for the Docker registry ${REGISTRY_URL} ..."
+           sshpass -p "${ROOT_PASS_ARG}" ssh -o StrictHostKeyChecking=no "${ROOT_USER_ARG}@${HOST_IP_ARG}" "sudo mkdir -p /etc/docker/certs.d/${REGISTRY_URL}"
+           copy_file_to_host "${ROOT_USER_ARG}" "${ROOT_PASS_ARG}" "${HOST_IP_ARG}" "${REGISTRY_CERTIFICATE_ARG}" "/etc/docker/certs.d/${REGISTRY_URL}/ca.crt"           
+        fi
+
+        log_debug "\t- Restarting Docker service to apply the changes ..."
+        sshpass -p "${ROOT_PASS_ARG}" ssh -o StrictHostKeyChecking=no "${ROOT_USER_ARG}@${HOST_IP_ARG}" "sudo systemctl restart docker"
+    fi
 
     if [ $? -eq 0 ]; then
        log_debug "\t✅ Docker installation completed successfully."
