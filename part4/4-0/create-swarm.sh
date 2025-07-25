@@ -89,11 +89,38 @@ create_single_manager() {
                create_configurations "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
                create_overlay_networks "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
             else
+                local ATTEMPT_COUNT
+                local MAX_ATTEMPTS
+                local SUCCESS
+
+                ATTEMPT_COUNT=0
+                MAX_ATTEMPTS=5
+                SUCCESS=0
+
                 log_debug "\t- Swarm already created, using the existing token to add a new manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
                 install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${REGISTRY_IP_ADDRESS_ARG}" "${REGISTRY_PORT_ARG}" "${REGISTRY_CERTIFICATE_FILE_ARG}"
+                
+                while [ "$ATTEMPT_COUNT" -lt "$MAX_ATTEMPTS" ]; do
+                     ATTEMPT_COUNT=$((ATTEMPT_COUNT + 1))
+                     log_debug "\t- Adding the manager ${NODE_HOSTNAME} to the Swarm (attempt #$ATTEMPT_COUNT / $MAX_ATTEMPTS)"
 
-                log_debug "\t- Adding the manager ${NODE_HOSTNAME} to the Swarm"
-                sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo ${JOIN_MGR_CMD}"
+                     sshpass -p "${PASSWORD_ARG}" ssh -tt -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_ADDRESS}" "sudo ${JOIN_MGR_CMD}"
+                    
+                     if [ $? -eq 0 ]; then
+                         echo "✅ Manager join successful on attempt #$ATTEMPT_COUNT."
+                         SUCCESS=1
+                         break
+                     else
+                         echo "❌ Attempt #$ATTEMPT_COUNT failed. Retrying in 5 seconds..."
+                         sleep 5
+                     fi
+                 done
+
+                 # ✔️ Continue with script if successful
+                 if [ "$SUCCESS" -eq 0 ]; then
+                     log_error "🚨 All $MAX_ATTEMPTS attempts failed. Exiting script."
+                     exit 1
+                 fi
             fi
 
             if [ "$HAS_DISPLAY" == "true" ]; then
