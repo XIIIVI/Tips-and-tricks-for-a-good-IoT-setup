@@ -63,11 +63,6 @@ else
 
     echo "      - Upgrading the OS"
     sudo -E apt-get upgrade -y -qq -o Dpkg::Options::="--force-confnew" -o Dpkg::Options::="--force-confdef" 1>/dev/null
-    echo "      - Installing IPVS modules"
-    sudo modprobe ip_vs
-    sudo modprobe ip_vs_rr
-    sudo modprobe ip_vs_wrr
-    sudo modprobe ip_vs_sh
     echo "      - Installing Docker modules"
     MAX_ATTEMPTS=5
     ATTEMPT=1
@@ -116,6 +111,12 @@ else
   "deprecated-key-path": "/var/lib/docker/key.json"
 }
 EOF_DOCKER_DAEMON
+
+         echo "      - Installing IPVS modules"
+         sudo modprobe ip_vs
+         sudo modprobe ip_vs_rr
+         sudo modprobe ip_vs_wrr
+         qsudo modprobe ip_vs_sh
 
         # Restarts Docker to take in charge the new configuration
         echo "      - Restarting Docker service... |"

@@ -83,7 +83,6 @@ create_single_manager() {
                 log_debug "\t- Saving the join manager command for managers to ${JOIN_MANAGER_CMD_FILE}"
                 echo "${JOIN_MGR_CMD}" >"${JOIN_MANAGER_CMD_FILE}"
 
-               log_debug "\t- Creating the secrets"
                create_credentials  "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
                create_certificates  "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
                create_configurations "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
