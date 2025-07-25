@@ -498,6 +498,11 @@ main() {
     REGISTRY_PORT=$(jq -r '.registry.port' "${CONFIGURATION_FILE}")
     REGISTRY_CERTIFICATE_FILE=$(jq -r '.registry["certificate-file"]' "${CONFIGURATION_FILE}")
 
+    if [ -n "${REGISTRY_CERTIFICATE_FILE}" ] && [ -f "${REGISTRY_CERTIFICATE_FILE}" ]; then
+         mv "${REGISTRY_CERTIFICATE_FILE}" "$(dirname "$(realpath "${CONFIGURATION_FILE}")")/ca.crt"
+         REGISTRY_CERTIFICATE_FILE="$(dirname "$(realpath "${CONFIGURATION_FILE}")")/ca.crt"
+    fi
+
     create_managers "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}" "${REGISTRY_IP_ADDRESS}" "${REGISTRY_PORT}" "${REGISTRY_CERTIFICATE_FILE}"
     create_workers "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}" "${REGISTRY_IP_ADDRESS}" "${REGISTRY_PORT}" "${REGISTRY_CERTIFICATE_FILE}"
 

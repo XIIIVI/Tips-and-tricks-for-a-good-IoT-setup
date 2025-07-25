@@ -126,3 +126,13 @@ You can add a file containing credentials thru the array `credentials` in the se
 `organization` is the organization delivering the certificate.
 
 `common-name` is the common-name of the certificate.
+
+## Local Docker registry
+
+If you are using a local registry in your LAN, you can add the node `registry` (same level `swarm`).
+
+`ip-address` IP address of the local Docker registry
+
+`port` The port used for HTTPS (e.g 4443 or 443)
+
+`certificate-file` A copy of the certificate of the local Docker registry
