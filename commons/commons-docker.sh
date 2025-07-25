@@ -157,9 +157,13 @@ EOF_SSH
         sshpass -p "${ROOT_PASS_ARG}" ssh -o StrictHostKeyChecking=no "${ROOT_USER_ARG}@${HOST_IP_ARG}" "cat /etc/docker/daemon.json"
 
         if [ -n "${REGISTRY_CERTIFICATE_ARG}" ]; then
-           log_warning "\t\t- Adding the certificate for the Docker registry ${REGISTRY_URL} ..."
-           sshpass -p "${ROOT_PASS_ARG}" ssh -o StrictHostKeyChecking=no "${ROOT_USER_ARG}@${HOST_IP_ARG}" "sudo mkdir -p /etc/docker/certs.d/${REGISTRY_URL}"
-           copy_file_to_host "${ROOT_USER_ARG}" "${ROOT_PASS_ARG}" "${HOST_IP_ARG}" "${REGISTRY_CERTIFICATE_ARG}" "/etc/docker/certs.d/${REGISTRY_URL}/"           
+             local CERTIFICATE_FILENAME=$(basename "${REGISTRY_CERTIFICATE_ARG}")
+
+             log_warning "\t\t- Adding the certificate for the Docker registry ${REGISTRY_URL} ..."
+             copy_file_to_host "${ROOT_USER_ARG}" "${ROOT_PASS_ARG}" "${HOST_IP_ARG}" "${REGISTRY_CERTIFICATE_ARG}" "/usr/local/share/ca-certificates/" 
+             sshpass -p "${ROOT_PASS_ARG}" ssh -o StrictHostKeyChecking=no "${ROOT_USER_ARG}@${HOST_IP_ARG}" "sudo mkdir -p /etc/docker/certs.d/${REGISTRY_URL}"
+             sshpass -p "${ROOT_PASS_ARG}" ssh -o StrictHostKeyChecking=no "${ROOT_USER_ARG}@${HOST_IP_ARG}" "sudo cp /usr/local/share/ca-certificates/${CERTIFICATE_FILENAME} /etc/docker/certs.d/${REGISTRY_URL}/ca.crt"
+             sshpass -p "${ROOT_PASS_ARG}" ssh -o StrictHostKeyChecking=no "${ROOT_USER_ARG}@${HOST_IP_ARG}" "sudo update-ca-certificates"                     
         fi
 
         log_debug "\t- Restarting Docker service to apply the changes ..."
