@@ -17,7 +17,9 @@ It uses a JSON file as a configuration file. When configuring each nodes, it tak
 ---
 # Configuration file format
 
-## Configuration files `configurations`
+## `swarm`node
+
+### Configuration files `configurations`
 
 You can directly import configuration files thru the section `configurations`
 
@@ -44,9 +46,9 @@ You can directly import configuration files thru the section `configurations`
 
 `file` is the path to the file to import.
 
-## Secrets
+### Secrets
 
-### Credentials
+#### Credentials
 
 You can add a file containing credentials thru the array `credentials` in the section `secrets`
 
@@ -80,7 +82,7 @@ You can add a file containing credentials thru the array `credentials` in the se
 
 > :warning: The password is automatically generated for security reason.
 
-### Certificates
+#### Certificates
 
 You can add a file containing credentials thru the array `credentials` in the section `secrets`
 
@@ -127,6 +129,45 @@ You can add a file containing credentials thru the array `credentials` in the se
 
 `common-name` is the common-name of the certificate.
 
+### Volumes
+
+As described in [part #6](https://medium.com/p/aeedbf038511), the array `volumes` takes in charge the creation and mounting of volumes for data storage/sharing.
+
+```json
+{
+    "swarm": {
+        "managers": {
+             ...
+        },
+        "workers": [
+             ...
+        ],
+        "volumes": [
+            {
+                "replicated": [
+                    {
+                        "name": "...",
+                        "mountpoint-subfolder": "...",
+                        "hosts": [ "...", ...,  ],
+                        "folders": [ "...", ... ]
+                    }
+                ]
+            }
+        ]
+}
+```
+
+The array `replicated`provides a convenient way to create a replicated GlusterFS storage across multiple host (managers and workers can be mixed).
+
+`name` is the name of the volume.
+
+`mountpoint-subfolder` is the name of the folder in `/mnt` that will be used as a mounting point.
+
+`hosts` is the list on hosts where the replicated storage must be installed.
+
+`folders` is the list of folder to create in the folder `/mnt/mountpoint-subfolder`. Please note that **a volume will be created per folder**. The name of each volume is the concatenation of `name` and the folder name.
+
+---
 ## Local Docker registry
 
 If you are using a local registry in your LAN, you can add the node `registry` (same level `swarm`).

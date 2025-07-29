@@ -151,8 +151,24 @@ EOF
             set_hostname "${LOGIN_ARG}" "${PASSWORD_ARG}" "${NODE_HOSTNAME}" "${IP_ADDRESS}"
             reboot "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${NODE_HOSTNAME}"
 
+            # Labels
             log_debug "\t- Adding the labels to the manager"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo docker node update ${LABEL_STRING} ${NODE_HOSTNAME}"
+            log_warning "\t- Generating the configuration with env variables from the label definition => ${hostname}_env.config"
+
+            touch "${CONFIG_DIR}/${NODE_HOSTNAME}_env.config"
+
+            for LABEL in $(echo "$JSON_OBJECT_ARG" | jq -c '.labels[]'); do
+                 local KEY
+                 local VALUE
+
+                 KEY=$(echo "$LABEL" | jq -r '.key')
+                 VALUE=$(echo "$LABEL" | jq -r '.value')
+
+                 echo "${KEY}=${VALUE}" >> "${CONFIG_DIR}/${NODE_HOSTNAME}_env.config"
+            done
+
+            create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}" "${NODE_HOSTNAME}_env.config" "${CONFIG_DIR}/"
 
             log_warning "########################"
             log_warning "# Content of the Swarm #"
@@ -275,13 +291,31 @@ create_single_worker() {
             log_debug "\t- Adding the labels to the worker"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker node update ${LABEL_STRING} ${NODE_HOSTNAME}"
 
-            log_debug "\t- Creating the configuration file"
+            # Configuration files            
+            log_debug "\t- Creating the configuration files"
+            log_warning "\t\t- Generating from the Swarm definition"
             echo "$JSON_OBJECT_ARG" | jq -c 'select(.config != null) | {hostname, config}' | while read -r entry; do
                  hostname=$(echo "$entry" | jq -r '.hostname')
                  echo "$entry" | jq -r '.config[] | "\(.key)=\(.value)"' > "${CONFIG_DIR}/${hostname}.config"
-                 create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}" "${hostname}.config" "${CONFIG_DIR}/${hostname}.config"
+                 create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}" "${hostname}.config" "${CONFIG_DIR}/"
             done
 
+            log_warning "\t\t- Generating from the label definition => ${hostname}_env.config"
+            touch "${CONFIG_DIR}/${hostname}_env.config"
+
+            for LABEL in $(echo "$JSON_OBJECT_ARG" | jq -c '.labels[]'); do
+                 local KEY
+                 local VALUE
+
+                 KEY=$(echo "$LABEL" | jq -r '.key')
+                 VALUE=$(echo "$LABEL" | jq -r '.value')
+
+                 echo "${KEY}=${VALUE}" >> "${CONFIG_DIR}/${hostname}_env.config"
+            done
+
+            create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}" "${hostname}_env.config" "${CONFIG_DIR}/"
+
+            # Summary
             log_warning "########################"
             log_warning "# Content of the Swarm #"
             log_warning "########################"
