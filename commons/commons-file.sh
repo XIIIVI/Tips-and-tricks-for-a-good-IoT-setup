@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# create_replicated_disks
+# setup_replicated_volumes
 #
 # This function sets up replicated disks using GlusterFS on a list of hosts.
 # It requires the login credentials and a list of hostnames to operate.
@@ -11,7 +11,7 @@
 #   3. VOLUME_NAME_ARG: The name of the GlusterFS volume to create.
 #   4. HOSTNAME_LIST_ARG: An array of hostnames where the GlusterFS volume will be set up.
 #
-create_replicated_disks() {
+setup_replicated_volumes() {
     local LOGIN_ARG="${1}"
     local PASSWORD_ARG="${2}"
     local VOLUME_NAME_ARG="${1}"
@@ -29,7 +29,7 @@ create_replicated_disks() {
 
          MASTER_IP_ADDRESS=$(host "${HOSTNAME_LIST_ARG[0]}" | awk '/has address/ { print $4 }')
 
-         log_info "Setting up replicated disks with GlusterFS"
+         log_debug "\t- Setting up replicated disks with GlusterFS"
 
          # Clean up temp files
          rm -Rf "${ETC_HOSTS_FILE}" "${ETC_FSTAB_FILE}" "${VOLUME_CREATION_SCRIPT}"
@@ -42,10 +42,10 @@ create_replicated_disks() {
 gluster volume create ${VOLUME_NAME_ARG} replica 3 \\
 SCRIPT_EOF
 
-         log_debug "\t- Installing required packages"
+         log_warning "\t\t- Installing required packages"
          apt-get install -qq -y dnsutils
 
-         log_debug "\t- Setting up /etc/hosts and /etc/fstab files for GlusterFS volume ${VOLUME_NAME_ARG}"
+         log_warning "\t\t- Setting up /etc/hosts and /etc/fstab files for GlusterFS volume ${VOLUME_NAME_ARG}"
          COUNTER=1
 
          for HOSTNAME in "${HOSTNAME_LIST_ARG[@]}"; do
@@ -64,7 +64,7 @@ SCRIPT_EOF
 
          unset COUNTER
 
-         log_debug "\t- Setting up GlusterFS on discovered hosts: ${DISCOVERED_IPS[*]}"
+         log_warning "\t\t- Setting up GlusterFS on discovered hosts: ${DISCOVERED_IPS[*]}"
          COUNTER=1
 
          for HOSTNAME in "${HOSTNAME_LIST_ARG[@]}"; do
@@ -74,15 +74,15 @@ SCRIPT_EOF
 
              remove_ssh_host "${IP_INDEX}"
 
-             log_warning "\t\t- Declaring the GlusterFS member to /etc/hosts"
+             log_warning "\t\t\t- Declaring the GlusterFS member to /etc/hosts"
              copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}" "${ETC_HOSTS_FILE}" "/tmp"
              sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "sudo tee -a /etc/hosts < /tmp/$(basename ${ETC_HOSTS_FILE})"
 
-             log_warning "\t\t- Declaring the GlusterFS member to /etc/fstab"
+             log_warning "\t\t\t- Declaring the GlusterFS member to /etc/fstab"
              copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}" "${ETC_FSTAB_FILE}" "/tmp"
              sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "sudo tee -a /etc/fstab < /tmp/$(basename ${ETC_FSTAB_FILE})"
 
-             log_warning "\t\t- Installing GlusterFS on ${IP_INDEX}"
+             log_warning "\t\t\t- Installing GlusterFS on ${IP_INDEX}"
              sshpass -p "$PASSWORD_ARG" ssh -o StrictHostKeyChecking=no "$LOGIN_ARG@$IP_INDEX" <<EOF_GLUSTERFS
     export DEBIAN_FRONTEND=noninteractive
     export DEBCONF_NOWARNINGS=yes 
@@ -110,18 +110,18 @@ EOF_GLUSTERFS
              local IP_INDEX
 
              IP_INDEX=$(host "${HOSTNAME_LIST_ARG[INDEX]}" | awk '/has address/ { print $4 }')
-             log_debug "\t\t- Probing host ${IP_INDEX} ..."
+             log_warning "\t\t- Probing host ${IP_INDEX} ..."
              sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster peer probe ${IP_INDEX}"
              sleep 5
          done
 
          # Waiting for the ppers
-         log_info "⏳ Waiting for peers to join trusted pool..."
+         log_debug "\t⏳ Waiting for peers to join trusted pool..."
          sleep 5
          sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster peer status"        
 
          # Creating the volume
-         log_debug "\t\t- Setting up th GlusterFS volume with the following script: ${VOLUME_CREATION_SCRIPT}"
+         log_warning "\t\t- Setting up th GlusterFS volume with the following script: ${VOLUME_CREATION_SCRIPT}"
          log_warning "\t\t\t- Creating the volume ${VOLUME_NAME_ARG}"
          copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MASTER_IP_ADDRESS}" "${VOLUME_CREATION_SCRIPT}" "/tmp"
          sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo bash /tmp/$(basename ${VOLUME_CREATION_SCRIPT})"
@@ -135,12 +135,12 @@ EOF_GLUSTERFS
          sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster volume set ${VOLUME_NAME_ARG} auth.allow $(IFS=, ; echo "${DISCOVERED_IPS[*]}")"
 
          # Mount the glusterFS volume where applications can access the files
-         log_info "Mounting the GlusterFS volume ${VOLUME_NAME_ARG} on all nodes" 
+         log_debug "\t- Mounting the GlusterFS volume ${VOLUME_NAME_ARG} on all nodes" 
          for HOSTNAME in "${HOSTNAME_LIST_ARG[@]}"; do
              local IP_INDEX
 
              IP_INDEX=$(host "${HOSTNAME}" | awk '/has address/ { print $4 }')
-            log_debug "\t\t- Mounting the GlusterFS volume ${VOLUME_NAME_ARG} on ${IP_INDEX}"
+            log_warning "\t\t- Mounting the GlusterFS volume ${VOLUME_NAME_ARG} on ${IP_INDEX}"
             sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" \
                     "echo \"localhost:/${VOLUME_NAME_ARG} /mnt glusterfs defaults,_netdev,backupvolfile-server=localhost 0 0\" | sudo tee -a /etc/fstab > /dev/null"
             sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "sudo mount.glusterfs localhost:/${VOLUME_NAME_ARG} /mnt"
@@ -148,7 +148,7 @@ EOF_GLUSTERFS
          done
 
          # Testing
-         log_debug "\t\t- Testing the GlusterFS volume ${VOLUME_NAME_ARG} on all nodes"
+         log_warning "\t\t- Testing the GlusterFS volume ${VOLUME_NAME_ARG} on all nodes"
          sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "echo 'Hello World!' | sudo tee /mnt/test.txt"
 
          for IP_INDEX in "${HOSTNAME_LIST_ARG[@]}"; do
@@ -156,7 +156,7 @@ EOF_GLUSTERFS
 
              IP_INDEX=$(host "${HOSTNAME_LIST_ARG[INDEX]}" | awk '/has address/ { print $4 }')
 
-             log_debug "\t\t- Checking test file on host ${IP_INDEX} ..."
+             log_warning "\t\t- Checking test file on host ${IP_INDEX} ..."
              sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "cat /mnt/test.txt"
              sleep 5
          done

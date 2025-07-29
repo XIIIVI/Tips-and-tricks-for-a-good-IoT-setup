@@ -95,10 +95,16 @@ create_single_manager() {
                 log_debug "\t- Saving the join manager command for managers to ${JOIN_MANAGER_CMD_FILE}"
                 echo "${JOIN_MGR_CMD}" >"${JOIN_MANAGER_CMD_FILE}"
 
+cat <<EOF >>"${DOCKER_COMPOSE_TEMPLATE}"
+
+secrets:
+EOF
+
                create_credentials  "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
                create_certificates  "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
                create_configurations "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
                create_overlay_networks "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
+               create_volumes "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}"
             else
                 local ATTEMPT_COUNT
                 local MAX_ATTEMPTS
@@ -355,6 +361,10 @@ create_credentials() {
        rm -f ./"${PASSWORD_FILENAME}"
        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.passwd /tmp/${PASSWORD_FILENAME}"
        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${PASSWORD_FILENAME}*"
+       cat <<EOF >>"${DOCKER_COMPOSE_TEMPLATE}"
+    ${NAME}.passwd:
+      external: true
+EOF
    done
 }
 
@@ -392,6 +402,12 @@ create_certificates() {
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.crt /tmp/${NAME}.crt"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.key /tmp/${NAME}.key"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${NAME}*.crt /tmp/${NAME}*.key"
+        cat <<EOF >>"${DOCKER_COMPOSE_TEMPLATE}"
+    ${NAME}.crt:
+      external: true
+    ${NAME}.key:
+      external: true
+EOF
     done
 }
 
@@ -434,12 +450,20 @@ create_configurations() {
     local JSON_ARG="${4}"
 
     log_debug "\t- Creating the configurations on ${IP_ADDRESS_ARG}"
+    cat <<EOF >>"${DOCKER_COMPOSE_TEMPLATE}"
+
+config:    
+EOF
 
     # Parse configurations
     echo "${JSON_ARG}" | jq -r '.swarm.configurations[] | "NAME=\(.name) FILE=\(.file)"' | while read line; do
         eval "$line"
 
         create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${NAME}" "${FILE}"
+    cat <<EOF >>"${DOCKER_COMPOSE_TEMPLATE}"
+  ${NAME}:
+    external: true
+EOF
     done
 }
 
@@ -508,33 +532,33 @@ create_overlay_networks() {
 # create_replicated_volumes
 # - param1: LOGIN_ARG, the login to the host
 # - param2: PASSWORD_ARG, the password to the host
-# - param3: IP_ADDRESS_ARG, the IP address of the host
-# - param4: REPLICATED_JSON, the JSON content containing the replicated volumes configuration
+# - param3: REPLICATED_JSON, the JSON content containing the replicated volumes configuration
 #
 create_replicated_volumes() {
     local LOGIN_ARG="${1}"
     local PASSWORD_ARG="${2}"
-    local IP_ADDRESS_ARG="${3}"
-    local REPLICATED_JSON="${4}"
+    local REPLICATED_JSON="${3}"
 
     log_debug "\t- Creating the replicated volumes on ${IP_ADDRESS_ARG}"
     echo "${REPLICATED_JSON}" | jq -c '.[]' | while read -r VOLUME; do
-        local NAME
-        local MOUNT_POINT
-        local HOSTS
-        local FOLDERS
+        local VOLUME_NAME
+        local HOSTNAME_LIST
+        local FOLDER_LIST
 
-        NAME=$(echo "${VOLUME}" | jq -r '.name')
-        MOUNT_POINT=$(echo "${VOLUME}" | jq -r '.["mount-point"]')
-        HOSTS=$(echo "${VOLUME}" | jq -r '.hosts | join(", ")')
-        FOLDERS=$(echo "${VOLUME}" | jq -r '.folders | join(", ")')
+        VOLUME_NAME=$(echo "${VOLUME}" | jq -r '.name')
+        HOSTNAME_LIST=$(echo "${VOLUME}" | jq -r '.hosts | join(", ")')
+        FOLDER_LIST=$(echo "${VOLUME}" | jq -r '.folders | join(", ")')
 
-        echo "Replicated Volume Properties:"
-        echo "  NAME        : ${NAME}"
-        echo "  MOUNT_POINT : ${MOUNT_POINT}"
-        echo "  HOSTS       : ${HOSTS}"
-        echo "  FOLDERS     : ${FOLDERS}"
-        echo
+        setup_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME}" "${HOSTNAME_LIST[@]}"
+
+        log_warning "\t\t- Creating the folders on the volume ${VOLUME_NAME}"
+        for FOLDER in "${FOLDER_LIST[@]}"; do
+            local IP_ADDRESS
+
+            IP_ADDRESS=$(host "${HOSTNAME_LIST[0]}" | awk '/has address/ { print $4 }')
+            log_debug "\t\t\t- Creating the folder ${FOLDER} on ${HOSTNAME} at IP address ${IP_ADDRESS}"
+            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo mkdir -p /mnt/${VOLUME_NAME}/${FOLDER}"
+        done
     done
 }
 
@@ -542,14 +566,12 @@ create_replicated_volumes() {
 # create_replicated_volumes
 # - param1: LOGIN_ARG, the login to the host
 # - param2: PASSWORD_ARG, the password to the host
-# - param3: IP_ADDRESS_ARG, the IP address of the host
-# - param4: JSON_ARG, the JSON content containing the overlay networks configuration
+# - param3: JSON_ARG, the JSON content containing the overlay networks configuration
 #
 create_volumes() {
     local LOGIN_ARG="${1}"
     local PASSWORD_ARG="${2}"
-    local IP_ADDRESS_ARG="${3}"
-    local SWARM_JSON="${4}"
+    local SWARM_JSON="${3}"
     local REPLICATED
 
     REPLICATED=$(echo "${SWARM_JSON}" | jq -c '.swarm.volumes[] | select(.replicated) | .replicated')
@@ -647,6 +669,14 @@ main() {
 
     local JSON_CONTENT
     JSON_CONTENT=$(cat "${CONFIGURATION_FILE}")
+    DOCKER_COMPOSE_TEMPLATE="./docker-compose-template.yml"
+
+    # Initializes the Docker compose template file
+    cat <<EOF >"${DOCKER_COMPOSE_TEMPLATE}"
+version: '3.8'
+
+services:
+EOF
 
     # Extract the Docker registry settings
     local REGISTRY_IP_ADDRESS
@@ -662,6 +692,8 @@ main() {
 
     log_info "✅ The swarm has been successfully created"
     log_warning "DO NOT FORGET TO CHANGE THE PASSWORD OF THE ROOT USER ON ALL NODES !!!"
+    log_info "A template of a Docker compose file is available at ${DOCKER_COMPOSE_TEMPLATE}."
+    log_info "It declares all the resources we've just created."
 }
 
 time main "$@"

@@ -180,7 +180,6 @@
             {
                 "replicated": [
                     {
-                        "mount-point": "/mnt",
                         "name": "gfs-data",
                         "hosts": [ "orchestrator1", "orchestrator2", "orchestrator3" ],
                         "folders": [ "loki" ]
