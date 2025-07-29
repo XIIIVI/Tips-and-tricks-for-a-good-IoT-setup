@@ -35,22 +35,24 @@ display_settings() {
 # Arguments:
 #   1. LOGIN_ARG: The login to the host.
 #   2. PASSWORD_ARG: The password to the host.
-#   3. HOSTNAME_DEFAULT_PREFIX_ARG: The default prefix for the hostname.
-#   4. JSON_OBJECT_ARG: The JSON object containing the manager's configuration.
-#   5. INDEX_ARG: The index of the manager in the list.
-#   6. REGISTRY_IP_ADDRESS_ARG: The IP address of the Docker registry.
-#   7. REGISTRY_PORT_ARG: The port of the Docker registry.
-#   8. REGISTRY_CERTIFICATE_FILE_ARG: The path to the Docker registry certificate file.
+#   3. JSON_CONTENT_ARG: The JSON content containing the manager's configuration.
+#   4. HOSTNAME_DEFAULT_PREFIX_ARG: The default prefix for the hostname.
+#   5. JSON_OBJECT_ARG: The JSON object containing the manager's configuration.
+#   6. INDEX_ARG: The index of the manager in the list.
+#   7. REGISTRY_IP_ADDRESS_ARG: The IP address of the Docker registry.
+#   8. REGISTRY_PORT_ARG: The port of the Docker registry.
+#   9. REGISTRY_CERTIFICATE_FILE_ARG: The path to the Docker registry certificate file.
 #
 create_single_manager() {
     local LOGIN_ARG="${1}"
     local PASSWORD_ARG="${2}"
-    local HOSTNAME_DEFAULT_PREFIX_ARG="${3}"
-    local JSON_OBJECT_ARG="${4}"
-    local INDEX_ARG="${5}"
-    local REGISTRY_IP_ADDRESS_ARG="${6}"
-    local REGISTRY_PORT_ARG="${7}"
-    local REGISTRY_CERTIFICATE_FILE_ARG="${8}"
+    local JSON_CONTENT_ARG="${3}"
+    local HOSTNAME_DEFAULT_PREFIX_ARG="${4}"
+    local JSON_OBJECT_ARG="${5}"
+    local INDEX_ARG="${6}"
+    local REGISTRY_IP_ADDRESS_ARG="${7}"
+    local REGISTRY_PORT_ARG="${8}"
+    local REGISTRY_CERTIFICATE_FILE_ARG="${9}"
     local IP_ADDRESS
 
     IP_ADDRESS=$(echo "$JSON_OBJECT_ARG" | jq -r '.["ip-address"]')
@@ -95,16 +97,16 @@ create_single_manager() {
                 log_debug "\t- Saving the join manager command for managers to ${JOIN_MANAGER_CMD_FILE}"
                 echo "${JOIN_MGR_CMD}" >"${JOIN_MANAGER_CMD_FILE}"
 
-cat <<EOF >>"${DOCKER_COMPOSE_TEMPLATE}"
+cat <<EOF >>"${SECRET_TEMPLATE}"
 
 secrets:
 EOF
 
-               create_credentials  "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
-               create_certificates  "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
-               create_configurations "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
-               create_overlay_networks "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT}"
-               create_volumes "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}"
+               create_credentials "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT_ARG}"
+               create_certificates "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT_ARG}"
+               create_configurations "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT_ARG}"
+               create_overlay_networks "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT_ARG}"
+               create_volumes "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT_ARG}"
             else
                 local ATTEMPT_COUNT
                 local MAX_ATTEMPTS
@@ -206,14 +208,14 @@ create_managers() {
     log_info "|                             |"
     log_info "+++++++++++++++++++++++++++++++"
 
-    HOSTNAME_DEFAULT_PREFIX=$(echo "$JSON_ARG" | jq -r '.swarm.managers["hostname-default-prefix"]')
+    HOSTNAME_DEFAULT_PREFIX=$(echo "${JSON_ARG}" | jq -r '.swarm.managers["hostname-default-prefix"]')
 
     log_info "Creating the Swarm managers using the default prefix: ${HOSTNAME_DEFAULT_PREFIX}"
-    mapfile -t MANAGER_ARRAY < <(echo "$JSON_ARG" | jq -c '.swarm.managers.members[]')
+    mapfile -t MANAGER_ARRAY < <(echo "${JSON_ARG}" | jq -c '.swarm.managers.members[]')
 
     for index in "${!MANAGER_ARRAY[@]}"; do
         log_info "Creating the manager #$((index + 1))"
-        create_single_manager "${LOGIN_ARG}" "${PASSWORD_ARG}" "$HOSTNAME_DEFAULT_PREFIX" "${MANAGER_ARRAY[$index]}" "$((index + 1))" "${REGISTRY_IP_ADDRESS_ARG}" "${REGISTRY_PORT_ARG}" "${REGISTRY_CERTIFICATE_FILE_ARG}" || log_error "❌ Manager #$((index + 1)) failed, continuing..."
+        create_single_manager "${LOGIN_ARG}" "${PASSWORD_ARG}" "${JSON_ARG}" "$HOSTNAME_DEFAULT_PREFIX" "${MANAGER_ARRAY[$index]}" "$((index + 1))" "${REGISTRY_IP_ADDRESS_ARG}" "${REGISTRY_PORT_ARG}" "${REGISTRY_CERTIFICATE_FILE_ARG}" || log_error "❌ Manager #$((index + 1)) failed, continuing..."
     done
 
     log_info "Swarm configurations"
@@ -352,7 +354,7 @@ create_workers() {
     log_info "++++++++++++++++++++++++++"
 
     log_info "Creating the Swarm workers"
-    mapfile -t WORKER_ARRAY < <(echo "$JSON_ARG" | jq -c '.swarm.workers[]')
+    mapfile -t WORKER_ARRAY < <(echo "${JSON_ARG}" | jq -c '.swarm.workers[]')
 
     for index in "${!WORKER_ARRAY[@]}"; do
         log_info "Creating the worker #$((index + 1))"
@@ -395,7 +397,7 @@ create_credentials() {
        rm -f ./"${PASSWORD_FILENAME}"
        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.passwd /tmp/${PASSWORD_FILENAME}"
        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${PASSWORD_FILENAME}*"
-       cat <<EOF >>"${DOCKER_COMPOSE_TEMPLATE}"
+       cat <<EOF >>"${SECRET_TEMPLATE}"
     ${NAME}.passwd:
       external: true
 EOF
@@ -436,7 +438,7 @@ create_certificates() {
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.crt /tmp/${NAME}.crt"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.key /tmp/${NAME}.key"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${NAME}*.crt /tmp/${NAME}*.key"
-        cat <<EOF >>"${DOCKER_COMPOSE_TEMPLATE}"
+        cat <<EOF >>"${SECRET_TEMPLATE}"
     ${NAME}.crt:
       external: true
     ${NAME}.key:
@@ -466,7 +468,7 @@ create_single_configuration() {
     copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${FILE_ARG}" "/tmp/"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker config create ${NAME_ARG} /tmp/${NAME_ARG}"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${NAME_ARG}"
-    cat <<EOF >>"${DOCKER_COMPOSE_TEMPLATE}"
+    cat <<EOF >>"${CONFIG_TEMPLATE}"
   ${NAME_ARG}:
     external: true
 EOF
@@ -488,7 +490,7 @@ create_configurations() {
     local JSON_ARG="${4}"
 
     log_debug "\t- Creating the configurations on ${IP_ADDRESS_ARG}"
-    cat <<EOF >>"${DOCKER_COMPOSE_TEMPLATE}"
+    cat <<EOF >>"${CONFIG_TEMPLATE}"
 
 config:    
 EOF
@@ -594,7 +596,7 @@ create_replicated_volumes() {
              IP_ADDRESS=$(host "${HOSTNAME_LIST[0]}" | awk '/has address/ { print $4 }')
              log_debug "\t\t\t- Creating the folder ${FOLDER} on ${HOSTNAME} at IP address ${IP_ADDRESS}"
              sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo mkdir -p /mnt/${MOUNTPOINT_SUBFOLDER}/${FOLDER}"
-             cat <<EOF >>"${DOCKER_COMPOSE_TEMPLATE}"
+             cat <<EOF >>"${VOLUME_TEMPLATE}"
   ${VOLUME_NAME}-${FOLDER}:
     driver: local
     driver_opts:
@@ -621,7 +623,7 @@ create_volumes() {
 
     REPLICATED=$(echo "${SWARM_JSON}" | jq -c '.swarm.volumes[] | select(.replicated) | .replicated')
 
-cat <<EOF >>"${DOCKER_COMPOSE_TEMPLATE}"
+cat <<EOF >>"${VOLUME_TEMPLATE}"
 
 volumes:
 EOF
@@ -718,8 +720,13 @@ main() {
     fi
 
     local JSON_CONTENT
+    local DOCKER_COMPOSE_TEMPLATE="./docker-compose-template.yml"
+    TMP_DIR=$(mktemp -d -t "swarm")
     JSON_CONTENT=$(cat "${CONFIGURATION_FILE}")
-    DOCKER_COMPOSE_TEMPLATE="./docker-compose-template.yml"
+    CONFIG_TEMPLATE="${TMP_DIR}/config-template.yml"
+    NETWORK_TEMPLATE="${TMP_DIR}/network-template.yml"
+    SECRET_TEMPLATE="${TMP_DIR}/secret-template.yml"
+    VOLUME_TEMPLATE="${TMP_DIR}/volume-template.yml"
 
     # Initializes the Docker compose template file
     cat <<EOF >"${DOCKER_COMPOSE_TEMPLATE}"
@@ -741,6 +748,18 @@ EOF
     create_workers "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}" "${REGISTRY_IP_ADDRESS}" "${REGISTRY_PORT}" "${REGISTRY_CERTIFICATE_FILE}"
 
     log_info "✅ The swarm has been successfully created"
+    
+    log_info "Creating the Docker compose template file at ${DOCKER_COMPOSE_TEMPLATE}"
+    cat <<EOF_TEMPLATE >>"${DOCKER_COMPOSE_TEMPLATE}"
+${CONFIG_TEMPLATE}
+
+${NETWORK_TEMPLATE}
+
+${SECRET_TEMPLATE}
+
+${VOLUME_TEMPLATE}
+EOF_TEMPLATE
+
     log_warning "DO NOT FORGET TO CHANGE THE PASSWORD OF THE ROOT USER ON ALL NODES !!!"
     log_info "A template of a Docker compose file is available at ${DOCKER_COMPOSE_TEMPLATE}."
     log_info "It declares all the resources we've just created."
