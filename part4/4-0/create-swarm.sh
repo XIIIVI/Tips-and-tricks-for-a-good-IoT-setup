@@ -541,24 +541,35 @@ create_replicated_volumes() {
 
     log_debug "\t- Creating the replicated volumes on ${IP_ADDRESS_ARG}"
     echo "${REPLICATED_JSON}" | jq -c '.[]' | while read -r VOLUME; do
-        local VOLUME_NAME
-        local HOSTNAME_LIST
-        local FOLDER_LIST
+         local VOLUME_NAME
+         local HOSTNAME_LIST
+         local FOLDER_LIST
+         local MOUNTPOINT_SUBFOLDER
 
-        VOLUME_NAME=$(echo "${VOLUME}" | jq -r '.name')
-        HOSTNAME_LIST=$(echo "${VOLUME}" | jq -r '.hosts | join(", ")')
-        FOLDER_LIST=$(echo "${VOLUME}" | jq -r '.folders | join(", ")')
+         MOUNTPOINT_SUBFOLDER=$(echo "${VOLUME}" | jq -r '.mountpoint-subfolder')
+         VOLUME_NAME=$(echo "${VOLUME}" | jq -r '.name')
+         HOSTNAME_LIST=$(echo "${VOLUME}" | jq -r '.hosts | join(", ")')
+         FOLDER_LIST=$(echo "${VOLUME}" | jq -r '.folders | join(", ")')
 
-        setup_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME}" "${HOSTNAME_LIST[@]}"
+         setup_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME}" "${MOUNTPOINT_SUBFOLDER}" "${HOSTNAME_LIST[@]}"
 
-        log_warning "\t\t- Creating the folders on the volume ${VOLUME_NAME}"
-        for FOLDER in "${FOLDER_LIST[@]}"; do
-            local IP_ADDRESS
+         log_warning "\t\t- Creating the folders on the volume ${VOLUME_NAME}"
+         for FOLDER in "${FOLDER_LIST[@]}"; do
+             local IP_ADDRESS
 
-            IP_ADDRESS=$(host "${HOSTNAME_LIST[0]}" | awk '/has address/ { print $4 }')
-            log_debug "\t\t\t- Creating the folder ${FOLDER} on ${HOSTNAME} at IP address ${IP_ADDRESS}"
-            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo mkdir -p /mnt/${VOLUME_NAME}/${FOLDER}"
-        done
+             IP_ADDRESS=$(host "${HOSTNAME_LIST[0]}" | awk '/has address/ { print $4 }')
+             log_debug "\t\t\t- Creating the folder ${FOLDER} on ${HOSTNAME} at IP address ${IP_ADDRESS}"
+             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo mkdir -p /mnt/${MOUNTPOINT_SUBFOLDER}/${FOLDER}"
+             cat <<EOF >>"${DOCKER_COMPOSE_TEMPLATE}"
+  ${VOLUME_NAME}-${FOLDER}:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: "/mnt/${MOUNTPOINT_SUBFOLDER}/${FOLDER}"
+EOF
+
+         done
     done
 }
 
@@ -575,6 +586,11 @@ create_volumes() {
     local REPLICATED
 
     REPLICATED=$(echo "${SWARM_JSON}" | jq -c '.swarm.volumes[] | select(.replicated) | .replicated')
+
+cat <<EOF >>"${DOCKER_COMPOSE_TEMPLATE}"
+
+volumes:
+EOF
 
     if [ -n "${REPLICATED}" ]; then
         create_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${REPLICATED}"

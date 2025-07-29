@@ -9,13 +9,22 @@
 #   1. LOGIN_ARG: The username for SSH login.
 #   2. PASSWORD_ARG: The password for SSH login.
 #   3. VOLUME_NAME_ARG: The name of the GlusterFS volume to create.
-#   4. HOSTNAME_LIST_ARG: An array of hostnames where the GlusterFS volume will be set up.
+#   4. MOUNT_SUBFOLDER_ARG: An optional subfolder under /mnt where the GlusterFS volume will be mounted.
+#   5. HOSTNAME_LIST_ARG: An array of hostnames where the GlusterFS volume will be set up.
 #
 setup_replicated_volumes() {
     local LOGIN_ARG="${1}"
     local PASSWORD_ARG="${2}"
     local VOLUME_NAME_ARG="${1}"
+    local MOUNT_SUBFOLDER_ARG="${4}"
+    shift 4
     local HOSTNAME_LIST_ARG=("$@")
+    local FINAL_MOUNT_POINT="/mnt"
+
+    # Default to just /mnt if not specified
+    if [[ -n "${MOUNT_SUBFOLDER_ARG}" ]]; then
+         FINAL_MOUNT_POINT="${FINAL_MOUNT_POINT}/${MOUNT_SUBFOLDER_ARG}"
+    fi
 
     if [ ${#HOSTNAME_LIST_ARG[@]} -eq 0 ]; then
         log_error "⚠️ The list of hosts is empty."
@@ -142,14 +151,14 @@ EOF_GLUSTERFS
              IP_INDEX=$(host "${HOSTNAME}" | awk '/has address/ { print $4 }')
             log_warning "\t\t- Mounting the GlusterFS volume ${VOLUME_NAME_ARG} on ${IP_INDEX}"
             sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" \
-                    "echo \"localhost:/${VOLUME_NAME_ARG} /mnt glusterfs defaults,_netdev,backupvolfile-server=localhost 0 0\" | sudo tee -a /etc/fstab > /dev/null"
-            sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "sudo mount.glusterfs localhost:/${VOLUME_NAME_ARG} /mnt"
+                    "echo \"localhost:/${VOLUME_NAME_ARG} ${FINAL_MOUNT_POINT} glusterfs defaults,_netdev,backupvolfile-server=localhost 0 0\" | sudo tee -a /etc/fstab > /dev/null"
+            sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "sudo mount.glusterfs localhost:/${VOLUME_NAME_ARG} ${FINAL_MOUNT_POINT}"
             sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "df -Th"
          done
 
          # Testing
          log_warning "\t\t- Testing the GlusterFS volume ${VOLUME_NAME_ARG} on all nodes"
-         sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "echo 'Hello World!' | sudo tee /mnt/test.txt"
+         sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "echo 'Hello World!' | sudo tee ${FINAL_MOUNT_POINT}/test.txt"
 
          for IP_INDEX in "${HOSTNAME_LIST_ARG[@]}"; do
              local IP_INDEX
@@ -157,7 +166,7 @@ EOF_GLUSTERFS
              IP_INDEX=$(host "${HOSTNAME_LIST_ARG[INDEX]}" | awk '/has address/ { print $4 }')
 
              log_warning "\t\t- Checking test file on host ${IP_INDEX} ..."
-             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "cat /mnt/test.txt"
+             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "cat ${FINAL_MOUNT_POINT}/test.txt"
              sleep 5
          done
      fi

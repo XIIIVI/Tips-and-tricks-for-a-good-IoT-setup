@@ -180,7 +180,8 @@
             {
                 "replicated": [
                     {
-                        "name": "gfs-data",
+                        "name": "replicated-data",
+                        "mountpoint-subfolder": "glusterfs",
                         "hosts": [ "orchestrator1", "orchestrator2", "orchestrator3" ],
                         "folders": [ "loki" ]
                     }
