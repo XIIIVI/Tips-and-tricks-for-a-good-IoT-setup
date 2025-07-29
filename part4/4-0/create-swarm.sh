@@ -9,6 +9,7 @@ source "../../commons/commons-ssh.sh"
 
 #
 # display_help
+# Displays the help message for the script.
 #
 display_help() {
     log_debug "Usage: ${0} --configuration-file | -f <Configuration file>"
@@ -19,6 +20,7 @@ display_help() {
 
 #
 # display_settings
+# Displays the current settings of the script.
 #
 display_settings() {
     log_debug "S E T T I N G S"
@@ -29,6 +31,16 @@ display_settings() {
 
 #
 # create_single_manager
+# This function creates and adds a single manager to the Swarm cluster.
+# Arguments:
+#   1. LOGIN_ARG: The login to the host.
+#   2. PASSWORD_ARG: The password to the host.
+#   3. HOSTNAME_DEFAULT_PREFIX_ARG: The default prefix for the hostname.
+#   4. JSON_OBJECT_ARG: The JSON object containing the manager's configuration.
+#   5. INDEX_ARG: The index of the manager in the list.
+#   6. REGISTRY_IP_ADDRESS_ARG: The IP address of the Docker registry.
+#   7. REGISTRY_PORT_ARG: The port of the Docker registry.
+#   8. REGISTRY_CERTIFICATE_FILE_ARG: The path to the Docker registry certificate file.
 #
 create_single_manager() {
     local LOGIN_ARG="${1}"
@@ -38,7 +50,7 @@ create_single_manager() {
     local INDEX_ARG="${5}"
     local REGISTRY_IP_ADDRESS_ARG="${6}"
     local REGISTRY_PORT_ARG="${7}"
-    local REGISTRY_CERTIFICATE_FILE_ARG="$8"
+    local REGISTRY_CERTIFICATE_FILE_ARG="${8}"
     local IP_ADDRESS
 
     IP_ADDRESS=$(echo "$JSON_OBJECT_ARG" | jq -r '.["ip-address"]')
@@ -148,6 +160,14 @@ create_single_manager() {
 
 #
 # create_managers
+# This function creates the Swarm managers based on the provided JSON configuration.
+# Arguments:
+#   1. LOGIN_ARG: The login to the host.
+#   2. PASSWORD_ARG: The password to the host.
+#   3. JSON_ARG: The JSON object containing the managers' configuration.
+#   4. REGISTRY_IP_ADDRESS_ARG: The IP address of the Docker registry.
+#   5. REGISTRY_PORT_ARG: The port of the Docker registry.
+#   6. REGISTRY_CERTIFICATE_FILE_ARG: The path to the Docker registry certificate file.
 #
 create_managers() {
     local LOGIN_ARG="${1}"
@@ -182,6 +202,15 @@ create_managers() {
 
 #
 # create_single_worker
+# This function creates and adds a single worker to the Swarm cluster.
+# Arguments:
+#   1. LOGIN_ARG: The login to the host.
+#   2. PASSWORD_ARG: The password to the host.
+#   3. JSON_OBJECT_ARG: The JSON object containing the worker's configuration.
+#   4. INDEX_ARG: The index of the worker in the list.
+#   5. REGISTRY_IP_ADDRESS_ARG: The IP address of the Docker registry.
+#   6. REGISTRY_PORT_ARG: The port of the Docker registry.
+#   7. REGISTRY_CERTIFICATE_FILE_ARG: The path to the Docker registry certificate file.
 #
 create_single_worker() {
     local LOGIN_ARG="${1}"
@@ -259,6 +288,14 @@ create_single_worker() {
 
 #
 # create_workers
+# This function creates the Swarm workers based on the provided JSON configuration.
+# Arguments:
+#   1. LOGIN_ARG: The login to the host.
+#   2. PASSWORD_ARG: The password to the host.
+#   3. JSON_ARG: The JSON object containing the workers' configuration.
+#   4. REGISTRY_IP_ADDRESS_ARG: The IP address of the Docker registry.
+#   5. REGISTRY_PORT_ARG: The port of the Docker registry.
+#   6. REGISTRY_CERTIFICATE_FILE_ARG: The path to the Docker registry certificate file.
 #
 create_workers() {
     local LOGIN_ARG="${1}"
@@ -285,6 +322,12 @@ create_workers() {
 
 #
 # create_credentials
+# This function creates and adds credentials as Docker secrets to the Swarm cluster.
+# Arguments:
+#   1. LOGIN_ARG: The login to the host.
+#   2. PASSWORD_ARG: The password to the host.
+#   3. IP_ADDRESS_ARG: The IP address of the host.
+#   4. JSON_ARG: The JSON object containing the credentials configuration.
 #
 create_credentials() {
     local LOGIN_ARG="${1}"
@@ -317,6 +360,12 @@ create_credentials() {
 
 #
 # create_certificates
+# This function creates and adds certificates as Docker secrets to the Swarm cluster.
+# Arguments:
+#   1. LOGIN_ARG: The login to the host.
+#   2. PASSWORD_ARG: The password to the host.
+#   3. IP_ADDRESS_ARG: The IP address of the host.
+#   4. JSON_ARG: The JSON object containing the certificates configuration.
 #
 create_certificates() {
     local LOGIN_ARG="${1}"
@@ -348,6 +397,13 @@ create_certificates() {
 
 #
 # create_single_configuration
+# This function creates a single configuration as a Docker config in the Swarm cluster.
+# Arguments:
+#   1. LOGIN_ARG: The login to the host.
+#   2. PASSWORD_ARG: The password to the host.
+#   3. IP_ADDRESS_ARG: The IP address of the host.
+#   4. NAME_ARG: The name of the configuration.
+#   5. FILE_ARG: The path to the configuration file.
 #
 create_single_configuration() {
     local LOGIN_ARG="${1}"
@@ -364,6 +420,12 @@ create_single_configuration() {
 
 #
 # create_configurations
+# This function creates configurations as Docker configs in the Swarm cluster.
+# Arguments:
+#   1. LOGIN_ARG: The login to the host.
+#   2. PASSWORD_ARG: The password to the host.
+#   3. IP_ADDRESS_ARG: The IP address of the host.
+#   4. JSON_ARG: The JSON object containing the configurations.
 #
 create_configurations() {
     local LOGIN_ARG="${1}"
@@ -383,6 +445,15 @@ create_configurations() {
 
 #
 # create_overlay_network
+# This function creates a single overlay network in the Swarm cluster.
+# Arguments:
+#   1. LOGIN_ARG: The login to the host.
+#   2. PASSWORD_ARG: The password to the host.
+#   3. IP_ADDRESS_ARG: The IP address of the host.
+#   4. NAME_ARG: The name of the overlay network.
+#   5. ENCRYPTED_ARG: Whether the overlay network is encrypted (true/false).
+#   6. ATTACHABLE_ARG: Whether the overlay network is attachable (true/false).
+#   7. INTERNAL_ARG: Whether the overlay network is internal (true/false).
 #
 create_overlay_network() {
     local LOGIN_ARG="${1}"
@@ -399,6 +470,10 @@ create_overlay_network() {
 
 #
 # create_overlay_networks
+# - param1: LOGIN_ARG, the login to the host
+# - param2: PASSWORD_ARG, the password to the host
+# - param3: IP_ADDRESS_ARG, the IP address of the host
+# - param4: JSON_ARG, the JSON content containing the overlay networks configuration
 #
 create_overlay_networks() {
     local LOGIN_ARG="${1}"
@@ -430,7 +505,65 @@ create_overlay_networks() {
 }
 
 #
+# create_replicated_volumes
+# - param1: LOGIN_ARG, the login to the host
+# - param2: PASSWORD_ARG, the password to the host
+# - param3: IP_ADDRESS_ARG, the IP address of the host
+# - param4: REPLICATED_JSON, the JSON content containing the replicated volumes configuration
+#
+create_replicated_volumes() {
+    local LOGIN_ARG="${1}"
+    local PASSWORD_ARG="${2}"
+    local IP_ADDRESS_ARG="${3}"
+    local REPLICATED_JSON="${4}"
+
+    log_debug "\t- Creating the replicated volumes on ${IP_ADDRESS_ARG}"
+    echo "${REPLICATED_JSON}" | jq -c '.[]' | while read -r VOLUME; do
+        local NAME
+        local MOUNT_POINT
+        local HOSTS
+        local FOLDERS
+
+        NAME=$(echo "${VOLUME}" | jq -r '.name')
+        MOUNT_POINT=$(echo "${VOLUME}" | jq -r '.["mount-point"]')
+        HOSTS=$(echo "${VOLUME}" | jq -r '.hosts | join(", ")')
+        FOLDERS=$(echo "${VOLUME}" | jq -r '.folders | join(", ")')
+
+        echo "Replicated Volume Properties:"
+        echo "  NAME        : ${NAME}"
+        echo "  MOUNT_POINT : ${MOUNT_POINT}"
+        echo "  HOSTS       : ${HOSTS}"
+        echo "  FOLDERS     : ${FOLDERS}"
+        echo
+    done
+}
+
+#
+# create_replicated_volumes
+# - param1: LOGIN_ARG, the login to the host
+# - param2: PASSWORD_ARG, the password to the host
+# - param3: IP_ADDRESS_ARG, the IP address of the host
+# - param4: JSON_ARG, the JSON content containing the overlay networks configuration
+#
+create_volumes() {
+    local LOGIN_ARG="${1}"
+    local PASSWORD_ARG="${2}"
+    local IP_ADDRESS_ARG="${3}"
+    local SWARM_JSON="${4}"
+    local REPLICATED
+
+    REPLICATED=$(echo "${SWARM_JSON}" | jq -c '.swarm.volumes[] | select(.replicated) | .replicated')
+
+    if [ -n "${REPLICATED}" ]; then
+        create_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${REPLICATED}"
+    else
+        log_debug "\t -No replicated volumes found in the configuration."    
+    fi
+}
+
+#
 # main
+# The main function that orchestrates the creation of the Swarm cluster.
 #
 main() {
     MANDATORY_PARAMETER_LIST=("CONFIGURATION_FILE" "LOGIN" "PASSWORD")

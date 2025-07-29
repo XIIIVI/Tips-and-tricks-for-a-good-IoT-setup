@@ -2,6 +2,11 @@
 
 #
 # activate_i2c
+# This function activates I2C on the specified host by ensuring the necessary modules and configurations are in place.
+# Arguments:
+#   1. ROOT_USER_ARG: The username for SSH login.
+#   2. ROOT_PASS_ARG: The password for SSH login.
+#   3. HOST_IP_ARG: The IP address of the host where I2C should be activated.
 #
 activate_i2c() {
     local ROOT_USER_ARG="$1"
@@ -33,6 +38,12 @@ EOF_I2C
 
 #
 # install_uctronics_pi_rack
+# This function installs the Uctronics Pi Rack on the specified host.
+# Arguments:
+#   1. ROOT_USER_ARG: The username for SSH login.
+#   2. ROOT_PASS_ARG: The password for SSH login.
+#   3. HOST_IP_ARG: The IP address of the host where the Uctronics Pi Rack should be installed.
+#   4. DIR_DATA_ARG: The directory containing the necessary files for installation.
 #
 install_uctronics_pi_rack() {
     local ROOT_USER_ARG="$1"

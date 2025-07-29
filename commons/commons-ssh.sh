@@ -2,6 +2,9 @@
 
 #
 # remove_ssh_host
+# This function removes the SSH host key for a given IP address from the known_hosts file.
+# Arguments:
+#   1. IP_ADDRESS_ARG: The IP address of the host to remove.
 #
 remove_ssh_host() {
   local IP_ADDRESS_ARG="${1}"
@@ -17,6 +20,8 @@ remove_ssh_host() {
 
 #
 # setup_runoverssh
+# This function checks if runoverssh is installed and installs it if not.
+# It is used to execute commands or scripts on remote hosts over SSH.
 #
 install_runoverssh() {
   if ! command -v runoverssh &>/dev/null; then
@@ -31,54 +36,14 @@ install_runoverssh() {
 }
 
 #
-# execute_command
-#
-execute_command() {
-  local USER_ARG="$1"
-  local PASSWORD_ARG="$2"
-  local TARGET_ARG="$3"
-  local CMD="$4"
-
-  install_runoverssh
-
-  if [[ -z "$TARGET_ARG" || -z "$USER_ARG" || -z "$PASSWORD_ARG" || -z "$CMD" ]]; then
-    log_error "Usage: execute_command <target> <login> <password> <command>"
-    return 1
-  fi
-
-  log_info "🚀 Executing remote command on $TARGET_ARG..."
-  runoverssh -h "$TARGET_ARG" -l "$USER_ARG" -p "$PASSWORD_ARG" -c "$CMD"
-}
-
-#
-# execute_script
-#
-execute_script() {
-  local TARGET_ARG="$1"
-  local USER_ARG="$2"
-  local PASSWORD_ARG="$3"
-  local SCRIPT_PATH_ARG="$4"
-  shift 4
-  local SCRIPT_ARGS=("$@")
-
-  install_runoverssh
-
-  if [[ -z "$TARGET_ARG" || -z "$USER_ARG" || -z "$PASSWORD_ARG" || -z "$SCRIPT_PATH_ARG" ]]; then
-    log_error "Usage: execute_script <target> <login> <password> <script_path>"
-    return 1
-  fi
-
-  if [[ ! -f "$SCRIPT_PATH_ARG" ]]; then
-    log_error "❌ Local script not found: $SCRIPT_PATH_ARG"
-    return 1
-  fi
-
-  log_info "📄 Uploading and executing script on $TARGET_ARG..."
-  runoverssh -h "$TARGET_ARG" -l "$USER_ARG" -p "$PASSWORD_ARG" -f "$SCRIPT_PATH_ARG" -- "${SCRIPT_ARGS[@]}"
-}
-
-#
 # copy_file_to_host
+# This function copies a file from the local machine to a remote host using SSH and scp.
+# Arguments:
+#   1. ROOT_USER_ARG: The username for SSH login.
+#   2. ROOT_PASS_ARG: The password for SSH login.
+#   3. HOST_IP_ARG: The IP address of the remote host.
+#   4. SOURCE_FILE_ARG: The path to the source file on the local machine.
+#   5. TARGET_DIR_ARG: The target directory on the remote host where the file will be copied.
 #
 copy_file_to_host() {
   local ROOT_USER_ARG="$1"
@@ -99,6 +64,12 @@ copy_file_to_host() {
 
 #
 # reboot
+# This function reboots a remote node using SSH.
+# Arguments:
+#   1. LOGIN_ARG: The username for SSH login.
+#   2. PASSWORD_ARG: The password for SSH login.
+#   3. NODE_IP_ARG: The IP address of the remote node.
+#   4. HOSTNAME_ARG: The hostname of the remote node.
 #
 reboot() {
   local LOGIN_ARG="${1}"
@@ -113,6 +84,9 @@ reboot() {
 
 #
 # wait_for_device
+# This function waits for a remote device to come back online after a reboot.
+# Arguments:
+#   1. REMOTE_HOST_ARG: The hostname or IP address of the remote device.
 #
 wait_for_device() {
   local REMOTE_HOST_ARG="${1}"

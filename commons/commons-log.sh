@@ -1,15 +1,14 @@
 #!/bin/bash
 
 #
-# log_progress
-#   - param: message
-#
-log_progress() {
-    printf "\r%s" "${1}"
-}
-
-#
 # log_progress_bar
+# It overwrites the previous message on the same line.
+# This function displays a progress bar in the terminal.
+# Arguments:
+#   1. MESSAGE_ARG: The main message to display.
+#   2. CURRENT_VALUE_ARG: The current value of the progress.
+#   3. TOTAL_VALUE_ARG: The total value of the progress.
+#   4. SUBMESSAGE_ARG: An optional sub-message to display (at the end of the line).
 #
 log_progress_bar() {
     local MESSAGE_ARG="${1}"
@@ -38,6 +37,8 @@ log_progress_bar() {
 
 #
 # log_error
+# This function logs an error message in red color.
+# Arguments:
 #   - param: message
 #
 log_error() {
@@ -46,6 +47,8 @@ log_error() {
 
 #
 # log_warning
+# This function logs a warning message in yellow color.
+# Arguments:
 #   - param: message
 #
 log_warning() {
@@ -54,6 +57,8 @@ log_warning() {
 
 #
 # log_info
+# This function logs an informational message in green color.
+# Arguments:
 #   - param: message
 #
 log_info() {
@@ -62,6 +67,8 @@ log_info() {
 
 #
 # log_debug
+# This function logs a debug message in magenta color.
+# Arguments:
 #  - param: message
 #
 log_debug() {

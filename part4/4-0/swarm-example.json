@@ -175,7 +175,19 @@
                 ]
             }
         ],
-        "exposed-ports": []
+        "exposed-ports": [],
+        "volumes": [
+            {
+                "replicated": [
+                    {
+                        "mount-point": "/mnt",
+                        "name": "gfs-data",
+                        "hosts": [ "orchestrator1", "orchestrator2", "orchestrator3" ],
+                        "folders": [ "loki" ]
+                    }
+                ]
+            }
+        ]
     },
     "registry": {
         "ip-address": "192.168.2.90",

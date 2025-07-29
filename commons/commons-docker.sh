@@ -2,6 +2,14 @@
 
 #
 # install_docker
+# This function installs Docker on the specified host.
+# Arguments:
+#   1. ROOT_USER_ARG: The username for SSH login.
+#   2. ROOT_PASS_ARG: The password for SSH login.
+#   3. HOST_IP_ARG: The IP address of the host where Docker should be installed.
+#   4. REGISTRY_IP_ARG: The IP address of the Docker registry (optional).
+#   5. REGISTRY_PORT_ARG: The port of the Docker registry (optional).
+#   6. REGISTRY_CERTIFICATE_ARG: The path to the Docker registry certificate (optional).
 #
 install_docker() {
     local ROOT_USER_ARG="$1"

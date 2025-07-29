@@ -3,6 +3,14 @@
 #
 # create_replicated_disks
 #
+# This function sets up replicated disks using GlusterFS on a list of hosts.
+# It requires the login credentials and a list of hostnames to operate.
+# Arguments:
+#   1. LOGIN_ARG: The username for SSH login.
+#   2. PASSWORD_ARG: The password for SSH login.
+#   3. VOLUME_NAME_ARG: The name of the GlusterFS volume to create.
+#   4. HOSTNAME_LIST_ARG: An array of hostnames where the GlusterFS volume will be set up.
+#
 create_replicated_disks() {
     local LOGIN_ARG="${1}"
     local PASSWORD_ARG="${2}"
@@ -56,7 +64,7 @@ SCRIPT_EOF
 
          unset COUNTER
 
-         log_info "\n\nSetting up GlusterFS on discovered hosts: ${DISCOVERED_IPS[*]}"
+         log_debug "\t- Setting up GlusterFS on discovered hosts: ${DISCOVERED_IPS[*]}"
          COUNTER=1
 
          for HOSTNAME in "${HOSTNAME_LIST_ARG[@]}"; do
