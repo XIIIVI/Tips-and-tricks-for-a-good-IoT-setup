@@ -719,8 +719,10 @@ main() {
         exit 1
     fi
 
-    local JSON_CONTENT
     local DOCKER_COMPOSE_TEMPLATE="./docker-compose-template.yml"
+    local JSON_CONTENT
+    local TMP_DIR
+
     TMP_DIR=$(mktemp -d -t "swarm")
     JSON_CONTENT=$(cat "${CONFIGURATION_FILE}")
     CONFIG_TEMPLATE="${TMP_DIR}/config-template.yml"
@@ -728,12 +730,6 @@ main() {
     SECRET_TEMPLATE="${TMP_DIR}/secret-template.yml"
     VOLUME_TEMPLATE="${TMP_DIR}/volume-template.yml"
 
-    # Initializes the Docker compose template file
-    cat <<EOF >"${DOCKER_COMPOSE_TEMPLATE}"
-version: '3.8'
-
-services:
-EOF
 
     # Extract the Docker registry settings
     local REGISTRY_IP_ADDRESS
@@ -750,7 +746,11 @@ EOF
     log_info "✅ The swarm has been successfully created"
     
     log_info "Creating the Docker compose template file at ${DOCKER_COMPOSE_TEMPLATE}"
-    cat <<EOF_TEMPLATE >>"${DOCKER_COMPOSE_TEMPLATE}"
+    cat <<EOF_TEMPLATE >"${DOCKER_COMPOSE_TEMPLATE}"
+version: '3.8'
+
+services:
+
 ${CONFIG_TEMPLATE}
 
 ${NETWORK_TEMPLATE}
