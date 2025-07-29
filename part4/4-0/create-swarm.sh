@@ -162,13 +162,13 @@ EOF
                  local KEY
                  local VALUE
 
-                 KEY=$(echo "$LABEL" | jq -r '.key')
+                 KEY=$(echo "$LABEL" | jq -r '.key' | tr '[:lower:]' '[:upper:]')
                  VALUE=$(echo "$LABEL" | jq -r '.value')
 
                  echo "${KEY}=${VALUE}" >> "${CONFIG_DIR}/${NODE_HOSTNAME}_env.config"
             done
 
-            create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}" "${NODE_HOSTNAME}_env.config" "${CONFIG_DIR}/"
+            create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}" "${NODE_HOSTNAME}_env.config" "${CONFIG_DIR}/${NODE_HOSTNAME}_env.config"
 
             log_warning "########################"
             log_warning "# Content of the Swarm #"
@@ -297,7 +297,7 @@ create_single_worker() {
             echo "$JSON_OBJECT_ARG" | jq -c 'select(.config != null) | {hostname, config}' | while read -r entry; do
                  hostname=$(echo "$entry" | jq -r '.hostname')
                  echo "$entry" | jq -r '.config[] | "\(.key)=\(.value)"' > "${CONFIG_DIR}/${hostname}.config"
-                 create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}" "${hostname}.config" "${CONFIG_DIR}/"
+                 create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}" "${hostname}.config" "${CONFIG_DIR}/${hostname}.config"
             done
 
             log_warning "\t\t- Generating from the label definition => ${hostname}_env.config"
@@ -307,13 +307,13 @@ create_single_worker() {
                  local KEY
                  local VALUE
 
-                 KEY=$(echo "$LABEL" | jq -r '.key')
+                 KEY=$(echo "$LABEL" | jq -r '.key' | tr '[:lower:]' '[:upper:]')
                  VALUE=$(echo "$LABEL" | jq -r '.value')
 
                  echo "${KEY}=${VALUE}" >> "${CONFIG_DIR}/${hostname}_env.config"
             done
 
-            create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}" "${hostname}_env.config" "${CONFIG_DIR}/"
+            create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}" "${hostname}_env.config" "${CONFIG_DIR}/${hostname}_env.config"
 
             # Summary
             log_warning "########################"
@@ -466,6 +466,10 @@ create_single_configuration() {
     copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${FILE_ARG}" "/tmp/"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker config create ${NAME_ARG} /tmp/${NAME_ARG}"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${NAME_ARG}"
+    cat <<EOF >>"${DOCKER_COMPOSE_TEMPLATE}"
+  ${NAME_ARG}:
+    external: true
+EOF
 }
 
 #
@@ -494,10 +498,6 @@ EOF
         eval "$line"
 
         create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${NAME}" "${FILE}"
-    cat <<EOF >>"${DOCKER_COMPOSE_TEMPLATE}"
-  ${NAME}:
-    external: true
-EOF
     done
 }
 
