@@ -15,7 +15,7 @@
 setup_replicated_volumes() {
     local LOGIN_ARG="${1}"
     local PASSWORD_ARG="${2}"
-    local VOLUME_NAME_ARG="${1}"
+    local VOLUME_NAME_ARG="${3}"
     local MOUNT_SUBFOLDER_ARG="${4}"
     shift 4
     local HOSTNAME_LIST_ARG=("$@")
@@ -48,7 +48,7 @@ setup_replicated_volumes() {
          cat << SCRIPT_EOF >> "${VOLUME_CREATION_SCRIPT}"
 #!/bin/bash
 
-gluster volume create ${VOLUME_NAME_ARG} replica 3 \\
+gluster volume create ${VOLUME_NAME_ARG} replica ${#HOSTNAME_LIST_ARG[@]} \\
 SCRIPT_EOF
 
          log_warning "\t\t- Installing required packages"

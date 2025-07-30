@@ -1,8 +1,16 @@
-The script **create_swarm.sh** creates and configures both managers and workers.
+The script **create_swarm.sh** creates and configures both managers and workers of a Docker Swarm.
 
 > :warning: This script must be executed with `sudo`.
 
-It uses a JSON file as a configuration file. When configuring each nodes, it takes in charge the Docker installation, hostname settings and even SSD1306 displays from [Uctronics](https://www.uctronics.com/download/Amazon/U6143_Manual.pdf?srsltid=AfmBOorkfytPr7klwMuoJBEXmr1BwNof1r0O-7JbS5iHn3ylYz1aS9aB).
+It uses a JSON file as a configuration file. When configuring each nodes, it takes in charge 
+* the Docker installation, 
+* hostname settings,
+* SSD1306 displays from [Uctronics](https://www.uctronics.com/download/Amazon/U6143_Manual.pdf?srsltid=AfmBOorkfytPr7klwMuoJBEXmr1BwNof1r0O-7JbS5iHn3ylYz1aS9aB),
+* creation of 
+- the configurations,
+- the credentials,
+- the networks,
+- the volumes
 
 ---
 # Parameters of the script
