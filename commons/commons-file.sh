@@ -30,15 +30,11 @@ setup_replicated_volumes() {
          local DISCOVERED_IPS
          local FINAL_MOUNT_POINT="/mnt"
 
+         log_debug "\t- Setting up replicated disks with GlusterFS"
+
          # Default to just /mnt if not specified
          if [[ -n "${VOLUME_NAME_ARG}" ]]; then
              FINAL_MOUNT_POINT="${FINAL_MOUNT_POINT}/${VOLUME_NAME_ARG}"
-         fi
-
-         # ✅ Check that FINAL_MOUNT_POINT does not already exist
-         if [[ -e "${FINAL_MOUNT_POINT}" ]]; then
-             log_error "\t❌ Mount point '${FINAL_MOUNT_POINT}' already exists."
-             exit 1
          fi
 
          MASTER_IP_ADDRESS=$(host "${HOSTNAME_LIST_ARG[0]}" | awk '/has address/ { print $4 }')
@@ -52,8 +48,6 @@ setup_replicated_volumes() {
              IP=$(host "${HOSTNAME}" | awk '/has address/ { print $4 }')
              DISCOVERED_IPS+=("${IP}")
          done
-
-         log_debug "\t- Setting up replicated disks with GlusterFS"
 
          # Clean up temp files
          rm -Rf "${ETC_HOSTS_FILE}" "${ETC_FSTAB_FILE}" "${VOLUME_CREATION_SCRIPT}"
@@ -80,7 +74,8 @@ SCRIPT_EOF
              echo "${IP_INDEX} ${HOSTNAME}" >>"${ETC_HOSTS_FILE}"
              echo "${HOSTNAME}:/$VOLUME_NAME_ARG  ${GLUSTER_DIR}/${COUNTER}  glusterfs  defaults,_netdev  0  0" >> "${ETC_FSTAB_FILE}"
              printf "%s" "${HOSTNAME}:${GLUSTER_DIR}/${COUNTER}/brick " >> "${VOLUME_CREATION_SCRIPT}"
-                
+
+
              COUNTER=$((COUNTER + 1))
          done
 
@@ -94,18 +89,28 @@ SCRIPT_EOF
          for IP_INDEX in "${DISCOVERED_IPS[@]}"; do
              remove_ssh_host "${IP_INDEX}"
 
-             log_warning "\t\t\t- Declaring the GlusterFS member to /etc/hosts"
+             log_warning "\t\t- Declaring the GlusterFS member to /etc/hosts"
              copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}" "${ETC_HOSTS_FILE}" "/tmp"
              sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "sudo tee -a /etc/hosts < /tmp/$(basename ${ETC_HOSTS_FILE})"
 
-             log_warning "\t\t\t- Declaring the GlusterFS member to /etc/fstab"
+             log_warning "\t\t- Declaring the GlusterFS member to /etc/fstab"
              copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_INDEX}" "${ETC_FSTAB_FILE}" "/tmp"
              sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "sudo tee -a /etc/fstab < /tmp/$(basename ${ETC_FSTAB_FILE})"
 
-             log_warning "\t\t\t- Installing GlusterFS on ${IP_INDEX}"
+             log_warning "\t\t- Installing GlusterFS on ${IP_INDEX}"
              sshpass -p "$PASSWORD_ARG" ssh -o StrictHostKeyChecking=no "$LOGIN_ARG@$IP_INDEX" <<EOF_GLUSTERFS
     export DEBIAN_FRONTEND=noninteractive
     export DEBCONF_NOWARNINGS=yes 
+
+
+     # ✅ Check that FINAL_MOUNT_POINT does not already exist
+     if [[ -e "${FINAL_MOUNT_POINT}" ]]; then
+         echo "\t❌ Mount point '${FINAL_MOUNT_POINT}' already exists."
+         exit 1
+     else
+         echo "Creating mount point '${FINAL_MOUNT_POINT}'"
+         sudo mkdir -p "${FINAL_MOUNT_POINT}"    
+     fi
 
     sudo mkdir -p "${GLUSTER_DIR}/${COUNTER}"
 

@@ -2,6 +2,8 @@ The script **create_swarm.sh** creates and configures both managers and workers 
 
 > :warning: This script must be executed with `sudo`.
 
+> :warning: All the hosts should have the same default login and password for an automatic deployment.
+
 It uses a JSON file as a configuration file. When configuring each nodes, it takes in charge 
 * the Docker installation, 
 * hostname settings,
