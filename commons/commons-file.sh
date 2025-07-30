@@ -27,7 +27,7 @@ setup_replicated_volumes() {
     fi
 
     if [ ${#HOSTNAME_LIST_ARG[@]} -eq 0 ]; then
-        log_error "⚠️ The list of hosts is empty."
+        log_error "\t⚠️ The list of hosts is empty."
     else
          local ETC_HOSTS_FILE=/tmp/etc_hosts.addon
          local ETC_FSTAB_FILE=/tmp/etc_fstab.addon
