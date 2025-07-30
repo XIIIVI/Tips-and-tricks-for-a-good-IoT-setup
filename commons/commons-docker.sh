@@ -170,7 +170,28 @@ EOF_SSH
              copy_file_to_host "${ROOT_USER_ARG}" "${ROOT_PASS_ARG}" "${HOST_IP_ARG}" "${REGISTRY_CERTIFICATE_ARG}" "/usr/local/share/ca-certificates/" 
              sshpass -p "${ROOT_PASS_ARG}" ssh -o StrictHostKeyChecking=no "${ROOT_USER_ARG}@${HOST_IP_ARG}" "sudo mkdir -p /etc/docker/certs.d/${REGISTRY_URL}"
              sshpass -p "${ROOT_PASS_ARG}" ssh -o StrictHostKeyChecking=no "${ROOT_USER_ARG}@${HOST_IP_ARG}" "sudo cp /usr/local/share/ca-certificates/${CERTIFICATE_FILENAME} /etc/docker/certs.d/${REGISTRY_URL}/ca.crt"
-             sshpass -p "${ROOT_PASS_ARG}" ssh -o StrictHostKeyChecking=no "${ROOT_USER_ARG}@${HOST_IP_ARG}" "sudo update-ca-certificates"                     
+             sshpass -p "${ROOT_PASS_ARG}" ssh -o StrictHostKeyChecking=no "${ROOT_USER_ARG}@${HOST_IP_ARG}" "sudo update-ca-certificates"
+
+             # Run curl and capture both output and HTTP status code
+             log_debug "\t\t- Testing the connection to the Docker registry ${REGISTRY_URL} ..."
+
+             RESPONSE=$(curl -sk -w "%{http_code}" -o /tmp/catalog_response.json "https://${REGISTRY_URL}/v2/_catalog")
+
+             # Check if request was successful
+             if [[ "$RESPONSE" -eq 200 ]]; then
+                 log_warning "\t\t\t✅ Docker registry is reachable."
+
+                 # Optional: Parse the catalog response
+                 if jq -e '.repositories | length > 0' /tmp/catalog_response.json > /dev/null; then
+                     log_warning "\t\t\t✅ Repositories found"
+                 else
+                     log_error "\t\t\t⚠️ No repositories found."
+                 fi
+             else
+                 log_error "\t\t\t❌ Failed to reach registry. Status code: $RESPONSE"
+                 log_error "\t\t\tYou can add -v to curl for verbose SSL/certificate/debug details."
+                 exit 1
+             fi
         fi
 
         log_debug "\t- Restarting Docker service to apply the changes ..."
