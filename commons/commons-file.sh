@@ -31,12 +31,23 @@ setup_replicated_volumes() {
     else
          local ETC_HOSTS_FILE=/tmp/etc_hosts.addon
          local ETC_FSTAB_FILE=/tmp/etc_fstab.addon
-         local GLUSTER_DIR="/gluster/bricks"
+         local GLUSTER_DIR="/gluster-${MOUNT_SUBFOLDER_ARG}/bricks"
          local COUNTER=1
          local VOLUME_CREATION_SCRIPT=/tmp/glusterfs_volume_creation_script.sh
          local MASTER_IP_ADDRESS
+         local DISCOVERED_IPS
 
          MASTER_IP_ADDRESS=$(host "${HOSTNAME_LIST_ARG[0]}" | awk '/has address/ { print $4 }')
+
+         # Build the IP address list
+         DISCOVERED_IPS=()
+
+         for HOSTNAME in "${HOSTNAME_LIST_ARG[@]}"; do
+             local IP
+
+             IP=$(host "${HOSTNAME}" | awk '/has address/ { print $4 }')
+             DISCOVERED_IPS+=("${IP}")
+         done
 
          log_debug "\t- Setting up replicated disks with GlusterFS"
 
@@ -98,8 +109,11 @@ SCRIPT_EOF
 
     sudo mkdir -p "${GLUSTER_DIR}/${COUNTER}"
 
-    sudo -E apt update -qq
-    sudo -E apt install glusterfs-server -y -qq \
+    sudo -E apt-get update -qq
+    sudo -E apt-get install glusterfs-server -y -qq \
+         -o Dpkg::Progress-Fancy="0" \
+         -o Dpkg::Use-Pty="0"
+    sudo -E apt-get dist-upgrade -y -qq \
          -o Dpkg::Progress-Fancy="0" \
          -o Dpkg::Use-Pty="0"
     sudo systemctl enable glusterd
@@ -149,7 +163,7 @@ EOF_GLUSTERFS
              local IP_INDEX
 
              IP_INDEX=$(host "${HOSTNAME}" | awk '/has address/ { print $4 }')
-            log_warning "\t\t- Mounting the GlusterFS volume ${VOLUME_NAME_ARG} on ${IP_INDEX}"
+            log_warning "\t\t- Mounting the GlusterFS volume ${VOLUME_NAME_ARG} (${FINAL_MOUNT_POINT}) on ${IP_INDEX}"
             sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" \
                     "echo \"localhost:/${VOLUME_NAME_ARG} ${FINAL_MOUNT_POINT} glusterfs defaults,_netdev,backupvolfile-server=localhost 0 0\" | sudo tee -a /etc/fstab > /dev/null"
             sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "sudo mount.glusterfs localhost:/${VOLUME_NAME_ARG} ${FINAL_MOUNT_POINT}"
@@ -160,11 +174,7 @@ EOF_GLUSTERFS
          log_warning "\t\t- Testing the GlusterFS volume ${VOLUME_NAME_ARG} on all nodes"
          sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "echo 'Hello World!' | sudo tee ${FINAL_MOUNT_POINT}/test.txt"
 
-         for IP_INDEX in "${HOSTNAME_LIST_ARG[@]}"; do
-             local IP_INDEX
-
-             IP_INDEX=$(host "${HOSTNAME_LIST_ARG[INDEX]}" | awk '/has address/ { print $4 }')
-
+         for IP_INDEX in "${DISCOVERED_IPS[@]}"; do
              log_warning "\t\t- Checking test file on host ${IP_INDEX} ..."
              sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "cat ${FINAL_MOUNT_POINT}/test.txt"
              sleep 5
