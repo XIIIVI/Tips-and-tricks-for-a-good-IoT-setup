@@ -31,8 +31,8 @@ fi
 
 # Load module and install tools
 sudo modprobe i2c-dev
-sudo apt update -y  1>/dev/null
-sudo DEBIAN_FRONTEND=noninteractive apt install -y -qq i2c-tools 1>/dev/null
+sudo apt-get update -y  1>/dev/null
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq i2c-tools 1>/dev/null
 EOF_I2C
 }
 

@@ -131,7 +131,7 @@ main() {
     log_info "Installing the required packages"
     DEBIAN_FRONTEND=noninteractive apt-get -y -qq update
     DEBIAN_FRONTEND=noninteractive apt-get install -y dos2unix figlet jq
-    DEBIAN_FRONTEND=noninteractive apt autoremove -y
+    DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
 
     FIGLET_FONT="${PWD}/larry3d.flf"
 

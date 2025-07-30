@@ -17,12 +17,6 @@ setup_replicated_volumes() {
     local VOLUME_NAME_ARG="${3}"
     shift 3
     local HOSTNAME_LIST_ARG=("$@")
-    local FINAL_MOUNT_POINT="/mnt"
-
-    # Default to just /mnt if not specified
-    if [[ -n "${VOLUME_NAME_ARG}" ]]; then
-         FINAL_MOUNT_POINT="${FINAL_MOUNT_POINT}/${VOLUME_NAME_ARG}"
-    fi
 
     if [ ${#HOSTNAME_LIST_ARG[@]} -eq 0 ]; then
         log_error "\t⚠️ The list of hosts is empty."
@@ -34,6 +28,18 @@ setup_replicated_volumes() {
          local VOLUME_CREATION_SCRIPT=/tmp/glusterfs_volume_creation_script.sh
          local MASTER_IP_ADDRESS
          local DISCOVERED_IPS
+         local FINAL_MOUNT_POINT="/mnt"
+
+         # Default to just /mnt if not specified
+         if [[ -n "${VOLUME_NAME_ARG}" ]]; then
+             FINAL_MOUNT_POINT="${FINAL_MOUNT_POINT}/${VOLUME_NAME_ARG}"
+         fi
+
+         # ✅ Check that FINAL_MOUNT_POINT does not already exist
+         if [[ -e "${FINAL_MOUNT_POINT}" ]]; then
+             log_error "\t❌ Mount point '${FINAL_MOUNT_POINT}' already exists."
+             exit 1
+         fi
 
          MASTER_IP_ADDRESS=$(host "${HOSTNAME_LIST_ARG[0]}" | awk '/has address/ { print $4 }')
 
