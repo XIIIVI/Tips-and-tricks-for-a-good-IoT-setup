@@ -688,6 +688,10 @@ create_swarm() {
 # The main function that orchestrates the creation of the Swarm cluster.
 #
 main() {
+    local DOCKER_COMPOSE_TEMPLATE="./docker-compose-template.yml"
+    local JSON_CONTENT
+    local TMP_DIR
+
     MANDATORY_PARAMETER_LIST=("CONFIGURATION_FILE" "LOGIN" "PASSWORD")
     JOIN_WORKER_CMD_FILE="./join_worker_cmd.swarm"
     MANAGER_IP_ADDRESS_FILE="./ip.swarm"
@@ -766,10 +770,6 @@ main() {
         log_error "❌ Error: Configuration file '${CONFIGURATION_FILE}' is missing or empty." >&2
         exit 1
     fi
-
-    local DOCKER_COMPOSE_TEMPLATE="./docker-compose-template.yml"
-    local JSON_CONTENT
-    local TMP_DIR
 
     TMP_DIR=$(mktemp -d)
     JSON_CONTENT=$(cat "${CONFIGURATION_FILE}")
