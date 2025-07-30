@@ -771,7 +771,7 @@ main() {
     local JSON_CONTENT
     local TMP_DIR
 
-    TMP_DIR=$(mktemp -d -t "swarm")
+    TMP_DIR=$(mktemp -d)
     JSON_CONTENT=$(cat "${CONFIGURATION_FILE}")
     CONFIG_TEMPLATE="${TMP_DIR}/config-template.yml"
     NETWORK_TEMPLATE="${TMP_DIR}/network-template.yml"
