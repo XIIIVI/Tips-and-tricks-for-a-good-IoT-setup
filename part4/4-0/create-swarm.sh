@@ -634,6 +634,56 @@ EOF
 }
 
 #
+# create_swarm
+# This function creates a Swarm cluster based on the provided configuration.
+# Arguments:
+#   1. LOGIN_ARG: The login to the host.
+#   2. PASSWORD_ARG: The password to the host.
+#   3. JSON_CONTENT_ARG: The JSON content containing the Swarm configuration.
+create_swarm() {
+    local LOGIN_ARG="${1}"
+    local PASSWORD_ARG="${2}"
+    local JSON_CONTENT_ARG="${3}"
+    local REGISTRY_IP_ADDRESS
+    local REGISTRY_PORT
+    local REGISTRY_CERTIFICATE_FILE
+
+    REGISTRY_IP_ADDRESS=$(jq -r '.registry["ip-address"]' <<< "${JSON_CONTENT_ARG}")
+    REGISTRY_PORT=$(jq -r '.registry.port' <<< "${JSON_CONTENT_ARG}")
+    REGISTRY_CERTIFICATE_FILE=$(jq -r '.registry["certificate-file"]' <<< "${JSON_CONTENT_ARG}")
+
+    # Check that the value is not empty
+    if [[ -n "$REGISTRY_IP_ADDRESS" && -n "$REGISTRY_PORT" && -n "${REGISTRY_CERTIFICATE_FILE}" ]]; then
+        # Check that the file exists
+        if [[ -f "${REGISTRY_CERTIFICATE_FILE}" && -s "${REGISTRY_CERTIFICATE_FILE}" ]]; then
+            if ! grep -q "BEGIN CERTIFICATE" "${REGISTRY_CERTIFICATE_FILE}"; then
+                log_error "❌ File exists but does not appear to be a valid certificate. Aborting ..."
+                exit 1
+            fi
+        else
+            log_error "Error: Certificate file does not exist at path '${REGISTRY_CERTIFICATE_FILE}'."
+            exit 1
+        fi
+    elif [[ -z "$REGISTRY_IP_ADDRESS" && -z "$REGISTRY_PORT" && -z "${REGISTRY_CERTIFICATE_FILE}" ]]; then
+        log_info "Local registry is not used"
+    else
+        log_error "❌ Partial configuration detected—some variables are missing while others are present."
+        [[ -z "$REGISTRY_IP_ADDRESS" ]] && log_error "\tMissing: REGISTRY_IP_ADDRESS"
+        [[ -z "$REGISTRY_PORT" ]] && log_error "\tMissing: REGISTRY_PORT"
+        [[ -z "${REGISTRY_CERTIFICATE_FILE}" ]] && log_error "\tMissing: REGISTRY_CERTIFICATE_FILE"
+        exit 1
+    fi     
+
+    log_info "Creating the Swarm cluster"
+    
+    create_managers "${LOGIN_ARG}" "${PASSWORD_ARG}" "${JSON_CONTENT_ARG}" "${REGISTRY_IP_ADDRESS}" "${REGISTRY_PORT}" "${REGISTRY_CERTIFICATE_FILE}"
+    create_workers "${LOGIN_ARG}" "${PASSWORD_ARG}" "${JSON_CONTENT_ARG}" "${REGISTRY_IP_ADDRESS}" "${REGISTRY_PORT}" "${REGISTRY_CERTIFICATE_FILE}"
+    create_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${JSON_CONTENT_ARG}"
+
+    log_info "✅ Swarm cluster created successfully."    
+}
+
+#
 # main
 # The main function that orchestrates the creation of the Swarm cluster.
 #
@@ -728,22 +778,8 @@ main() {
     SECRET_TEMPLATE="${TMP_DIR}/secret-template.yml"
     VOLUME_TEMPLATE="${TMP_DIR}/volume-template.yml"
 
-
-    # Extract the Docker registry settings
-    local REGISTRY_IP_ADDRESS
-    local REGISTRY_PORT
-    local REGISTRY_CERTIFICATE_FILE
-
-    REGISTRY_IP_ADDRESS=$(jq -r '.registry["ip-address"]' "${CONFIGURATION_FILE}")
-    REGISTRY_PORT=$(jq -r '.registry.port' "${CONFIGURATION_FILE}")
-    REGISTRY_CERTIFICATE_FILE=$(jq -r '.registry["certificate-file"]' "${CONFIGURATION_FILE}")
-
-    create_managers "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}" "${REGISTRY_IP_ADDRESS}" "${REGISTRY_PORT}" "${REGISTRY_CERTIFICATE_FILE}"
-    create_workers "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}" "${REGISTRY_IP_ADDRESS}" "${REGISTRY_PORT}" "${REGISTRY_CERTIFICATE_FILE}"
-    # Creates the volumes at the end as replicated volumes as they can be hosted either by managers and workers
-    create_volumes "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT_ARG}"
-
-    log_info "✅ The swarm has been successfully created"
+    # Creates the Swarm 
+    create_swarm "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}"
     
     log_info "Creating the Docker compose template file at ${DOCKER_COMPOSE_TEMPLATE}"
     cat <<EOF_TEMPLATE >"${DOCKER_COMPOSE_TEMPLATE}"
