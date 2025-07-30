@@ -106,7 +106,6 @@ EOF
                create_certificates "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT_ARG}"
                create_configurations "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT_ARG}"
                create_overlay_networks "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT_ARG}"
-               create_volumes "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT_ARG}"
             else
                 local ATTEMPT_COUNT
                 local MAX_ATTEMPTS
@@ -582,12 +581,11 @@ create_replicated_volumes() {
          local FOLDER_LIST
          local MOUNTPOINT_SUBFOLDER
 
-         MOUNTPOINT_SUBFOLDER=$(echo "${VOLUME}" | jq -r '.mountpoint-subfolder')
          VOLUME_NAME=$(echo "${VOLUME}" | jq -r '.name')
          HOSTNAME_LIST=$(echo "${VOLUME}" | jq -r '.hosts | join(", ")')
          FOLDER_LIST=$(echo "${VOLUME}" | jq -r '.folders | join(", ")')
 
-         setup_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME}" "${MOUNTPOINT_SUBFOLDER}" "${HOSTNAME_LIST[@]}"
+         setup_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME}" "${HOSTNAME_LIST[@]}"
 
          log_warning "\t\t- Creating the folders on the volume ${VOLUME_NAME}"
          for FOLDER in "${FOLDER_LIST[@]}"; do
@@ -742,6 +740,8 @@ main() {
 
     create_managers "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}" "${REGISTRY_IP_ADDRESS}" "${REGISTRY_PORT}" "${REGISTRY_CERTIFICATE_FILE}"
     create_workers "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}" "${REGISTRY_IP_ADDRESS}" "${REGISTRY_PORT}" "${REGISTRY_CERTIFICATE_FILE}"
+    # Creates the volumes at the end as replicated volumes as they can be hosted either by managers and workers
+    create_volumes "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT_ARG}"
 
     log_info "✅ The swarm has been successfully created"
     

@@ -155,7 +155,6 @@ As described in [part #6](https://medium.com/p/aeedbf038511), the array `volumes
                 "replicated": [
                     {
                         "name": "...",
-                        "mountpoint-subfolder": "...",
                         "hosts": [ "...", ...,  ],
                         "folders": [ "...", ... ]
                     }
@@ -167,9 +166,7 @@ As described in [part #6](https://medium.com/p/aeedbf038511), the array `volumes
 
 The array `replicated`provides a convenient way to create a replicated GlusterFS storage across multiple host (managers and workers can be mixed).
 
-`name` is the name of the volume.
-
-`mountpoint-subfolder` is the name of the folder in `/mnt` that will be used as a mounting point.
+`name` is the name of the volume (the mounting point is `/mnt/<name>`).
 
 `hosts` is the list on hosts where the replicated storage must be installed.
 

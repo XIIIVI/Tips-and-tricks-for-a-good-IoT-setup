@@ -105,7 +105,6 @@ main() {
         "${LOGIN}" \
         "${PASSWORD}" \
         "${VOLUME_NAME}" \
-        "glusterfs-data" \
         "${DISCOVERED_HOSTNAME_LISt[@]}"
 }
 

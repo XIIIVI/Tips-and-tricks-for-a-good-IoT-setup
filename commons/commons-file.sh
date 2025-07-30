@@ -9,21 +9,19 @@
 #   1. LOGIN_ARG: The username for SSH login.
 #   2. PASSWORD_ARG: The password for SSH login.
 #   3. VOLUME_NAME_ARG: The name of the GlusterFS volume to create.
-#   4. MOUNT_SUBFOLDER_ARG: An optional subfolder under /mnt where the GlusterFS volume will be mounted.
-#   5. HOSTNAME_LIST_ARG: An array of hostnames where the GlusterFS volume will be set up.
+#   4. HOSTNAME_LIST_ARG: An array of hostnames where the GlusterFS volume will be set up.
 #
 setup_replicated_volumes() {
     local LOGIN_ARG="${1}"
     local PASSWORD_ARG="${2}"
     local VOLUME_NAME_ARG="${3}"
-    local MOUNT_SUBFOLDER_ARG="${4}"
-    shift 4
+    shift 3
     local HOSTNAME_LIST_ARG=("$@")
     local FINAL_MOUNT_POINT="/mnt"
 
     # Default to just /mnt if not specified
-    if [[ -n "${MOUNT_SUBFOLDER_ARG}" ]]; then
-         FINAL_MOUNT_POINT="${FINAL_MOUNT_POINT}/${MOUNT_SUBFOLDER_ARG}"
+    if [[ -n "${VOLUME_NAME_ARG}" ]]; then
+         FINAL_MOUNT_POINT="${FINAL_MOUNT_POINT}/${VOLUME_NAME_ARG}"
     fi
 
     if [ ${#HOSTNAME_LIST_ARG[@]} -eq 0 ]; then
@@ -31,7 +29,7 @@ setup_replicated_volumes() {
     else
          local ETC_HOSTS_FILE=/tmp/etc_hosts.addon
          local ETC_FSTAB_FILE=/tmp/etc_fstab.addon
-         local GLUSTER_DIR="/gluster-${MOUNT_SUBFOLDER_ARG}/bricks"
+         local GLUSTER_DIR="/gluster-${VOLUME_NAME_ARG}/bricks"
          local COUNTER=1
          local VOLUME_CREATION_SCRIPT=/tmp/glusterfs_volume_creation_script.sh
          local MASTER_IP_ADDRESS
@@ -87,11 +85,7 @@ SCRIPT_EOF
          log_warning "\t\t- Setting up GlusterFS on discovered hosts: ${DISCOVERED_IPS[*]}"
          COUNTER=1
 
-         for HOSTNAME in "${HOSTNAME_LIST_ARG[@]}"; do
-             local IP_INDEX
-
-             IP_INDEX=$(host "${HOSTNAME}" | awk '/has address/ { print $4 }')
-
+         for IP_INDEX in "${DISCOVERED_IPS[@]}"; do
              remove_ssh_host "${IP_INDEX}"
 
              log_warning "\t\t\t- Declaring the GlusterFS member to /etc/hosts"
@@ -129,16 +123,13 @@ EOF_GLUSTERFS
          unset COUNTER
 
          # Probing the peers
-         for ((INDEX = 1; INDEX < ${#HOSTNAME_LIST_ARG[@]}; INDEX++)); do
-             local IP_INDEX
-
-             IP_INDEX=$(host "${HOSTNAME_LIST_ARG[INDEX]}" | awk '/has address/ { print $4 }')
-             log_warning "\t\t- Probing host ${IP_INDEX} ..."
-             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster peer probe ${IP_INDEX}"
+         for ((IP_INDEX = 1; IP_INDEX < ${#DISCOVERED_IPS[@]}; IP_INDEX++)); do
+             log_warning "\t\t- Probing host ${DISCOVERED_IPS[${IP_INDEX}]} ..."
+             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster peer probe ${DISCOVERED_IPS[${IP_INDEX}]}"
              sleep 5
          done
 
-         # Waiting for the ppers
+         # Waiting for the peers
          log_debug "\t⏳ Waiting for peers to join trusted pool..."
          sleep 5
          sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster peer status"        
@@ -159,10 +150,7 @@ EOF_GLUSTERFS
 
          # Mount the glusterFS volume where applications can access the files
          log_debug "\t- Mounting the GlusterFS volume ${VOLUME_NAME_ARG} on all nodes" 
-         for HOSTNAME in "${HOSTNAME_LIST_ARG[@]}"; do
-             local IP_INDEX
-
-             IP_INDEX=$(host "${HOSTNAME}" | awk '/has address/ { print $4 }')
+         for IP_INDEX in "${DISCOVERED_IPS[@]}"; do
             log_warning "\t\t- Mounting the GlusterFS volume ${VOLUME_NAME_ARG} (${FINAL_MOUNT_POINT}) on ${IP_INDEX}"
             sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" \
                     "echo \"localhost:/${VOLUME_NAME_ARG} ${FINAL_MOUNT_POINT} glusterfs defaults,_netdev,backupvolfile-server=localhost 0 0\" | sudo tee -a /etc/fstab > /dev/null"
