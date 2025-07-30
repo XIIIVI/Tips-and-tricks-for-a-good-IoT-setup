@@ -155,7 +155,7 @@ EOF
             # Labels
             log_debug "\t- Adding the labels to the manager"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo docker node update ${LABEL_STRING} ${NODE_HOSTNAME}"
-            log_warning "\t- Generating the configuration with env variables from the label definition => ${hostname}_env.config"
+            log_warning "\t- Generating the configuration with env variables from the label definition => ${CONFIG_DIR}/${NODE_HOSTNAME}_env.config"
 
             touch "${CONFIG_DIR}/${NODE_HOSTNAME}_env.config"
 
@@ -664,6 +664,8 @@ create_swarm() {
             log_error "Error: Certificate file does not exist at path '${REGISTRY_CERTIFICATE_FILE}'."
             exit 1
         fi
+
+        log_debug "Using local registry at ${REGISTRY_IP_ADDRESS}:${REGISTRY_PORT} with certificate file ${REGISTRY_CERTIFICATE_FILE}"        
     elif [[ -z "$REGISTRY_IP_ADDRESS" && -z "$REGISTRY_PORT" && -z "${REGISTRY_CERTIFICATE_FILE}" ]]; then
         log_info "Local registry is not used"
     else
