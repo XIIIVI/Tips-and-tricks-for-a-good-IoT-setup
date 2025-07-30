@@ -2,6 +2,7 @@
 
 source "../../commons/commons-cli.sh"
 source "../../commons/commons-docker.sh"
+source "../../commons/commons-file.sh"
 source "../../commons/commons-i2c.sh"
 source "../../commons/commons-log.sh"
 source "../../commons/commons-net.sh"
@@ -582,8 +583,10 @@ create_replicated_volumes() {
          local MOUNTPOINT_SUBFOLDER
 
          VOLUME_NAME=$(echo "${VOLUME}" | jq -r '.name')
-         HOSTNAME_LIST=$(echo "${VOLUME}" | jq -r '.hosts | join(", ")')
-         FOLDER_LIST=$(echo "${VOLUME}" | jq -r '.folders | join(", ")')
+
+         # Parse 'hosts' and 'folders' arrays as Bash arrays
+         readarray -t HOSTNAME_LIST < <(echo "${VOLUME}" | jq -r '.hosts[]')
+         readarray -t FOLDER_LIST < <(echo "${VOLUME}" | jq -r '.folders[]')
 
          setup_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME}" "${HOSTNAME_LIST[@]}"
 
@@ -592,7 +595,7 @@ create_replicated_volumes() {
              local IP_ADDRESS
 
              IP_ADDRESS=$(host "${HOSTNAME_LIST[0]}" | awk '/has address/ { print $4 }')
-             log_debug "\t\t\t- Creating the folder ${FOLDER} on ${HOSTNAME} at IP address ${IP_ADDRESS}"
+             log_debug "\t\t\t- Creating the folder ${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
              sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo mkdir -p /mnt/${MOUNTPOINT_SUBFOLDER}/${FOLDER}"
              cat <<EOF >>"${VOLUME_TEMPLATE}"
   ${VOLUME_NAME}-${FOLDER}:
@@ -789,13 +792,13 @@ version: '3.8'
 
 services:
 
-${CONFIG_TEMPLATE}
+(cat ${CONFIG_TEMPLATE})
 
-${NETWORK_TEMPLATE}
+cat(${NETWORK_TEMPLATE})
 
-${SECRET_TEMPLATE}
+cat(${SECRET_TEMPLATE})
 
-${VOLUME_TEMPLATE}
+cat(${VOLUME_TEMPLATE})
 EOF_TEMPLATE
 
     log_warning "DO NOT FORGET TO CHANGE THE PASSWORD OF THE ROOT USER ON ALL NODES !!!"

@@ -1,9 +1,5 @@
 #!/bin/bash
 
-START_IP_ADDRESS=
-
-declare -A HOSTMAP
-
 #
 # check_hostname_conflict
 # This function checks if a given hostname conflicts with the local machine or other hosts on the LAN.
