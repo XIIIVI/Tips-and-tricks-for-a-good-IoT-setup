@@ -8,15 +8,7 @@ echo
 # Get the current hostname
 HOSTNAME=$(cat /etc/hostname)
 
-# Remove "-123"-style numeric suffix from the hostname
-PARENT_HOSTNAME="${HOSTNAME%-[0-9]*}"
-
-# If result is same as original, we are at the top level
-if [[ "$PARENT_HOSTNAME" == "$HOSTNAME" ]]; then
-    PARENT_HOSTNAME="orchestrator"
-fi
-
-export PARENT_HOSTNAME
+export HOSTNAME
 
 # Create the log directory if it does not exist
 mkdir -p /telegraf/logs
