@@ -151,7 +151,9 @@ main() {
     sed -i "s/#-MODULE_VERSION-#/${IMAGE_VERSION}/g" "level${LEVEL_NUMBER}/entrypoint.sh"
 
     # Dockerfile
-    log_debug "Copying the file Dockerfile"
+    log_debug "Copying and customizing the file Dockerfile"
+    sed -i "s/#-IP_ADDRESS-#:#-PORT-#/${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/g" "./Dockerfile"
+    sed -i "s/#-IMAGE_VERSION-#/${IMAGE_VERSION}/g" "./Dockerfile"
     cp "./Dockerfile" "level${LEVEL_NUMBER}/Dockerfile"
 
     # Build the Telegraf image

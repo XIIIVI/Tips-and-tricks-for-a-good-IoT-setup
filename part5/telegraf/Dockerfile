@@ -1,6 +1,6 @@
 # Define build arg for the base image
-ARG LOCAL_REGISTRY= <IP_ADDRESS >:4443
-ARG IMAGE_VERSION=1.34.4-alpine
+ARG LOCAL_REGISTRY=#-IP_ADDRESS-#:#-PORT-#
+ARG IMAGE_VERSION=#-IMAGE_VERSION-#
 
 # Final stage: use the same or another base image
 FROM ${LOCAL_REGISTRY}/telegraf:${IMAGE_VERSION}

@@ -580,9 +580,10 @@ create_replicated_volumes() {
          local VOLUME_NAME
          local HOSTNAME_LIST
          local FOLDER_LIST
-         local MOUNTPOINT_SUBFOLDER
+         local MOUNTPOINT_DIR
 
          VOLUME_NAME=$(echo "${VOLUME}" | jq -r '.name')
+         MOUNTPOINT_DIR="/mnt/${VOLUME_NAME}"
 
          # Parse 'hosts' and 'folders' arrays as Bash arrays
          readarray -t HOSTNAME_LIST < <(echo "${VOLUME}" | jq -r '.hosts[]')
@@ -595,17 +596,16 @@ create_replicated_volumes() {
              local IP_ADDRESS
 
              IP_ADDRESS=$(host "${HOSTNAME_LIST[0]}" | awk '/has address/ { print $4 }')
-             log_debug "\t\t\t- Creating the folder ${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
-             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo mkdir -p /mnt/${MOUNTPOINT_SUBFOLDER}/${FOLDER}"
+             log_debug "\t\t\t- Creating the folder ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
+             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo mkdir -p ${MOUNTPOINT_DIR}/${FOLDER}"
              cat <<EOF >>"${VOLUME_TEMPLATE}"
   ${VOLUME_NAME}-${FOLDER}:
     driver: local
     driver_opts:
       type: "none"
       o: "bind"
-      device: "/mnt/${MOUNTPOINT_SUBFOLDER}/${FOLDER}"
+      device: "/${MOUNTPOINT_DIR}/${FOLDER}"
 EOF
-
          done
     done
 }
@@ -668,7 +668,7 @@ create_swarm() {
             exit 1
         fi
 
-        log_debug "Using local registry at ${REGISTRY_IP_ADDRESS}:${REGISTRY_PORT} with certificate file ${REGISTRY_CERTIFICATE_FILE}"        
+        log_info "Using local registry at ${REGISTRY_IP_ADDRESS}:${REGISTRY_PORT} with certificate file ${REGISTRY_CERTIFICATE_FILE}"        
     elif [[ -z "$REGISTRY_IP_ADDRESS" && -z "$REGISTRY_PORT" && -z "${REGISTRY_CERTIFICATE_FILE}" ]]; then
         log_info "Local registry is not used"
     else
@@ -792,13 +792,13 @@ version: '3.8'
 
 services:
 
-(cat ${CONFIG_TEMPLATE})
+$(cat ${CONFIG_TEMPLATE})
 
-cat(${NETWORK_TEMPLATE})
+$(cat ${NETWORK_TEMPLATE})
 
-cat(${SECRET_TEMPLATE})
+$(cat ${SECRET_TEMPLATE})
 
-cat(${VOLUME_TEMPLATE})
+$(cat ${VOLUME_TEMPLATE})
 EOF_TEMPLATE
 
     log_warning "DO NOT FORGET TO CHANGE THE PASSWORD OF THE ROOT USER ON ALL NODES !!!"

@@ -4,6 +4,8 @@ The script **create_swarm.sh** creates and configures both managers and workers 
 
 > :warning: All the hosts should have the same default login and password for an automatic deployment.
 
+:warning::warning::warning: THE SWARM CREATION AND CONFIGURATION IS A LONG RUNNING PROCESS (Around 50mn for 5 devices):warning::warning::warning:
+
 It uses a JSON file as a configuration file. When configuring each nodes, it takes in charge 
 * the Docker installation, 
 * hostname settings,
@@ -12,7 +14,7 @@ It uses a JSON file as a configuration file. When configuring each nodes, it tak
 - the configurations,
 - the credentials,
 - the networks,
-- the volumes
+- the volumes.
 
 ---
 # Parameters of the script

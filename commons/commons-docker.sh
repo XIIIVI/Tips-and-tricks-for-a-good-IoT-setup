@@ -173,7 +173,7 @@ EOF_SSH
              sshpass -p "${ROOT_PASS_ARG}" ssh -o StrictHostKeyChecking=no "${ROOT_USER_ARG}@${HOST_IP_ARG}" "sudo update-ca-certificates"
 
              # Run curl and capture both output and HTTP status code
-             log_debug "\t\t- Testing the connection to the Docker registry ${REGISTRY_URL} ..."
+             log_warning "\t\t- Testing the connection to the Docker registry ${REGISTRY_URL} ..."
 
              RESPONSE=$(curl -sk -w "%{http_code}" -o /tmp/catalog_response.json "https://${REGISTRY_URL}/v2/_catalog")
 
