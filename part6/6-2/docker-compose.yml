@@ -49,6 +49,11 @@ services:
       placement:
         constraints:
           - node.labels.level == 0
+    ports:
+      - target: 8791    # container port
+        published: 8791 # port exposed on the swarm nodes
+        protocol: tcp
+        mode: host      # or 'ingress' for routing mesh
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -78,6 +83,11 @@ services:
       placement:
         constraints:
           - node.labels.level == 1
+    ports:
+      - target: 8791    # container port
+        published: 8791 # port exposed on the swarm nodes
+        protocol: tcp
+        mode: host      # or 'ingress' for routing mesh
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
