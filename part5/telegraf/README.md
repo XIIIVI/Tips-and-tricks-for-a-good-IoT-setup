@@ -28,25 +28,9 @@ sudo ./build-telegraf-images.sh --local-registry-address <LOCAL_REGISTRY_IP_ADDR
 
 3) Then update the stack ```sudo PRIVATE_REPO=<IP_ADDRESS_OF_THE_REPO>:<LOCAL_REGISTRY_PORT> docker stack deploy --compose-file docker-compose.yml iot-stack```
 
-To list the services on a given node: ```sudo docker node ps <Node's name>```
-
-To remove the stack, type ```sudo docker stack rm iot-stack```
+To check the installation, please check the [list of the useful commands](../../../docker-swarm-useful-commands.md).
 
 ---
-Troubleshootings
+# Troubleshootings
 
-If the deployment does not work (CURRENT STATE set to Rejected), check this constraint 
-
-⚠️ ON ALL THE CLIENTS, copy $REGISTRY_DIR/certs/registry.crt into /usr/local/share/ca-certificates/registry.crt
-
-```bash
-
-sudo mkdir -p /usr/local/share/ca-certificates/ && vi /usr/local/share/ca-certificates/registry.crt
-
-sudo mkdir -p /etc/docker/certs.d/<IP_ADDRESS_OF_THE_REPO>:4443/ && sudo vi /etc/docker/certs.d/<IP_ADDRESS_OF_THE_REPO>:4443/ca.crt
-
-sudo systemctl restart docker
-
-sudo systemctl status docker
-
-```
+If you face any issues, please refer to this [page](../../../docker-swarm-troubleshooting.md).
