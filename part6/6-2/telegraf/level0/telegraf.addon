@@ -1,7 +1,7 @@
 # A plugin that can transmit metrics over HTTP
 [[outputs.http]]
   ## URL is the address to send metrics to
-  url = "http://vminsert:8480/api/v2/write"
+  url = "http://iot-stack_vminsert:8480/api/v2/write"
 
   ## Timeout for HTTP message
   # timeout = "5s"
