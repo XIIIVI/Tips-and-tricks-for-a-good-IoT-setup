@@ -1,7 +1,7 @@
 # A plugin that can transmit metrics over HTTP
 [[outputs.http]]
   ## URL is the address to send metrics to
-  url = "http://iot-stack_vminsert:8480/api/v2/write"
+  url = "http://iot-stack_vminsert:8480/write"
 
   ## Timeout for HTTP message
   # timeout = "5s"
@@ -17,4 +17,4 @@
 
   ## HTTP Content-Encoding for write request body, can be set to "gzip" to
   ## compress body or "identity" to apply no encoding.
-  content_encoding = "identity"
+  content_encoding = "gzip"

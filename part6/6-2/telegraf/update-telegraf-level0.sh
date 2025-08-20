@@ -129,6 +129,7 @@ main() {
     log_info "Preparing the environment from ${DIR_PART5}"
     log_debug "\t- Copying files from ${DIR_PART5} to the current directory"
     cp "${DIR_PART5}"/build-telegraf-images.sh .
+    cp "${DIR_PART5}"/*.flf .
     cp "${DIR_PART5}"/Dockerfile .
     cp "${DIR_PART5}"/entrypoint.sh .
     cp "${DIR_PART5}"/level0/telegraf.conf ./level0/telegraf.conf
