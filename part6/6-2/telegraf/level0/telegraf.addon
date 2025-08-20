@@ -1,7 +1,7 @@
 # A plugin that can transmit metrics over HTTP
 [[outputs.http]]
   ## URL is the address to send metrics to
-  url = "http://iot-stack_vminsert:8480/write"
+  url = "http://iot-stack_vminsert:8480/insert/0/influx/api/v2/write"
 
   ## Timeout for HTTP message
   # timeout = "5s"
