@@ -185,7 +185,9 @@
                     {
                         "name": "replicated-data",
                         "hosts": [ "orchestrator1", "orchestrator2", "orchestrator3" ],
-                        "folders": [ "loki" ]
+                        "folders": [ "loki" ],
+                        "ownership": "1001:1001",
+                        "permissions": "755"
                     }
                 ]
             }

@@ -233,13 +233,16 @@ services:
       mode: global
       restart_policy:
         condition: on-failure
+      placement:
+        constraints:
+          - node.labels.level == 0
     ports:
       - target: 3100    # container port
         published: 3100 # port exposed on the swarm nodes
         protocol: tcp
         mode: host      # or 'ingress' for routing mesh
     volumes:
-      - /mnt/loki:/loki  # Bind host folder TOTO to container's /loki directory
+      - /mnt/loki:/loki # Persistent storage for Loki
     command: -config.file=/etc/loki/local-config.yaml
 
   alloy-level0:
