@@ -3,14 +3,16 @@ As described in this [post](https://medium.com/p/394ebabea7), we limit the depth
 
 1) Import the Alloy and Loki images
 
-Move to the folder commons and then type the following commands
+Move to the folder ```commons``` and then type the following commands
 
 ```bash
-sudo import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name grafana/loki --image-version 3.0.0
-sudo import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name grafana/alloy --image-version v1.10.2
+sudo ./import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name grafana/loki --image-version 3.0.0
+sudo ./import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name grafana/alloy --image-version v1.10.2
 ```
 
-1) Build the customized Alloy images
+2) Build the customized Alloy images
+
+Move to the ```folder part7/alloy``` and then type the following commands
 
 ```bash
 chmod +x ./build-alloy-images.sh
