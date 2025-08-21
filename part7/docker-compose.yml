@@ -141,7 +141,7 @@ services:
 
 
   vminsert:
-    image: ${PRIVATE_REPO}/victoriametrics/vminsert:v1.119.0-cluster
+    image: ${PRIVATE_REPO}/vminsert:v1.119.0-cluster
     deploy:
       mode: global
       restart_policy:
@@ -161,7 +161,7 @@ services:
       - /etc/hostname:/etc/hostname:ro
 
   vmstorage:
-    image: ${PRIVATE_REPO}/victoriametrics/vmstorage:v1.119.0-cluster
+    image: ${PRIVATE_REPO}/vmstorage:v1.119.0-cluster
     deploy:
       mode: global
       restart_policy:
@@ -179,7 +179,7 @@ services:
       - /data/victoriametrics:/vmstorage
 
   vmselect:
-    image: ${PRIVATE_REPO}/victoriametrics/vmselect:v1.119.0-cluster
+    image: ${PRIVATE_REPO}/vmselect:v1.119.0-cluster
     deploy:
       mode: global
       restart_policy:
@@ -200,7 +200,7 @@ services:
 
 
   vmauth:
-    image: ${PRIVATE_REPO}/victoriametrics/vmauth:v1.119.0
+    image: ${PRIVATE_REPO}/vmauth:v1.119.0
     deploy:
       mode: replicated
       replicas: 1
@@ -226,7 +226,7 @@ services:
 #################################
 
   loki:
-    image: ${PRIVATE_REPO}/grafana/loki:3.0.0
+    image: ${PRIVATE_REPO}/loki:3.0.0
     deploy:
       mode: global
       restart_policy:
@@ -238,7 +238,7 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
 
   alloy-level0:
-    image: ${PRIVATE_REPO}/grafana/alloy:v1.10.2
+    image: ${PRIVATE_REPO}/alloy:v1.10.2
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -247,7 +247,10 @@ services:
         constraints:
           - node.labels.level == 0
     ports:
-      - "3131:3131"
+      - target: 3100    # container port
+        published: 3100 # port exposed on the swarm nodes
+        protocol: tcp
+        mode: host      # or 'ingress' for routing mesh
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -257,7 +260,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   alloy-level1:
-    image: ${PRIVATE_REPO}/grafana/alloy:v1.10.2
+    image: ${PRIVATE_REPO}/alloy:v1.10.2
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -265,8 +268,13 @@ services:
       placement:
         constraints:
           - node.labels.level == 1
+    environment:
+      - PARENT_LEVEL_NUMBER=0
     ports:
-      - "3131:3131"
+      - target: 3100    # container port
+        published: 3100 # port exposed on the swarm nodes
+        protocol: tcp
+        mode: host      # or 'ingress' for routing mesh
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -276,7 +284,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   alloy-level2:
-    image: ${PRIVATE_REPO}/grafana/alloy:v1.10.2
+    image: ${PRIVATE_REPO}/alloy:v1.10.2
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -284,8 +292,13 @@ services:
       placement:
         constraints:
           - node.labels.level == 2
+    environment:
+      - PARENT_LEVEL_NUMBER=1
     ports:
-      - "3131:3131"
+      - target: 3100    # container port
+        published: 3100 # port exposed on the swarm nodes
+        protocol: tcp
+        mode: host      # or 'ingress' for routing mesh
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro

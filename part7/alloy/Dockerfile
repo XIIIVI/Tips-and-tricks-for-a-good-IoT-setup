@@ -5,17 +5,15 @@ ARG IMAGE_VERSION=#-IMAGE_VERSION-#
 # Final stage: use the same or another base image
 FROM ${LOCAL_REGISTRY}/alloy:${IMAGE_VERSION}
 
-ENV MAIN_ALLOY_PORT=3131
-
 COPY ./config.alloy /etc/alloy/config.alloy
 COPY ./banner /banner
 COPY ./entrypoint.sh /entrypoint.sh
 
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh && \
+    mkdir -p /alloy/data
 
 ENTRYPOINT ["/entrypoint.sh"]
 
-EXPOSE ${MAIN_ALLOY_PORT}
 # General Alloy API if needed
 EXPOSE 12345
 

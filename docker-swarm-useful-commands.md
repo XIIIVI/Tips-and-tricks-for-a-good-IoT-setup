@@ -24,7 +24,7 @@
 
 ## Services
 
-* Remove all the services: ```docker service rm $(docker service ls -q)```
+* Remove all the services: ```sudo docker service rm $(sudo docker service ls -q)```
 
 ### Logs
 

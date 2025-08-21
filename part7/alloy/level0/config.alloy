@@ -9,7 +9,7 @@ logging {
 loki.source.api "loki_push_api" {
     http {
         listen_address = "0.0.0.0"
-        listen_port = sys.env("MAIN_ALLOY_PORT")
+        listen_port = 3100
     }
     forward_to = [loki.process.add_labels.receiver]
 }
