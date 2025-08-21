@@ -150,7 +150,7 @@ services:
         constraints:
           - node.labels.level == 0
     command:
-      - '--storageNode=vmstorage:8400'
+      - '--storageNode=iot-stack_vmstorage:8400'
     depends_on:
       - vmstorage
     ports:
@@ -222,6 +222,7 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
+      - ./vmauth-config.yml:/etc/vmauth/config.yml:ro  # Mount your config file
 
 configs:
   vmauth-config.yml:

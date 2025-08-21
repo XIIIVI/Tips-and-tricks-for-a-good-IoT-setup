@@ -135,7 +135,7 @@
             },
             {
                 "name": "vmauth-config.yml",
-                "file": "./data/auth.config.yml"
+                "file": "./data/vmauth.config.yml"
             }
         ],
         "secrets": {

@@ -186,7 +186,7 @@ mosquitto:
                                                                                                           - /etc/timezone:/etc/timezone:ro
                                                                                                           - /etc/localtime:/etc/localtime:ro
                                                                                                           - /etc/hostname:/etc/hostname:ro
-                                                                                                          - /data/victoriametrics:/vmstorage
+                                                                                                          - /data/database:/vmstorage
                                                                                                           
                                                                                                           vmselect:
                                                                                                             image: ${PRIVATE_REPO}/victoriametrics/vmselect:v1.119.0-cluster

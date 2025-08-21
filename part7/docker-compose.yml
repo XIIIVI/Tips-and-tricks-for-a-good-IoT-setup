@@ -150,7 +150,7 @@ services:
         constraints:
           - node.labels.level == 0
     command:
-      - '--storageNode=vmstorage:8400'
+      - '--storageNode=iot-stack_vmstorage:8400'
     depends_on:
       - vmstorage
     ports:
@@ -176,7 +176,7 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
-      - /data/victoriametrics:/vmstorage
+      - /data/database:/vmstorage
 
   vmselect:
     image: ${PRIVATE_REPO}/vmselect:v1.119.0-cluster
@@ -217,7 +217,9 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
-
+      - ./vmauth-config.yml:/etc/vmauth/config.yml:ro  # Mount your config file
+    command:
+      - '-auth.config=/etc/vmauth/config.yml'   
 
 #################################
 #                               #
@@ -232,7 +234,10 @@ services:
       restart_policy:
         condition: on-failure
     ports:
-      - "3100:3100"  # Loki's default HTTP port
+      - target: 3100    # container port
+        published: 3100 # port exposed on the swarm nodes
+        protocol: tcp
+        mode: host      # or 'ingress' for routing mesh
     volumes:
       - /mnt/loki:/loki  # Bind host folder TOTO to container's /loki directory
     command: -config.file=/etc/loki/local-config.yaml
@@ -247,8 +252,8 @@ services:
         constraints:
           - node.labels.level == 0
     ports:
-      - target: 3100    # container port
-        published: 3100 # port exposed on the swarm nodes
+      - target: 3110    # container port
+        published: 3110 # port exposed on the swarm nodes
         protocol: tcp
         mode: host      # or 'ingress' for routing mesh
     volumes:
@@ -271,8 +276,8 @@ services:
     environment:
       - PARENT_LEVEL_NUMBER=0
     ports:
-      - target: 3100    # container port
-        published: 3100 # port exposed on the swarm nodes
+      - target: 3111    # container port
+        published: 3111 # port exposed on the swarm nodes
         protocol: tcp
         mode: host      # or 'ingress' for routing mesh
     volumes:
@@ -294,11 +299,6 @@ services:
           - node.labels.level == 2
     environment:
       - PARENT_LEVEL_NUMBER=1
-    ports:
-      - target: 3100    # container port
-        published: 3100 # port exposed on the swarm nodes
-        protocol: tcp
-        mode: host      # or 'ingress' for routing mesh
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -306,3 +306,8 @@ services:
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
+
+configs:
+  vmauth-config.yml:
+    external: true
+

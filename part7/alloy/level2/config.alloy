@@ -64,6 +64,6 @@ loki.process "add_labels" {
 
 loki.write "parent" {
   endpoint {
-    url = string.format("http://iot-stack_alloy-level%s:3100/loki/api/v1/push", sys.env("PARENT_LEVEL_NUMBER"))
+    url = string.format("http://iot-stack_alloy-level%s:3111/loki/api/v1/push", sys.env("PARENT_LEVEL_NUMBER"))
   }
 }
