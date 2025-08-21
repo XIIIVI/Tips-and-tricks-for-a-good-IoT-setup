@@ -11,8 +11,10 @@ sudo chmod 744 /data/telegraf
 
 1) Import the Telegraf image
 
+Move to the folder commons and then type the following commands
+
 ```bash
-sudo ../../commons/import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name telegraf --image-version 1.34.4-alpine
+sudo commons/import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name telegraf --image-version 1.34.4-alpine
 ```
 
 2) Build the customized Telegraf images

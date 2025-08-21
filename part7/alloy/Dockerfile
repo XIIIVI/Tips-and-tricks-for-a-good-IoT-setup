@@ -3,7 +3,7 @@ ARG LOCAL_REGISTRY=#-IP_ADDRESS-#:#-PORT-#
 ARG IMAGE_VERSION=#-IMAGE_VERSION-#
 
 # Final stage: use the same or another base image
-FROM ${LOCAL_REGISTRY}/grafana/alloy:${IMAGE_VERSION}
+FROM ${LOCAL_REGISTRY}/alloy:${IMAGE_VERSION}
 
 ENV MAIN_ALLOY_PORT=3131
 

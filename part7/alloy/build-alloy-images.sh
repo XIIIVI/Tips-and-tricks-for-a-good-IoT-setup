@@ -88,11 +88,16 @@ check_all_mandatory_parameters() {
 # main
 #
 main() {
-    MANDATORY_PARAMETER_LIST=("LOCAL_REGISTRY_ADDRESS")
+    MANDATORY_PARAMETER_LIST=("LEVEL_NUMBER" "LOCAL_REGISTRY_ADDRESS")
 
     # Parses the parameters
     while (("$#")); do
         case "$1" in
+        --level-number)
+            LEVEL_NUMBER="${2}"
+            shift # past argument
+            shift # past value
+            ;;
         --local-registry-address)
             LOCAL_REGISTRY_ADDRESS="${2}"
             shift # past argument
@@ -119,7 +124,7 @@ main() {
     done
 
     LOCAL_REGISTRY_PORT=${LOCAL_REGISTRY_PORT:="4443"}
-    IMAGE_VERSION=${IMAGE_VERSION:="1.10.2"}
+    IMAGE_VERSION=${IMAGE_VERSION:="v1.10.2"}
 
     log_info "Installing the required packages"
     DEBIAN_FRONTEND=noninteractive apt-get -y -qq update
