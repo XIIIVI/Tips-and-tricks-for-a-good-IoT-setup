@@ -9,8 +9,6 @@ sudo chown root:root /data/telegraf
 sudo chmod 744 /data/telegraf
 ```
 
-❓Type ```./telegraf/build-telegraf-images.sh```
-
 1) Import the Telegraf image
 
 ```bash

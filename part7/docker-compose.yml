@@ -27,7 +27,6 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
-      - /data/mosquitto/config:/mosquitto/config:ro
       - /data/mosquitto/data:/mosquitto/data
       - /data/mosquitto/log:/mosquitto/log
 
@@ -144,8 +143,7 @@ services:
   vminsert:
     image: ${PRIVATE_REPO}/victoriametrics/vminsert:v1.119.0-cluster
     deploy:
-      mode: replicated
-      replicas: 2
+      mode: global
       restart_policy:
         condition: on-failure
       placement:
@@ -183,8 +181,7 @@ services:
   vmselect:
     image: ${PRIVATE_REPO}/victoriametrics/vmselect:v1.119.0-cluster
     deploy:
-      mode: replicated
-      replicas: 2 
+      mode: global
       restart_policy:
         condition: on-failure
       placement:
@@ -228,9 +225,20 @@ services:
 #                               #
 #################################
 
+  loki:
+    image: grafana/loki:2.9.4
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "3100:3100"  # Loki's default HTTP port
+    volumes:
+      - /mnt/loki:/loki  # Bind host folder TOTO to container's /loki directory
+    command: -config.file=/etc/loki/local-config.yaml
 
-  alloy-alllevels:
-    image: ${PRIVATE_REPO}/grafana/alloy:v1.9.1
+  alloy-level0:
+    image: ${PRIVATE_REPO}/grafana/alloy:v1.10.2
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -239,7 +247,45 @@ services:
         constraints:
           - node.labels.level == 0
     ports:
-      - "3100:3100"
+      - "3131:3131"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/hostname:/etc/hostname:ro
+      - /data/alloy:/alloy
+      # For Docker
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  alloy-level1:
+    image: ${PRIVATE_REPO}/grafana/alloy:v1.10.2
+    deploy:
+      mode: global  # Ensures one instance per eligible node
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.labels.level == 1
+    ports:
+      - "3131:3131"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/hostname:/etc/hostname:ro
+      - /data/alloy:/alloy
+      # For Docker
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  alloy-level2:
+    image: ${PRIVATE_REPO}/grafana/alloy:v1.10.2
+    deploy:
+      mode: global  # Ensures one instance per eligible node
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.labels.level == 2
+    ports:
+      - "3131:3131"
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro

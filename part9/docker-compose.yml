@@ -8,266 +8,263 @@ services:
 #                               #
 #################################
 
-  mosquitto:
-    image: ${PRIVATE_REPO}/eclipse-mosquitto:2.0.22-openssl
-    deploy:
-      mode: global  # Ensures one instance per eligible node
-      restart_policy:
-        condition: on-failure
+mosquitto:
+  image: ${PRIVATE_REPO}/eclipse-mosquitto:2.0.22-openssl
+  deploy:
+    mode: global  # Ensures one instance per eligible node
+    restart_policy:
+      condition: on-failure
       resources:
         limits:
           memory: 100M
           cpus: "1"
-      placement:
-        constraints:
-          - node.labels.mqtt == true
-    ports:
-      - "8883:3888"
-    configs:
-      - source: mosquitto.conf
-        target: /mosquitto/config/mosquitto.conf
-    secrets:
-      - source: mosquitto.crt
-        target: /etc/mosquitto/mosquitto.crt
-      - source: mosquitto.key
-        target: /etc/mosquitto/mosquitto.key
-      - source: mosquitto.pwd
-        target: /etc/mosquitto/mosquitto.pwd
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
-      - /data/mosquitto/config:/mosquitto/config:ro
-      - /data/mosquitto/data:/mosquitto/data
-      - /data/mosquitto/log:/mosquitto/log
-
-#################################
-#                               #
-#          P A R T   5          #
-#                               #
-#################################
-  telegraf-level0:
-    image: ${PRIVATE_REPO}/telegraf-level0:1.34.4-alpine
-    deploy:
-      mode: global  # Ensures one instance per eligible node
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 100M
-          cpus: "1"
-      placement:
-        constraints:
-          - node.labels.level == 0
-    ports:
-      - target: 8791    # container port
-        published: 8791 # port exposed on the swarm nodes
-        protocol: tcp
-        mode: host      # or 'ingress' for routing mesh
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
-      - /data/telegraf:/telegraf
-      # For Docker
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      # File system
-      - /proc/sys/fs:/host/proc/sys/fs:ro
-      # For CPU metrics
-      - /proc/stat:/proc/stat:ro
-      - /proc/cpuinfo:/proc/cpuinfo:ro
-      # For memory metrics
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-
-  telegraf-level1:
-    image: ${PRIVATE_REPO}/telegraf-level1:1.34.4-alpine
-    deploy:
-      mode: global  # Ensures one instance per eligible node
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 100M
-          cpus: "1"
-      placement:
-        constraints:
-          - node.labels.level == 1
-    ports:
-      - target: 8791    # container port
-        published: 8791 # port exposed on the swarm nodes
-        protocol: tcp
-        mode: host      # or 'ingress' for routing mesh
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
-      - /data/telegraf:/telegraf
-      # For Docker
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      # For CPU metrics
-      - /proc/stat:/proc/stat:ro
-      - /proc/cpuinfo:/proc/cpuinfo:ro
-      # For memory metrics
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-
-  telegraf-level2:
-    image: ${PRIVATE_REPO}/telegraf-level2:1.34.4-alpine
-    deploy:
-      mode: global  # Ensures one instance per eligible node
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 100M
-          cpus: "1"
-      placement:
-        constraints:
-          - node.labels.level == 2
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
-      - /data/telegraf:/telegraf
-      # For Docker
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      # For CPU metrics
-      - /proc/stat:/proc/stat:ro
-      - /proc/cpuinfo:/proc/cpuinfo:ro
-      # For memory metrics
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      # For temperature metrics
-      - /sys/class/thermal:/sys/class/thermal:ro
-      # For vcgencmd metrics
-      - /tmp/telegraf_metrics:/telegraf_metrics:ro
-
-
-#################################
-#                               #
-#          P A R T   6          #
-#                               #
-#################################
-
-
-  vminsert:
-    image: ${PRIVATE_REPO}/victoriametrics/vminsert:v1.119.0-cluster
-    deploy:
-      mode: replicated
-      replicas: 2
-      restart_policy:
-        condition: on-failure
-      placement:
-        constraints:
-          - node.labels.level == 0
-    command:
-      - '--storageNode=vmstorage:8400'
-    depends_on:
-      - vmstorage
-    ports:
-      - "8480:8480"  # remote_write endpoint for Telegraf
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
-
-  vmstorage:
-    image: ${PRIVATE_REPO}/victoriametrics/vmstorage:v1.119.0-cluster
-    deploy:
-      mode: global
-      restart_policy:
-        condition: on-failure
-      placement:
-        constraints:
-          - node.labels.level == 0
-    command:
-      - '--retentionPeriod=1d'
-      - '--storageDataPath=/vmstorage'
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
-      - /data/victoriametrics:/vmstorage
-
-  vmselect:
-    image: ${PRIVATE_REPO}/victoriametrics/vmselect:v1.119.0-cluster
-    deploy:
-      mode: replicated
-      replicas: 2 
-      restart_policy:
-        condition: on-failure
-      placement:
-        constraints:
-          - node.labels.level == 0
-    depends_on:
-      - vmstorage
-    ports:
-      - "8481:8481"  # UI and query API
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
-    command:
-      - '--storageNode=vmstorage:8401'
-
-
-  vmauth:
-    image: ${PRIVATE_REPO}/victoriametrics/vmauth:v1.119.0
-    deploy:
-      mode: replicated
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-      placement:
-        constraints:
-          - node.labels.level == 0
-    depends_on:
-      - vmselect
-    ports:
-      - "8428:8428"
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
-
-
-#################################
-#                               #
-#          P A R T   7          #
-#                               #
-#################################
-
-
-  alloy-alllevels:
-    image: ${PRIVATE_REPO}/grafana/alloy:v1.9.1
-    deploy:
-      mode: global  # Ensures one instance per eligible node
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-    ports:
-      - "3100:3100"
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
-      - /data/alloy:/alloy
-      # For Docker
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-
-
-
+          placement:
+            constraints:
+              - node.labels.mqtt == true
+              ports:
+                - "8883:3888"
+                configs:
+                  - source: mosquitto.conf
+                  target: /mosquitto/config/mosquitto.conf
+                  secrets:
+                    - source: mosquitto.crt
+                    target: /etc/mosquitto/mosquitto.crt
+                    - source: mosquitto.key
+                    target: /etc/mosquitto/mosquitto.key
+                    - source: mosquitto.pwd
+                    target: /etc/mosquitto/mosquitto.pwd
+                    volumes:
+                      - /etc/timezone:/etc/timezone:ro
+                      - /etc/localtime:/etc/localtime:ro
+                      - /etc/hostname:/etc/hostname:ro
+                      - /data/mosquitto/data:/mosquitto/data
+                      - /data/mosquitto/log:/mosquitto/log
+                      
+                      #################################
+                      #                               #
+                      #          P A R T   5          #
+                      #                               #
+                      #################################
+                      telegraf-level0:
+                        image: ${PRIVATE_REPO}/telegraf-level0:1.34.4-alpine
+                        deploy:
+                          mode: global  # Ensures one instance per eligible node
+                          restart_policy:
+                            condition: on-failure
+                            resources:
+                              limits:
+                                memory: 100M
+                                cpus: "1"
+                                placement:
+                                  constraints:
+                                    - node.labels.level == 0
+                                    ports:
+                                      - target: 8791    # container port
+                                      published: 8791 # port exposed on the swarm nodes
+                                      protocol: tcp
+                                      mode: host      # or 'ingress' for routing mesh
+                                      volumes:
+                                        - /etc/timezone:/etc/timezone:ro
+                                        - /etc/localtime:/etc/localtime:ro
+                                        - /etc/hostname:/etc/hostname:ro
+                                        - /data/telegraf:/telegraf
+                                        # For Docker
+                                        - /var/run/docker.sock:/var/run/docker.sock:ro
+                                        # File system
+                                        - /proc/sys/fs:/host/proc/sys/fs:ro
+                                        # For CPU metrics
+                                        - /proc/stat:/proc/stat:ro
+                                        - /proc/cpuinfo:/proc/cpuinfo:ro
+                                        # For memory metrics
+                                        - /proc:/host/proc:ro
+                                        - /sys:/host/sys:ro
+                                        
+                                        telegraf-level1:
+                                          image: ${PRIVATE_REPO}/telegraf-level1:1.34.4-alpine
+                                          deploy:
+                                            mode: global  # Ensures one instance per eligible node
+                                            restart_policy:
+                                              condition: on-failure
+                                              resources:
+                                                limits:
+                                                  memory: 100M
+                                                  cpus: "1"
+                                                  placement:
+                                                    constraints:
+                                                      - node.labels.level == 1
+                                                      ports:
+                                                        - target: 8791    # container port
+                                                        published: 8791 # port exposed on the swarm nodes
+                                                        protocol: tcp
+                                                        mode: host      # or 'ingress' for routing mesh
+                                                        volumes:
+                                                          - /etc/timezone:/etc/timezone:ro
+                                                          - /etc/localtime:/etc/localtime:ro
+                                                          - /etc/hostname:/etc/hostname:ro
+                                                          - /data/telegraf:/telegraf
+                                                          # For Docker
+                                                          - /var/run/docker.sock:/var/run/docker.sock:ro
+                                                          # For CPU metrics
+                                                          - /proc/stat:/proc/stat:ro
+                                                          - /proc/cpuinfo:/proc/cpuinfo:ro
+                                                          # For memory metrics
+                                                          - /proc:/host/proc:ro
+                                                          - /sys:/host/sys:ro
+                                                          
+                                                          telegraf-level2:
+                                                            image: ${PRIVATE_REPO}/telegraf-level2:1.34.4-alpine
+                                                            deploy:
+                                                              mode: global  # Ensures one instance per eligible node
+                                                              restart_policy:
+                                                                condition: on-failure
+                                                                resources:
+                                                                  limits:
+                                                                    memory: 100M
+                                                                    cpus: "1"
+                                                                    placement:
+                                                                      constraints:
+                                                                        - node.labels.level == 2
+                                                                        volumes:
+                                                                          - /etc/timezone:/etc/timezone:ro
+                                                                          - /etc/localtime:/etc/localtime:ro
+                                                                          - /etc/hostname:/etc/hostname:ro
+                                                                          - /data/telegraf:/telegraf
+                                                                          # For Docker
+                                                                          - /var/run/docker.sock:/var/run/docker.sock:ro
+                                                                          # For CPU metrics
+                                                                          - /proc/stat:/proc/stat:ro
+                                                                          - /proc/cpuinfo:/proc/cpuinfo:ro
+                                                                          # For memory metrics
+                                                                          - /proc:/host/proc:ro
+                                                                          - /sys:/host/sys:ro
+                                                                          # For temperature metrics
+                                                                          - /sys/class/thermal:/sys/class/thermal:ro
+                                                                          # For vcgencmd metrics
+                                                                          - /tmp/telegraf_metrics:/telegraf_metrics:ro
+                                                                          
+                                                                          
+                                                                          #################################
+                                                                          #                               #
+                                                                          #          P A R T   6          #
+                                                                          #                               #
+                                                                          #################################
+                                                                          
+                                                                          
+                                                                          vminsert:
+                                                                            image: ${PRIVATE_REPO}/victoriametrics/vminsert:v1.119.0-cluster
+                                                                            deploy:
+                                                                              mode: global
+                                                                              restart_policy:
+                                                                                condition: on-failure
+                                                                                placement:
+                                                                                  constraints:
+                                                                                    - node.labels.level == 0
+                                                                                    command:
+                                                                                      - '--storageNode=vmstorage:8400'
+                                                                                      depends_on:
+                                                                                        - vmstorage
+                                                                                        ports:
+                                                                                          - "8480:8480"  # remote_write endpoint for Telegraf
+                                                                                          volumes:
+                                                                                            - /etc/timezone:/etc/timezone:ro
+                                                                                            - /etc/localtime:/etc/localtime:ro
+                                                                                            - /etc/hostname:/etc/hostname:ro
+                                                                                            
+                                                                                            vmstorage:
+                                                                                              image: ${PRIVATE_REPO}/victoriametrics/vmstorage:v1.119.0-cluster
+                                                                                              deploy:
+                                                                                                mode: global
+                                                                                                restart_policy:
+                                                                                                  condition: on-failure
+                                                                                                  placement:
+                                                                                                    constraints:
+                                                                                                      - node.labels.level == 0
+                                                                                                      command:
+                                                                                                        - '--retentionPeriod=1d'
+                                                                                                        - '--storageDataPath=/vmstorage'
+                                                                                                        volumes:
+                                                                                                          - /etc/timezone:/etc/timezone:ro
+                                                                                                          - /etc/localtime:/etc/localtime:ro
+                                                                                                          - /etc/hostname:/etc/hostname:ro
+                                                                                                          - /data/victoriametrics:/vmstorage
+                                                                                                          
+                                                                                                          vmselect:
+                                                                                                            image: ${PRIVATE_REPO}/victoriametrics/vmselect:v1.119.0-cluster
+                                                                                                            deploy:
+                                                                                                              mode: global
+                                                                                                              restart_policy:
+                                                                                                                condition: on-failure
+                                                                                                                placement:
+                                                                                                                  constraints:
+                                                                                                                    - node.labels.level == 0
+                                                                                                                    depends_on:
+                                                                                                                      - vmstorage
+                                                                                                                      ports:
+                                                                                                                        - "8481:8481"  # UI and query API
+                                                                                                                        volumes:
+                                                                                                                          - /etc/timezone:/etc/timezone:ro
+                                                                                                                          - /etc/localtime:/etc/localtime:ro
+                                                                                                                          - /etc/hostname:/etc/hostname:ro
+                                                                                                                          command:
+                                                                                                                            - '--storageNode=vmstorage:8401'
+                                                                                                                            
+                                                                                                                            
+                                                                                                                            vmauth:
+                                                                                                                              image: ${PRIVATE_REPO}/victoriametrics/vmauth:v1.119.0
+                                                                                                                              deploy:
+                                                                                                                                mode: replicated
+                                                                                                                                replicas: 1
+                                                                                                                                restart_policy:
+                                                                                                                                  condition: on-failure
+                                                                                                                                  placement:
+                                                                                                                                    constraints:
+                                                                                                                                      - node.labels.level == 0
+                                                                                                                                      depends_on:
+                                                                                                                                        - vmselect
+                                                                                                                                        ports:
+                                                                                                                                          - "8428:8428"
+                                                                                                                                          volumes:
+                                                                                                                                            - /etc/timezone:/etc/timezone:ro
+                                                                                                                                            - /etc/localtime:/etc/localtime:ro
+                                                                                                                                            - /etc/hostname:/etc/hostname:ro
+                                                                                                                                            
+                                                                                                                                            
+                                                                                                                                            #################################
+                                                                                                                                            #                               #
+                                                                                                                                            #          P A R T   7          #
+                                                                                                                                            #                               #
+                                                                                                                                            #################################
+                                                                                                                                            
+                                                                                                                                            
+                                                                                                                                            alloy-alllevels:
+                                                                                                                                              image: ${PRIVATE_REPO}/grafana/alloy:v1.9.1
+                                                                                                                                              deploy:
+                                                                                                                                                mode: global  # Ensures one instance per eligible node
+                                                                                                                                                replicas: 1
+                                                                                                                                                restart_policy:
+                                                                                                                                                  condition: on-failure
+                                                                                                                                                  ports:
+                                                                                                                                                    - "3131:3131"
+                                                                                                                                                    volumes:
+                                                                                                                                                      - /etc/timezone:/etc/timezone:ro
+                                                                                                                                                      - /etc/localtime:/etc/localtime:ro
+                                                                                                                                                      - /etc/hostname:/etc/hostname:ro
+                                                                                                                                                      - /data/alloy:/alloy
+                                                                                                                                                      # For Docker
+                                                                                                                                                      - /var/run/docker.sock:/var/run/docker.sock:ro
+                                                                                                                                                      
+                                                                                                                                                      
+                                                                                                                                                      
 configs:
-  mosquitto.conf:
-    external: true
-  vmauth-config.yml:
-    external: true
-
+                                                                                                                                                      mosquitto.conf:
+                                                                                                                                                        external: true
+                                                                                                                                                        vmauth-config.yml:
+                                                                                                                                                          external: true
+                                                                                                                                                          
 secrets:
-  mosquitto.crt:
-    external: true
-  mosquitto.key:
-    external: true
-  mosquitto.pwd:
-    external: true
+                                                                                                                                                          mosquitto.crt:
+                                                                                                                                                            external: true
+                                                                                                                                                            mosquitto.key:
+                                                                                                                                                              external: true
+                                                                                                                                                              mosquitto.pwd:
+                                                                                                                                                                external: true

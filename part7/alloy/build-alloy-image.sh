@@ -119,7 +119,7 @@ main() {
     done
 
     LOCAL_REGISTRY_PORT=${LOCAL_REGISTRY_PORT:="4443"}
-    IMAGE_VERSION=${IMAGE_VERSION:="1.9.1"}
+    IMAGE_VERSION=${IMAGE_VERSION:="1.10.2"}
 
     log_info "Installing the required packages"
     DEBIAN_FRONTEND=noninteractive apt-get -y -qq update
@@ -140,23 +140,28 @@ main() {
 
     # entrypoint.sh
     log_debug "Customizing the file entrypoint.sh"
-    sed -i "s/#-MODULE_VERSION-#/${IMAGE_VERSION}/g" "./entrypoint.sh"
+    cp "./entrypoint.sh" "level${LEVEL_NUMBER}/entrypoint.sh"
+    sed -i "s/#-MODULE_VERSION-#/${IMAGE_VERSION}/g" "level${LEVEL_NUMBER}/entrypoint.sh"
 
-    log_info "Importing image ${IMAGE_NAME}:${IMAGE_VERSION} into local registry ${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}"
+    # Dockerfile
+    log_debug "Copying and customizing the file Dockerfile"
+    sed -i "s/#-IP_ADDRESS-#:#-PORT-#/${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/g" "./Dockerfile"
+    sed -i "s/#-IMAGE_VERSION-#/${IMAGE_VERSION}/g" "./Dockerfile"
+    cp "./Dockerfile" "level${LEVEL_NUMBER}/Dockerfile"
 
-    # Build the Telegraf image
+    # Build the Alloy image
     cd "level${LEVEL_NUMBER}/" || exit
-    log_debug "Importing the image from the folder ${PWD}"
+    log_info "Importing image ${IMAGE_NAME}:${IMAGE_VERSION} into local registry ${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}"
     docker buildx build \
         --platform linux/arm64 \
-        --tag "${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/telegraf-level${LEVEL_NUMBER}:${IMAGE_VERSION}" \
+        --tag "${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/alloy-level${LEVEL_NUMBER}:${IMAGE_VERSION}" \
         --build-arg IMAGE_VERSION="${IMAGE_VERSION}" \
         --build-arg LOCAL_REGISTRY="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}" \
         --push .
 
     cd - || exit
 
-    log_info "Telegraf image for level ${LEVEL_NUMBER} with version ${IMAGE_VERSION} has been built and pushed successfully."
+    log_info "Alloy image for level ${LEVEL_NUMBER} with version ${IMAGE_VERSION} has been built and pushed successfully."
 }
 
 time main "$@"
