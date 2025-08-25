@@ -246,7 +246,7 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
 
   alloy-level0:
-    image: ${PRIVATE_REPO}/alloy:v1.10.2
+    image: ${PRIVATE_REPO}/alloy-level0:v1.10.2
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -268,7 +268,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   alloy-level1:
-    image: ${PRIVATE_REPO}/alloy:v1.10.2
+    image: ${PRIVATE_REPO}/alloy-level1:v1.10.2
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -292,7 +292,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   alloy-level2:
-    image: ${PRIVATE_REPO}/alloy:v1.10.2
+    image: ${PRIVATE_REPO}/alloy-level2:v1.10.2
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:

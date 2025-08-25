@@ -127,7 +127,7 @@ You can add a file containing credentials thru the array `credentials` in the se
 }
 ```
 
-`name` is the name of the certificate and the name of the files containing the certificate (.crt) and the public key (.key).
+`name` is the name of the certificate and the name of the files containing the certificate authority (.ca), the server certificate (.crt) and the public key (.key).
 
 `days-valid` is the number of days before before expiration.
 

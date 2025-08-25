@@ -126,16 +126,40 @@
         ],
         "configurations": [
             {
+                "name": "alloy-level0.yml",
+                "file": "./data/configs/alloy-level0.yml"
+            },
+            {
+                "name": "alloy-level1.yml",
+                "file": "./data/configs/alloy-level1.yml"
+            },
+            {
+                "name": "alloy-level2.yml",
+                "file": "./data/configs/alloy-level2.yml"
+            },
+            {
                 "name": "loki-config.yaml",
-                "file": "./data/loki-config.yaml"
+                "file": "./data/configs/loki-config.yaml"
             },
             {
                 "name": "mosquitto.conf",
-                "file": "./data/mosquitto.conf"
+                "file": "./data/configs/mosquitto.conf"
+            },
+            {
+                "name": "telegraf-level0.yml",
+                "file": "./data/configs/telegraf-level0.yml"
+            },
+            {
+                "name": "telegraf-level1.yml",
+                "file": "./data/configs/telegraf-level1.yml"
+            },
+            {
+                "name": "telegraf-level2.yml",
+                "file": "./data/configs/telegraf-level2.yml"
             },
             {
                 "name": "vmauth-config.yml",
-                "file": "./data/vmauth.config.yml"
+                "file": "./data/configs/vmauth.config.yml"
             }
         ],
         "secrets": {
@@ -184,8 +208,14 @@
                 "replicated": [
                     {
                         "name": "replicated-data",
-                        "hosts": [ "orchestrator1", "orchestrator2", "orchestrator3" ],
-                        "folders": [ "loki" ],
+                        "hosts": [
+                            "orchestrator1",
+                            "orchestrator2",
+                            "orchestrator3"
+                        ],
+                        "folders": [
+                            "loki"
+                        ],
                         "ownership": "1001:1001",
                         "permissions": "755"
                     }

@@ -427,14 +427,22 @@ create_certificates() {
         eval "$line"
 
         log_warning "\t\t- Creating the secret ${NAME} with common name ${COMMON_NAME} valid for ${DAYS_VALID} days"
-        openssl req -new -x509 -days "${DAYS_VALID}" -nodes \
+        # Create CA + server cert in one go
+        openssl req -x509 -new -nodes -newkey rsa:4096 \
+                -keyout ca.key -out "${NAME}".ca -days 3650 \
                 -subj "/C=${COUNTRY}/ST=$STATE/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}" \
-                -out "${NAME}".crt \
-                -keyout "${NAME}".key
+        openssl req -new -nodes -newkey rsa:2048 \
+                -keyout "${NAME}".key -out "${NAME}".csr \
+                -subj "/C=${COUNTRY}/ST=$STATE/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}" \
+        openssl x509 -req -in "${NAME}".csr -CA "${NAME}".ca -CAkey ca.key -CAcreateserial \
+                -out "${NAME}".crt -days 825 -sha256 \
+                -extfile <(printf "subjectAltName=DNS:localhost,IP:127.0.0.1")
 
         log_warning "\t\t- Importing the secret ${NAME} with common name ${COMMON_NAME} on ${IP_ADDRESS_ARG}"        
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.ca" "/tmp/"
         copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.crt" "/tmp/"
         copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.key" "/tmp/"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.ca /tmp/${NAME}.ca"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.crt /tmp/${NAME}.crt"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.key /tmp/${NAME}.key"
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${NAME}*.crt /tmp/${NAME}*.key"
@@ -578,11 +586,15 @@ create_replicated_volumes() {
     log_debug "\t- Creating the replicated volumes on ${IP_ADDRESS_ARG}"
     echo "${REPLICATED_JSON}" | jq -c '.[]' | while read -r VOLUME; do
          local VOLUME_NAME
+         local OWNERSHIP
+         local PERMISSIONS
          local HOSTNAME_LIST
          local FOLDER_LIST
          local MOUNTPOINT_DIR
 
          VOLUME_NAME=$(echo "${VOLUME}" | jq -r '.name')
+         OWNERSHIP=$(echo "${VOLUME}" | jq -r '.ownership')
+         PERMISSIONS=$(echo "${VOLUME}" | jq -r '.permissions')
          MOUNTPOINT_DIR="/mnt/${VOLUME_NAME}"
 
          # Parse 'hosts' and 'folders' arrays as Bash arrays
@@ -606,6 +618,20 @@ create_replicated_volumes() {
       o: "bind"
       device: "/${MOUNTPOINT_DIR}/${FOLDER}"
 EOF
+
+             if [ -z "${OWNERSHIP}" ]; then
+                 log_debug "\t\t\t - Skipping ownership due to missing value (ownership: '${OWNERSHIP}')"
+             else
+                 log_debug "\t\t\t- Setting ownership on ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
+                 sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo chown -R ${OWNERSHIP} ${MOUNTPOINT_DIR}/${FOLDER}"
+             fi
+
+             if [ -z "${PERMISSIONS}" ]; then
+                 log_debug "\t\t\t - Skipping permissions setting due to missing values (permissions: '${PERMISSIONS}')"
+             else    
+                 log_debug "\t\t\t- Setting permissions on ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
+                 sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo chmod -R ${PERMISSIONS} ${MOUNTPOINT_DIR}/${FOLDER}"
+             fi
          done
     done
 }

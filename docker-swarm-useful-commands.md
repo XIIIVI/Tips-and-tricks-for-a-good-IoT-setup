@@ -36,6 +36,8 @@
 
 ## Stacks
 
+* To list the stacks: ```sudo docker stack list``` 
+* To list all the services of a given stack: ```sudo docker stack ps <STACK_NAME>   ``` 
 * To update a stack: ```sudo PRIVATE_REPO=<IP_ADDRESS_OF_THE_REPO>:<LOCAL_REGISTRY_PORT> docker stack deploy --compose-file docker-compose.yml <Name of the stack>```
 * To fully remove the stack, type ```sudo docker stack rm iot-stack```
 
