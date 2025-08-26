@@ -64,7 +64,7 @@ services:
         constraints:
           - node.labels.level == 0
     networks:
-      - secured-network
+      - telemetry-network
     ports:
       - target: 8791    # container port
         published: 8791 # port exposed on the swarm nodes
@@ -110,7 +110,7 @@ services:
         constraints:
           - node.labels.level == 1
     networks:
-      - secured-network
+      - telemetry-network
     ports:
       - target: 8791    # container port
         published: 8791 # port exposed on the swarm nodes
@@ -154,7 +154,7 @@ services:
         constraints:
           - node.labels.level == 2
     networks:
-      - secured-network
+      - telemetry-network
     secrets:
       - source: telegraf.crt
         target: /etc/telegraf/telegraf.crt
@@ -202,7 +202,7 @@ services:
     depends_on:
       - vmstorage
     networks:
-      - secured-network
+      - telemetry-network
       - victoria-network
     ports:
       - "8480:8480"  # remote_write endpoint for Telegraf
@@ -254,30 +254,6 @@ services:
     command:
       - '--storageNode=vmstorage:8401'
 
-
-  vmauth:
-    image: ${PRIVATE_REPO}/vmauth:v1.119.0
-    deploy:
-      mode: replicated
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-      placement:
-        constraints:
-          - node.labels.level == 0
-    depends_on:
-      - vmselect
-    networks:
-      - victoria-network
-    ports:
-      - "8428:8428"
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
-      - ./vmauth-config.yml:/etc/vmauth/config.yml:ro  # Mount your config file
-    command:
-      - '-auth.config=/etc/vmauth/config.yml'   
 
 #################################
 #                               #
@@ -404,6 +380,7 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/grafana.passwd
       - GF_INSTALL_PLUGINS=volkovlabs-echarts-panel,volkovlabs-variable-panel,marcusolsson-static-datasource
     networks:
+      - public-network
       - secured-network
     ports:
       - "3000:3000"
@@ -422,6 +399,8 @@ networks:
     driver: overlay
     internal: true   # isolates backend traffic
   secured-network:
+    external: true
+  telemetry-network:
     external: true
   victoria-network:
     driver: overlay
@@ -443,8 +422,6 @@ configs:
   telegraf-level1.conf:
     external: true
   telegraf-level2.conf:
-    external: true
-  vmauth-config.yml:
     external: true
 
 secrets:

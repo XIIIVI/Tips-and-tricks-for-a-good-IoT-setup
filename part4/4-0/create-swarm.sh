@@ -396,9 +396,12 @@ create_credentials() {
        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" ./"${PASSWORD_FILENAME}" "/tmp/"
        rm -f ./"${PASSWORD_FILENAME}"
        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.passwd /tmp/${PASSWORD_FILENAME}"
-       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${PASSWORD_FILENAME}*"
+       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "echo -n \"${NAME}\" | sudo docker secret create ${NAME}.user -"
+       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${PASSWORD_FILENAME}*"       
        cat <<EOF >>"${SECRET_TEMPLATE}"
     ${NAME}.passwd:
+      external: true
+    ${NAME}.user:
       external: true
 EOF
    done

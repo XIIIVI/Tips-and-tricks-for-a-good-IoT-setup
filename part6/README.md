@@ -16,7 +16,6 @@ cd ../commons
 sudo ./import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name victoriametrics/vminsert --image-version v1.119.0-cluster
 sudo ./import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name victoriametrics/vmstorage --image-version v1.119.0-cluster
 sudo ./import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name victoriametrics/vmselect --image-version v1.119.0-cluster
-sudo ./import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT> --image-name victoriametrics/vmauth --image-version v1.119.0
 ```
 
 2) To make Telegraf able to publish into VictoriaMetrics, run the commands 
@@ -28,16 +27,8 @@ sudo ./update-telegraf-level0.sh --local-registry-address <LOCAL_REGISTRY_ADDRES
 
 > ⚠️ This required to make the instances of level0 work with Victoriametrics.
 
-3) Check if the configuration ```vmauth-config.yml``` exists with the command ```sudo docker config ls```
 
-If not, go to the folder ```part4``` import it by typing the following commands
-
-```bash
-cd 4-0/data
-sudo docker config create vmauth-config.yml ./auth.config.yml
-```
-
-4) Then update the stack ```sudo PRIVATE_REPO=<IP_ADDRESS_OF_THE_REPO>:<LOCAL_REGISTRY_PORT> docker stack deploy --compose-file docker-compose.yml iot-stack --with-registry-auth```
+3) Then update the stack ```sudo PRIVATE_REPO=<IP_ADDRESS_OF_THE_REPO>:<LOCAL_REGISTRY_PORT> docker stack deploy --compose-file docker-compose.yml iot-stack --with-registry-auth```
 
 To check the installation, please check the [list of the useful commands](../../docker-swarm-useful-commands.md).
 

@@ -52,7 +52,7 @@ services:
         constraints:
           - node.labels.level == 0
     networks:
-      - public-network 
+      - public-network
     ports:
       - target: 8791    # container port
         published: 8791 # port exposed on the swarm nodes

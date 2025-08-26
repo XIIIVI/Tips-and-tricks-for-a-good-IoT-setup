@@ -52,6 +52,7 @@ services:
           - node.labels.level == 0
     networks:
       - public-network
+      - telemetry-network
     ports:
       - target: 8791    # container port
         published: 8791 # port exposed on the swarm nodes
@@ -87,7 +88,7 @@ services:
         constraints:
           - node.labels.level == 1
     networks:
-      - public-network
+      - telemetry-network
     ports:
       - target: 8791    # container port
         published: 8791 # port exposed on the swarm nodes
@@ -121,7 +122,7 @@ services:
         constraints:
           - node.labels.level == 2
     networks:
-      - public-network
+      - telemetry-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -215,30 +216,6 @@ services:
       - '--storageNode=iot-stack_vmstorage:8401'
 
 
-  vmauth:
-    image: ${PRIVATE_REPO}/vmauth:v1.119.0
-    deploy:
-      mode: replicated
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-      placement:
-        constraints:
-          - node.labels.level == 0
-    depends_on:
-      - vmselect
-    networks:
-      - victoria-network
-    ports:
-      - "8428:8428"
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
-      - ./vmauth-config.yml:/etc/vmauth/config.yml:ro  # Mount your config file
-    command:
-      - '-auth.config=/etc/vmauth/config.yml'   
-
 #################################
 #                               #
 #          P A R T   7          #
@@ -255,7 +232,6 @@ services:
         constraints:
           - node.labels.level == 0
     networks:
-      - alloy-network
       - public-network
     ports:
       - target: 3100    # container port
@@ -276,7 +252,7 @@ services:
         constraints:
           - node.labels.level == 0
     networks:
-      - alloy-network
+      - public-network
     ports:
       - target: 3110    # container port
         published: 3110 # port exposed on the swarm nodes
@@ -302,7 +278,7 @@ services:
     environment:
       - PARENT_LEVEL_NUMBER=0
     networks:
-      - alloy-network
+      - public-network
     ports:
       - target: 3111    # container port
         published: 3111 # port exposed on the swarm nodes
@@ -328,7 +304,7 @@ services:
     environment:
       - PARENT_LEVEL_NUMBER=1
     networks:
-      - alloy-network
+      - public-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -337,18 +313,9 @@ services:
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
-configs:
-  vmauth-config.yml:
-    external: true
 
 
 networks:
-  alloy-network:
-    driver: overlay
-    internal: true   # isolates backend traffic
   public-network:
     driver: overlay
     internal: true   # isolates backend traffic
-  victoria-network:
-    driver: overlay
-    internal: true   # isolates VictoriaMetrics cluster traffic  

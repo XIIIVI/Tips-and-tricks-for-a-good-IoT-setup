@@ -156,10 +156,6 @@
             {
                 "name": "telegraf-level2.yml",
                 "file": "./data/configs/telegraf-level2.yml"
-            },
-            {
-                "name": "vmauth-config.yml",
-                "file": "./data/configs/vmauth.config.yml"
             }
         ],
         "secrets": {
@@ -212,10 +208,15 @@
                         "internal": true
                     },
                     {
+                        "name": "telemetry-network",
+                        "attachable": true,
+                        "internal": true
+                    },
+                    {
                         "name": "victoria-network",
                         "attachable": true,
                         "internal": true
-                    }                    
+                    }
                 ]
             }
         ],
