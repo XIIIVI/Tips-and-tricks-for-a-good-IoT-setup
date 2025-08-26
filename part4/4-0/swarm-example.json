@@ -146,16 +146,16 @@
                 "file": "./data/configs/mosquitto.conf"
             },
             {
-                "name": "telegraf-level0.yml",
-                "file": "./data/configs/telegraf-level0.yml"
+                "name": "telegraf-level0.conf",
+                "file": "./data/configs/telegraf-level0.conf"
             },
             {
-                "name": "telegraf-level1.yml",
-                "file": "./data/configs/telegraf-level1.yml"
+                "name": "telegraf-level1.conf",
+                "file": "./data/configs/telegraf-level1.conf"
             },
             {
-                "name": "telegraf-level2.yml",
-                "file": "./data/configs/telegraf-level2.yml"
+                "name": "telegraf-level2.conf",
+                "file": "./data/configs/telegraf-level2.conf"
             }
         ],
         "secrets": {
