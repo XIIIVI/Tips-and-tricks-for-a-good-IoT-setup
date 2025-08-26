@@ -296,26 +296,40 @@ create_single_worker() {
             # Configuration files            
             log_debug "\t- Creating the configuration files"
             log_warning "\t\t- Generating from the Swarm definition"
-            echo "$JSON_OBJECT_ARG" | jq -c 'select(.config != null) | {hostname, config}' | while read -r entry; do
-                 hostname=$(echo "$entry" | jq -r '.hostname')
-                 echo "$entry" | jq -r '.config[] | "\(.key)=\(.value)"' > "${CONFIG_DIR}/${hostname}.config"
-                 create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}" "${hostname}.config" "${CONFIG_DIR}/${hostname}.config"
+while IFS= read -r entry; do
+    hostname=$(jq -r '.hostname' <<<"$entry")
 
-                 log_warning "\t\t- Generating from the label definition => ${hostname}_env.config"
-                 touch "${CONFIG_DIR}/${hostname}_env.config"
+    # Write config key=value pairs
+    jq -r '.config[] | "\(.key)=\(.value)"' <<<"$entry" \
+        > "${CONFIG_DIR}/${hostname}.config"
 
-                 for LABEL in $(echo "$JSON_OBJECT_ARG" | jq -c '.labels[]'); do
-                     local KEY
-                     local VALUE
+    create_single_configuration \
+        "${LOGIN_ARG}" \
+        "${PASSWORD_ARG}" \
+        "${MAIN_MANAGER_IP_ADDRESS}" \
+        "${hostname}.config" \
+        "${CONFIG_DIR}/${hostname}.config"
 
-                     KEY=$(echo "$LABEL" | jq -r '.key' | tr '[:lower:]' '[:upper:]')
-                     VALUE=$(echo "$LABEL" | jq -r '.value')
+    log_warning "\t\t- Generating from the label definition => ${hostname}_env.config"
 
-                     echo "${KEY}=${VALUE}" >> "${CONFIG_DIR}/${hostname}_env.config"
-                 done
+    : > "${CONFIG_DIR}/${hostname}_env.config"  # truncate/create
 
-                 create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}" "${hostname}_env.config" "${CONFIG_DIR}/${hostname}_env.config"
-            done
+    # Loop over labels safely
+    while IFS= read -r label; do
+        local KEY VALUE
+        KEY=$(jq -r '.key' <<<"$label" | tr '[:lower:]' '[:upper:]')
+        VALUE=$(jq -r '.value' <<<"$label")
+        echo "${KEY}=${VALUE}" >> "${CONFIG_DIR}/${hostname}_env.config"
+    done < <(jq -c '.labels[]' <<<"$JSON_OBJECT_ARG")
+
+    create_single_configuration \
+        "${LOGIN_ARG}" \
+        "${PASSWORD_ARG}" \
+        "${MAIN_MANAGER_IP_ADDRESS}" \
+        "${hostname}_env.config" \
+        "${CONFIG_DIR}/${hostname}_env.config"
+
+done < <(jq -c 'select(.config != null) | {hostname, config}' <<<"$JSON_OBJECT_ARG")
 
             # Summary
             log_warning "########################"
@@ -372,41 +386,56 @@ create_workers() {
 #   4. JSON_ARG: The JSON object containing the credentials configuration.
 #
 create_credentials() {
-    local LOGIN_ARG="${1}"
-    local PASSWORD_ARG="${2}"
-    local IP_ADDRESS_ARG="${3}"
-    local JSON_ARG="${4}"
+    local LOGIN_ARG="$1"
+    local PASSWORD_ARG="$2"
+    local IP_ADDRESS_ARG="$3"
+    local JSON_ARG="$4"
 
     log_debug "\t- Creating the secrets for credentials on ${IP_ADDRESS_ARG}"
 
-    # Parse credentials
-    echo "${JSON_ARG}" | jq -r '.swarm.secrets.credentials[] | "\(.name)|\(.login)"' |
-    while IFS="|" read -r name login; do
-       local GENERATED_PASSWORD
-       local HASH
-       local PASSWORD_FILENAME
+    # Iterate over each credential object safely
+    while IFS= read -r cred_json; do
+        # Extract fields safely
+        local name login GENERATED_PASSWORD HASH PASSWORD_FILENAME
+        name=$(jq -r '.name' <<<"$cred_json")
+        login=$(jq -r '.login' <<<"$cred_json")
 
-       log_warning "\t\t- Creating the secret ${name} for user ${login}"
-       PASSWORD_FILENAME="${name}.passwd"
-       GENERATED_PASSWORD=$(openssl rand -base64 16)
-       HASH=$(htpasswd -bnB "${login}" "${GENERATED_PASSWORD}" | cut -d ':' -f2)
-       echo "${login}:${HASH}" > ./"${PASSWORD_FILENAME}"
-       
-       log_warning "\t\t- Importing the secret ${name} for user ${login} on ${IP_ADDRESS_ARG}"
-       copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" ./"${PASSWORD_FILENAME}" "/tmp/"
-       rm -f ./"${PASSWORD_FILENAME}"
-       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${name}.passwd /tmp/${PASSWORD_FILENAME}"
-       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "echo -n \"${name}\" | sudo docker secret create ${name}.user -"
-       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${PASSWORD_FILENAME}*"       
-       cat <<EOF >>"${SECRET_TEMPLATE}"
+        log_warning "\t\t- Creating the secret ${name} for user ${login}"
+
+        PASSWORD_FILENAME="${name}.passwd"
+        GENERATED_PASSWORD=$(openssl rand -base64 16)
+        HASH=$(htpasswd -bnB "${login}" "${GENERATED_PASSWORD}" | cut -d ':' -f2)
+
+        # Create local password file
+        echo "${login}:${HASH}" > "./${PASSWORD_FILENAME}"
+
+        log_warning "\t\t- Importing the secret ${name} for user ${login} on ${IP_ADDRESS_ARG}"
+
+        # Copy to host
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${PASSWORD_FILENAME}" "/tmp/"
+
+        # Remove local password file
+        rm -f "./${PASSWORD_FILENAME}"
+
+        # Create Docker secrets on remote host
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+            "sudo docker secret create ${name}.passwd /tmp/${PASSWORD_FILENAME}"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+            "echo -n \"${name}\" | sudo docker secret create ${name}.user -"
+
+        # Remove temp files on remote host
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+            "rm -f /tmp/${PASSWORD_FILENAME}*"
+
+        # Append to secret template
+        cat <<EOF >>"${SECRET_TEMPLATE}"
     ${name}.passwd:
       external: true
     ${name}.user:
       external: true
 EOF
-      
-       rm -Rf "${PASSWORD_FILENAME}"
-   done
+
+    done < <(jq -c '.swarm.secrets.credentials[]' <<<"$JSON_ARG")
 }
 
 #
@@ -419,46 +448,73 @@ EOF
 #   4. JSON_ARG: The JSON object containing the certificates configuration.
 #
 create_certificates() {
-    local LOGIN_ARG="${1}"
-    local PASSWORD_ARG="${2}"
-    local IP_ADDRESS_ARG="${3}"
-    local JSON_ARG="${4}"
+    local LOGIN_ARG="$1"
+    local PASSWORD_ARG="$2"
+    local IP_ADDRESS_ARG="$3"
+    local JSON_ARG="$4"
 
     log_debug "\t- Creating the secrets for certificates on ${IP_ADDRESS_ARG}"
 
-    # Parse certificates
-    echo "${JSON_ARG}" | jq -r '.swarm.secrets.credentials[] | "\(.name)|\(.days-valid)|\(.country)|\(.state)|\(.locality)|\(.organization)|\(.common-name)"' |
-    while IFS="|" read -r name days-valid country state locality organization common-name; do
-        log_warning "\t\t- Creating the secret ${name} with common name ${common-name} valid for ${days-valid} days"
-        openssl req -x509 -new -nodes -newkey rsa:4096 \
-                -keyout ca.key -out "${name}".ca -days ${days-valid} \
-                -subj "/C=${country}/ST=$state/L=${locality}/O=${organization}/CN=${common-name}" 
-        openssl req -new -nodes -newkey rsa:2048 \
-                -keyout "${name}".key -out "${name}".csr \
-                -subj "/C=${country}/ST=$state/L=${locality}/O=${organization}/CN=${common-name}" 
-        openssl x509 -req -in "${name}".csr -CA "${name}".ca -CAkey ca.key -CAcreateserial \
-                -out "${name}".crt -days 825 -sha256 \
-                -extfile <(printf "subjectAltName=DNS:localhost,IP:127.0.0.1")
+    # Iterate over each certificate object safely
+    while IFS= read -r cert_json; do
+        # Extract fields safely
+        local NAME DAYS_VALID COUNTRY STATE LOCALITY ORGANIZATION COMMON_NAME
+        NAME=$(jq -r '.name' <<<"$cert_json")
+        DAYS_VALID=$(jq -r '."days-valid"' <<<"$cert_json")
+        COUNTRY=$(jq -r '.country' <<<"$cert_json")
+        STATE=$(jq -r '.state' <<<"$cert_json")
+        LOCALITY=$(jq -r '.locality' <<<"$cert_json")
+        ORGANIZATION=$(jq -r '.organization' <<<"$cert_json")
+        COMMON_NAME=$(jq -r '."common-name"' <<<"$cert_json")
 
-        log_warning "\t\t- Importing the secret ${name} with common name ${common-name} on ${IP_ADDRESS_ARG}"        
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${name}.ca" "/tmp/"
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${name}.crt" "/tmp/"
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${name}.key" "/tmp/"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${name}.ca /tmp/${name}.ca"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${name}.crt /tmp/${name}.crt"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${name}.key /tmp/${name}.key"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${name}*.crt /tmp/${name}*.key"
+        log_warning "\t\t- Creating the secret ${NAME} with common name ${COMMON_NAME} valid for ${DAYS_VALID} days"
+
+        # Generate CA certificate
+        openssl req -x509 -new -nodes -newkey rsa:4096 \
+            -keyout ca.key -out "${NAME}.ca" -days "${DAYS_VALID}" \
+            -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}"
+
+        # Generate CSR and private key
+        openssl req -new -nodes -newkey rsa:2048 \
+            -keyout "${NAME}.key" -out "${NAME}.csr" \
+            -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}"
+
+        # Sign certificate
+        openssl x509 -req -in "${NAME}.csr" -CA "${NAME}.ca" -CAkey ca.key -CAcreateserial \
+            -out "${NAME}.crt" -days 825 -sha256 \
+            -extfile <(printf "subjectAltName=DNS:localhost,IP:127.0.0.1")
+
+        log_warning "\t\t- Importing the secret ${NAME} on ${IP_ADDRESS_ARG}"
+
+        # Copy to host
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.ca" "/tmp/"
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.crt" "/tmp/"
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.key" "/tmp/"
+
+        # Create Docker secrets
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+            "sudo docker secret create ${NAME}.ca /tmp/${NAME}.ca"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+            "sudo docker secret create ${NAME}.crt /tmp/${NAME}.crt"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+            "sudo docker secret create ${NAME}.key /tmp/${NAME}.key"
+
+        # Remove temp files on host
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+            "rm -f /tmp/${NAME}*.crt /tmp/${NAME}*.key /tmp/${NAME}*.ca"
+
+        # Append to secret template
         cat <<EOF >>"${SECRET_TEMPLATE}"
-    ${name}.ca:
+    ${NAME}.crt:
       external: true
-    ${name}.crt:
-      external: true
-    ${name}.key:
+    ${NAME}.key:
       external: true
 EOF
 
-        rm -Rf "${name}".ca "${name}".crt "${name}".key "${name}".csr ca.key ca.srl
-    done
+        # Local cleanup
+        rm -f "${NAME}.ca" "${NAME}.crt" "${NAME}.key" "${NAME}.csr" ca.key ca.srl
+
+    done < <(jq -c '.swarm.secrets.certificates[]' <<<"$JSON_ARG")
 }
 
 #
@@ -498,22 +554,33 @@ EOF
 #   4. JSON_ARG: The JSON object containing the configurations.
 #
 create_configurations() {
-    local LOGIN_ARG="${1}"
-    local PASSWORD_ARG="${2}"
-    local IP_ADDRESS_ARG="${3}"
-    local JSON_ARG="${4}"
+    local LOGIN_ARG="$1"
+    local PASSWORD_ARG="$2"
+    local IP_ADDRESS_ARG="$3"
+    local JSON_ARG="$4"
 
     log_debug "\t- Creating the configurations on ${IP_ADDRESS_ARG}"
+
+    # Append header to config template
     cat <<EOF >>"${CONFIG_TEMPLATE}"
 
 config:    
 EOF
 
-    # Parse configurations
-    echo "${JSON_ARG}" | jq -r '.swarm.configurations[] | "\(.name)|\(.file)"' |
-    while IFS="|" read -r name file; do
-        create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${name}" "${file}"
-    done
+    # Iterate over each configuration object safely
+    while IFS= read -r config_json; do
+        local name file
+        name=$(jq -r '.name' <<<"$config_json")
+        file=$(jq -r '.file' <<<"$config_json")
+
+        create_single_configuration \
+            "${LOGIN_ARG}" \
+            "${PASSWORD_ARG}" \
+            "${IP_ADDRESS_ARG}" \
+            "${name}" \
+            "${file}"
+
+    done < <(jq -c '.swarm.configurations[]' <<<"$JSON_ARG")
 }
 
 #
@@ -549,32 +616,38 @@ create_overlay_network() {
 # - param4: JSON_ARG, the JSON content containing the overlay networks configuration
 #
 create_overlay_networks() {
-    local LOGIN_ARG="${1}"
-    local PASSWORD_ARG="${2}"
-    local IP_ADDRESS_ARG="${3}"
-    local JSON_ARG="${4}"
+    local LOGIN_ARG="$1"
+    local PASSWORD_ARG="$2"
+    local IP_ADDRESS_ARG="$3"
+    local JSON_ARG="$4"
 
     log_debug "\t- Creating the overlay networks on ${IP_ADDRESS_ARG}"
 
-    # Parse overlays and invoke function
-    echo "${JSON_ARG}" | jq -c '.swarm.networks[].overlays[]' | while read -r overlay; do
-        local NAME
-        local ENCRYPTED
-        local ATTACHABLE
-        local INTERNAL
+    # Iterate over each overlay network safely
+    while IFS= read -r overlay_json; do
+        local NAME ENCRYPTED ATTACHABLE INTERNAL
 
-        NAME=$(echo "$overlay" | jq -r '.name')
-        ENCRYPTED=$(echo "$overlay" | jq -er '.encrypted' 2>/dev/null || echo false)
-        ATTACHABLE=$(echo "$overlay" | jq -er '.attachable' 2>/dev/null || echo false)
-        INTERNAL=$(echo "$overlay" | jq -er '.internal' 2>/dev/null || echo false)
+        NAME=$(jq -r '.name' <<<"$overlay_json")
+        ENCRYPTED=$(jq -r '.encrypted // false' <<<"$overlay_json")
+        ATTACHABLE=$(jq -r '.attachable // false' <<<"$overlay_json")
+        INTERNAL=$(jq -r '.internal // false' <<<"$overlay_json")
 
-        create_overlay_network "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${NAME}" "${ENCRYPTED}" "${ATTACHABLE}" "${INTERNAL}"
-    done
+        create_overlay_network \
+            "${LOGIN_ARG}" \
+            "${PASSWORD_ARG}" \
+            "${IP_ADDRESS_ARG}" \
+            "${NAME}" \
+            "${ENCRYPTED}" \
+            "${ATTACHABLE}" \
+            "${INTERNAL}"
+
+    done < <(jq -c '.swarm.networks[].overlays[]' <<<"$JSON_ARG")
 
     log_warning "#################################"
     log_warning "# Overlay networks of the Swarm #"
     log_warning "#################################"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo docker network ls"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" \
+        "sudo docker network ls"
 }
 
 #
@@ -584,38 +657,39 @@ create_overlay_networks() {
 # - param3: REPLICATED_JSON, the JSON content containing the replicated volumes configuration
 #
 create_replicated_volumes() {
-    local LOGIN_ARG="${1}"
-    local PASSWORD_ARG="${2}"
-    local REPLICATED_JSON="${3}"
+    local LOGIN_ARG="$1"
+    local PASSWORD_ARG="$2"
+    local REPLICATED_JSON="$3"
 
     log_debug "\t- Creating the replicated volumes on ${IP_ADDRESS_ARG}"
-    echo "${REPLICATED_JSON}" | jq -c '.[]' | while read -r VOLUME; do
-         local VOLUME_NAME
-         local OWNERSHIP
-         local PERMISSIONS
-         local HOSTNAME_LIST
-         local FOLDER_LIST
-         local MOUNTPOINT_DIR
 
-         VOLUME_NAME=$(echo "${VOLUME}" | jq -r '.name')
-         OWNERSHIP=$(echo "${VOLUME}" | jq -r '.ownership')
-         PERMISSIONS=$(echo "${VOLUME}" | jq -r '.permissions')
-         MOUNTPOINT_DIR="/mnt/${VOLUME_NAME}"
+    # Iterate over each volume object safely
+    while IFS= read -r volume_json; do
+        local VOLUME_NAME OWNERSHIP PERMISSIONS MOUNTPOINT_DIR
+        local HOSTNAME_LIST FOLDER_LIST
 
-         # Parse 'hosts' and 'folders' arrays as Bash arrays
-         readarray -t HOSTNAME_LIST < <(echo "${VOLUME}" | jq -r '.hosts[]')
-         readarray -t FOLDER_LIST < <(echo "${VOLUME}" | jq -r '.folders[]')
+        VOLUME_NAME=$(jq -r '.name' <<<"$volume_json")
+        OWNERSHIP=$(jq -r '.ownership // empty' <<<"$volume_json")
+        PERMISSIONS=$(jq -r '.permissions // empty' <<<"$volume_json")
+        MOUNTPOINT_DIR="/mnt/${VOLUME_NAME}"
 
-         setup_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME}" "${HOSTNAME_LIST[@]}"
+        # Parse 'hosts' and 'folders' arrays as Bash arrays
+        readarray -t HOSTNAME_LIST < <(jq -r '.hosts[]' <<<"$volume_json")
+        readarray -t FOLDER_LIST < <(jq -r '.folders[]' <<<"$volume_json")
 
-         log_warning "\t\t- Creating the folders on the volume ${VOLUME_NAME}"
-         for FOLDER in "${FOLDER_LIST[@]}"; do
-             local IP_ADDRESS
+        # Setup replicated volumes across hosts
+        setup_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME}" "${HOSTNAME_LIST[@]}"
 
-             IP_ADDRESS=$(host "${HOSTNAME_LIST[0]}" | awk '/has address/ { print $4 }')
-             log_debug "\t\t\t- Creating the folder ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
-             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo mkdir -p ${MOUNTPOINT_DIR}/${FOLDER}"
-             cat <<EOF >>"${VOLUME_TEMPLATE}"
+        log_warning "\t\t- Creating the folders on the volume ${VOLUME_NAME}"
+        for FOLDER in "${FOLDER_LIST[@]}"; do
+            local IP_ADDRESS
+            IP_ADDRESS=$(host "${HOSTNAME_LIST[0]}" | awk '/has address/ { print $4 }')
+
+            log_debug "\t\t\t- Creating the folder ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
+            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" \
+                "sudo mkdir -p ${MOUNTPOINT_DIR}/${FOLDER}"
+
+            cat <<EOF >>"${VOLUME_TEMPLATE}"
   ${VOLUME_NAME}-${FOLDER}:
     driver: local
     driver_opts:
@@ -624,21 +698,24 @@ create_replicated_volumes() {
       device: "/${MOUNTPOINT_DIR}/${FOLDER}"
 EOF
 
-             if [ -z "${OWNERSHIP}" ]; then
-                 log_debug "\t\t\t - Skipping ownership due to missing value (ownership: '${OWNERSHIP}')"
-             else
-                 log_debug "\t\t\t- Setting ownership on ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
-                 sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo chown -R ${OWNERSHIP} ${MOUNTPOINT_DIR}/${FOLDER}"
-             fi
+            if [ -n "${OWNERSHIP}" ]; then
+                log_debug "\t\t\t- Setting ownership on ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
+                sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" \
+                    "sudo chown -R ${OWNERSHIP} ${MOUNTPOINT_DIR}/${FOLDER}"
+            else
+                log_debug "\t\t\t - Skipping ownership due to missing value (ownership: '${OWNERSHIP}')"
+            fi
 
-             if [ -z "${PERMISSIONS}" ]; then
-                 log_debug "\t\t\t - Skipping permissions setting due to missing values (permissions: '${PERMISSIONS}')"
-             else    
-                 log_debug "\t\t\t- Setting permissions on ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
-                 sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo chmod -R ${PERMISSIONS} ${MOUNTPOINT_DIR}/${FOLDER}"
-             fi
-         done
-    done
+            if [ -n "${PERMISSIONS}" ]; then
+                log_debug "\t\t\t- Setting permissions on ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
+                sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" \
+                    "sudo chmod -R ${PERMISSIONS} ${MOUNTPOINT_DIR}/${FOLDER}"
+            else
+                log_debug "\t\t\t - Skipping permissions setting due to missing values (permissions: '${PERMISSIONS}')"
+            fi
+        done
+
+    done < <(jq -c '.[]' <<<"$REPLICATED_JSON")
 }
 
 #
