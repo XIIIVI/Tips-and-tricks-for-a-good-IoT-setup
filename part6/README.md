@@ -23,7 +23,7 @@ sudo ./import-image-into-local-repo.sh --local-registry-address <LOCAL_REGISTRY_
 
 ```bash
 cd telegraf
-sudo ./update-telegraf-level0.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS>
+sudo ./update-telegraf-level0.sh --local-registry-address <LOCAL_REGISTRY_ADDRESS> --local-registry-port <LOCAL_REGISTRY_PORT>
 ```
 
 > ⚠️ This required to make the instances of level0 work with Victoriametrics.

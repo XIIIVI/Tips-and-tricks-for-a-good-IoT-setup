@@ -198,11 +198,24 @@
             {
                 "overlays": [
                     {
+                        "name": "alloy-network",
+                        "attachable": true
+                    },
+                    {
+                        "name": "public-network",
+                        "attachable": true
+                    },
+                    {
                         "name": "secured-network",
                         "encrypted": true,
                         "attachable": true,
                         "internal": true
-                    }
+                    },
+                    {
+                        "name": "victoria-network",
+                        "attachable": true,
+                        "internal": true
+                    }                    
                 ]
             }
         ],

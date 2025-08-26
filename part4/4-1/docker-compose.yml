@@ -14,6 +14,8 @@ services:
       placement:
         constraints:
           - node.labels.mqtt == true
+    networks:
+      - public-network
     ports:
       - "1883:3881"
     volumes:
@@ -22,3 +24,8 @@ services:
       - /etc/hostname:/etc/hostname:ro
       - /data/mosquitto/data:/mosquitto/data
       - /data/mosquitto/log:/mosquitto/log
+
+networks:
+  public-network:
+    driver: overlay
+    internal: true   # isolates backend traffic

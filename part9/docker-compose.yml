@@ -52,13 +52,6 @@ services:
     configs:
       - source: telegraf-level0.conf
         target: /etc/telegraf/telegraf.conf
-    secrets:
-      - source: telegraf.crt
-        target: /etc/telegraf/telegraf.crt
-      - source: telegraf.key
-        target: /etc/telegraf/telegraf.key
-      - source: telegraf.ca
-        target: /etc/telegraf/telegraf.ca
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -77,6 +70,13 @@ services:
         published: 8791 # port exposed on the swarm nodes
         protocol: tcp
         mode: host      # or 'ingress' for routing mesh
+    secrets:
+      - source: telegraf.crt
+        target: /etc/telegraf/telegraf.crt
+      - source: telegraf.key
+        target: /etc/telegraf/telegraf.key
+      - source: telegraf.ca
+        target: /etc/telegraf/telegraf.ca
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -98,13 +98,6 @@ services:
     configs:
       - source: telegraf-level1.conf
         target: /etc/telegraf/telegraf.conf
-    secrets:
-      - source: telegraf.crt
-        target: /etc/telegraf/telegraf.crt
-      - source: telegraf.key
-        target: /etc/telegraf/telegraf.key
-      - source: telegraf.ca
-        target: /etc/telegraf/telegraf.ca
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -123,6 +116,13 @@ services:
         published: 8791 # port exposed on the swarm nodes
         protocol: tcp
         mode: host      # or 'ingress' for routing mesh
+    secrets:
+      - source: telegraf.crt
+        target: /etc/telegraf/telegraf.crt
+      - source: telegraf.key
+        target: /etc/telegraf/telegraf.key
+      - source: telegraf.ca
+        target: /etc/telegraf/telegraf.ca
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -142,13 +142,6 @@ services:
     configs:
       - source: telegraf-level2.conf
         target: /etc/telegraf/telegraf.conf
-    secrets:
-      - source: telegraf.crt
-        target: /etc/telegraf/telegraf.crt
-      - source: telegraf.key
-        target: /etc/telegraf/telegraf.key
-      - source: telegraf.ca
-        target: /etc/telegraf/telegraf.ca
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -162,6 +155,13 @@ services:
           - node.labels.level == 2
     networks:
       - secured-network
+    secrets:
+      - source: telegraf.crt
+        target: /etc/telegraf/telegraf.crt
+      - source: telegraf.key
+        target: /etc/telegraf/telegraf.key
+      - source: telegraf.ca
+        target: /etc/telegraf/telegraf.ca
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -203,6 +203,7 @@ services:
       - vmstorage
     networks:
       - secured-network
+      - victoria-network
     ports:
       - "8480:8480"  # remote_write endpoint for Telegraf
     volumes:
@@ -223,7 +224,7 @@ services:
       - '--retentionPeriod=1d'
       - '--storageDataPath=/vmstorage'
     networks:
-      - secured-network
+      - victoria-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -243,6 +244,7 @@ services:
       - vmstorage
     networks:
       - secured-network
+      - victoria-network
     ports:
       - "8481:8481"  # UI and query API
     volumes:
@@ -266,7 +268,7 @@ services:
     depends_on:
       - vmselect
     networks:
-      - secured-network
+      - victoria-network
     ports:
       - "8428:8428"
     volumes:
@@ -297,6 +299,7 @@ services:
         constraints:
           - node.labels.level == 0
     networks:
+      - alloy-network
       - secured-network
     ports:
       - target: 3100    # container port
@@ -320,7 +323,7 @@ services:
         constraints:
           - node.labels.level == 0
     networks:
-      - secured-network
+      - alloy-network
     ports:
       - target: 3110    # container port
         published: 3110 # port exposed on the swarm nodes
@@ -350,7 +353,7 @@ services:
     environment:
       - PARENT_LEVEL_NUMBER=0
     networks:
-      - secured-network
+      - alloy-network
     ports:
       - target: 3111    # container port
         published: 3111 # port exposed on the swarm nodes
@@ -380,7 +383,7 @@ services:
     environment:
       - PARENT_LEVEL_NUMBER=1
     networks:
-      - secured-network
+      - alloy-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -389,6 +392,11 @@ services:
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
+#################################
+#                               #
+#          P A R T   8          #
+#                               #
+#################################
 
   grafana:
     image: ${PRIVATE_REPO}/grafana:12.2.0-17195718647
@@ -402,14 +410,22 @@ services:
     secrets:
       - grafana.passwd
     deploy:
-      mode: replicated
-      replicas: 1
+      mode: global
       restart_policy:
         condition: on-failure
+      placement:
+        constraints:
+          - node.labels.level == 0
 
 networks:
+  alloy-network:
+    driver: overlay
+    internal: true   # isolates backend traffic
   secured-network:
     external: true
+  victoria-network:
+    driver: overlay
+    internal: true   # isolates VictoriaMetrics cluster traffic  
 
 configs:
   alloy-level0.conf:

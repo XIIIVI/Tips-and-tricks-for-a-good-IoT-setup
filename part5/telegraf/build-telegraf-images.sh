@@ -41,6 +41,8 @@ display_help() {
     log_debug "Usage: ${0} --local-registry-address <IP address of the local registry>"
     log_debug "            [--local-registry-port <Port of the local registry> (By default: 4443)]"
     log_debug "            --level-number <Number>"
+    log_debug "            [--custom-image-version <Version>]"
+    log_debug "            --image-version <Version>"
 }
 
 #
@@ -48,7 +50,9 @@ display_help() {
 #
 display_settings() {
     log_debug "S E T T I N G S"
-    log_debug "LEVEL_NUMBER : ${LEVEL_NUMBER}"
+    log_debug "CUSTOM_IMAGE_VERSION  : ${CUSTOM_IMAGE_VERSION}"
+    log_debug "IMAGE_VERSION         : ${IMAGE_VERSION}"
+    log_debug "LEVEL_NUMBER          : ${LEVEL_NUMBER}"
     log_debug "LOCAL_REGISTRY_ADDRESS: ${LOCAL_REGISTRY_ADDRESS}"
     log_debug "LOCAL_REGISTRY_PORT   : ${LOCAL_REGISTRY_PORT}"
 }
@@ -90,11 +94,21 @@ check_all_mandatory_parameters() {
 # main
 #
 main() {
-    MANDATORY_PARAMETER_LIST=("LEVEL_NUMBER" "LOCAL_REGISTRY_ADDRESS")
+    MANDATORY_PARAMETER_LIST=("IMAGE_VERSION" "LEVEL_NUMBER" "LOCAL_REGISTRY_ADDRESS")
 
     # Parses the parameters
     while (("$#")); do
         case "$1" in
+        --custom-image-version)
+            CUSTOM_IMAGE_VERSION="${2}"
+            shift # past argument
+            shift # past value
+            ;;
+        --image-version)
+            IMAGE_VERSION="${2}"
+            shift # past argument
+            shift # past value
+            ;;
         --level-number)
             LEVEL_NUMBER="${2}"
             shift # past argument
@@ -127,6 +141,7 @@ main() {
 
     LOCAL_REGISTRY_PORT=${LOCAL_REGISTRY_PORT:="4443"}
     IMAGE_VERSION=${IMAGE_VERSION:="1.34.4-alpine"}
+    CUSTOM_IMAGE_VERSION=${CUSTOM_IMAGE_VERSION:="${IMAGE_VERSION}"}
 
     log_info "Installing the required packages"
     DEBIAN_FRONTEND=noninteractive apt-get -y -qq update
@@ -162,13 +177,13 @@ main() {
     docker buildx build \
            --platform linux/arm64 \
            --tag "${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/telegraf-level${LEVEL_NUMBER}:${IMAGE_VERSION}" \
-           --build-arg IMAGE_VERSION="${IMAGE_VERSION}" \
+           --build-arg IMAGE_VERSION="${CUSTOM_IMAGE_VERSION}" \
            --build-arg LOCAL_REGISTRY="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}" \
            --push .
     
     cd - || exit
 
-    log_info "Telegraf image for level ${LEVEL_NUMBER} with version ${IMAGE_VERSION} has been built and pushed successfully."
+    log_info "Custom Telegraf image v${CUSTOM_IMAGE_VERSION} for level ${LEVEL_NUMBER} with original version ${IMAGE_VERSION} has been built and pushed successfully."
 }
 
 time main "$@"

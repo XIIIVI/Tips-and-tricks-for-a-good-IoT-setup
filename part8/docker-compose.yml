@@ -21,6 +21,8 @@ services:
       placement:
         constraints:
           - node.labels.mqtt == true
+    networks:
+      - public-network
     ports:
       - "1883:3881"
     volumes:
@@ -48,6 +50,8 @@ services:
       placement:
         constraints:
           - node.labels.level == 0
+    networks:
+      - public-network
     ports:
       - target: 8791    # container port
         published: 8791 # port exposed on the swarm nodes
@@ -82,6 +86,8 @@ services:
       placement:
         constraints:
           - node.labels.level == 1
+    networks:
+      - public-network
     ports:
       - target: 8791    # container port
         published: 8791 # port exposed on the swarm nodes
@@ -114,6 +120,8 @@ services:
       placement:
         constraints:
           - node.labels.level == 2
+    networks:
+      - public-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -153,6 +161,9 @@ services:
       - '--storageNode=iot-stack_vmstorage:8400'
     depends_on:
       - vmstorage
+    networks:
+      - public-network
+      - victoria-network
     ports:
       - "8480:8480"  # remote_write endpoint for Telegraf
     volumes:
@@ -172,6 +183,8 @@ services:
     command:
       - '--retentionPeriod=1d'
       - '--storageDataPath=/vmstorage'
+    networks:
+      - victoria-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -189,6 +202,9 @@ services:
           - node.labels.level == 0
     depends_on:
       - vmstorage
+    networks:
+      - public-network
+      - victoria-network
     ports:
       - "8481:8481"  # UI and query API
     volumes:
@@ -196,7 +212,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
     command:
-      - '--storageNode=vmstorage:8401'
+      - '--storageNode=iot-stack_vmstorage:8401'
 
 
   vmauth:
@@ -211,6 +227,8 @@ services:
           - node.labels.level == 0
     depends_on:
       - vmselect
+    networks:
+      - victoria-network
     ports:
       - "8428:8428"
     volumes:
@@ -236,6 +254,9 @@ services:
       placement:
         constraints:
           - node.labels.level == 0
+    networks:
+      - alloy-network
+      - public-network
     ports:
       - target: 3100    # container port
         published: 3100 # port exposed on the swarm nodes
@@ -254,6 +275,8 @@ services:
       placement:
         constraints:
           - node.labels.level == 0
+    networks:
+      - alloy-network
     ports:
       - target: 3110    # container port
         published: 3110 # port exposed on the swarm nodes
@@ -278,6 +301,8 @@ services:
           - node.labels.level == 1
     environment:
       - PARENT_LEVEL_NUMBER=0
+    networks:
+      - alloy-network
     ports:
       - target: 3111    # container port
         published: 3111 # port exposed on the swarm nodes
@@ -302,6 +327,8 @@ services:
           - node.labels.level == 2
     environment:
       - PARENT_LEVEL_NUMBER=1
+    networks:
+      - alloy-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -318,16 +345,32 @@ services:
 
   grafana:
     image: ${PRIVATE_REPO}/grafana:12.2.0-17195718647
-    environment:
-      - GF_INSTALL_PLUGINS=volkovlabs-echarts-panel,volkovlabs-variable-panel,marcusolsson-static-datasource
-    ports:
-      - "8080:3000"
     deploy:
       mode: global
       restart_policy:
         condition: on-failure
+      placement:
+        constraints:
+          - node.labels.level == 0
+    environment:
+      - GF_INSTALL_PLUGINS=volkovlabs-echarts-panel,volkovlabs-variable-panel,marcusolsson-static-datasource
+    networks:
+      - public-network
+    ports:
+      - "8080:3000"
 
 configs:
   vmauth-config.yml:
     external: true
 
+
+networks:
+  alloy-network:
+    driver: overlay
+    internal: true   # isolates backend traffic
+  public-network:
+    driver: overlay
+    internal: true   # isolates backend traffic
+  victoria-network:
+    driver: overlay
+    internal: true   # isolates VictoriaMetrics cluster traffic  

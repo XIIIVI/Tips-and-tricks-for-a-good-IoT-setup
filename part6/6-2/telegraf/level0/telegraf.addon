@@ -18,3 +18,13 @@
   ## HTTP Content-Encoding for write request body, can be set to "gzip" to
   ## compress body or "identity" to apply no encoding.
   content_encoding = "gzip"
+
+
+[[outputs.influxdb]]
+  urls = ["http://iot-stack_vminsert:8480/insert/0/influx"]  # Replace with your vminsert service name or IP
+  database = "telegraf"            # VictoriaMetrics ignores this but Telegraf requires it
+  retention_policy = ""
+  write_consistency = "any"
+  timeout = "5s"
+  username = ""
+  password = ""

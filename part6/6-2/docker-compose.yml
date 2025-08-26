@@ -1,3 +1,4 @@
+
 version: '3.8'
 
 services:
@@ -21,6 +22,8 @@ services:
       placement:
         constraints:
           - node.labels.mqtt == true
+    networks:
+      - public-network
     ports:
       - "1883:3881"
     volumes:
@@ -48,6 +51,8 @@ services:
       placement:
         constraints:
           - node.labels.level == 0
+    networks:
+      - public-network
     ports:
       - target: 8791    # container port
         published: 8791 # port exposed on the swarm nodes
@@ -82,6 +87,8 @@ services:
       placement:
         constraints:
           - node.labels.level == 1
+    networks:
+      - public-network
     ports:
       - target: 8791    # container port
         published: 8791 # port exposed on the swarm nodes
@@ -114,6 +121,8 @@ services:
       placement:
         constraints:
           - node.labels.level == 2
+    networks:
+      - public-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -153,6 +162,9 @@ services:
       - '--storageNode=iot-stack_vmstorage:8400'
     depends_on:
       - vmstorage
+    networks:
+      - public-network
+      - victoria-network
     ports:
       - "8480:8480"  # remote_write endpoint for Telegraf
     volumes:
@@ -172,6 +184,8 @@ services:
     command:
       - '--retentionPeriod=1d'
       - '--storageDataPath=/vmstorage'
+    networks:
+      - victoria-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -189,6 +203,9 @@ services:
           - node.labels.level == 0
     depends_on:
       - vmstorage
+    networks:
+      - public-network
+      - victoria-network
     ports:
       - "8481:8481"  # UI and query API
     volumes:
@@ -196,7 +213,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
     command:
-      - '--storageNode=vmstorage:8401'
+      - '--storageNode=iot-stack_vmstorage:8401'
 
 
   vmauth:
@@ -211,6 +228,8 @@ services:
           - node.labels.level == 0
     depends_on:
       - vmselect
+    networks:
+      - victoria-network
     ports:
       - "8428:8428"
     configs:
@@ -228,3 +247,11 @@ configs:
   vmauth-config.yml:
     external: true
 
+
+networks:
+  public-network:
+    driver: overlay
+    internal: true   # isolates backend traffic
+  victoria-network:
+    driver: overlay
+    internal: true   # isolates VictoriaMetrics cluster traffic  
