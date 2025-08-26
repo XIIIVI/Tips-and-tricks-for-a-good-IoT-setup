@@ -380,30 +380,32 @@ create_credentials() {
     log_debug "\t- Creating the secrets for credentials on ${IP_ADDRESS_ARG}"
 
     # Parse credentials
-    echo "${JSON_ARG}" | jq -r '.swarm.secrets.credentials[] | "NAME=\(.name) USER=\(.login)"' | while read line; do
+    echo "${JSON_ARG}" | jq -r '.swarm.secrets.credentials[] | "\(.name)|\(.login)"' |
+    while IFS="|" read -r name login; do
        local GENERATED_PASSWORD
        local HASH
        local PASSWORD_FILENAME
-       eval "$line"
 
-       log_warning "\t\t- Creating the secret ${NAME} for user ${USER}"
-       PASSWORD_FILENAME="${NAME}.passwd"
+       log_warning "\t\t- Creating the secret ${name} for user ${login}"
+       PASSWORD_FILENAME="${name}.passwd"
        GENERATED_PASSWORD=$(openssl rand -base64 16)
-       HASH=$(htpasswd -bnB "${USER}" "${GENERATED_PASSWORD}" | cut -d ':' -f2)
-       echo "${USER}:${HASH}" > ./"${PASSWORD_FILENAME}"
+       HASH=$(htpasswd -bnB "${login}" "${GENERATED_PASSWORD}" | cut -d ':' -f2)
+       echo "${login}:${HASH}" > ./"${PASSWORD_FILENAME}"
        
-       log_warning "\t\t- Importing the secret ${NAME} for user ${USER} on ${IP_ADDRESS_ARG}"
+       log_warning "\t\t- Importing the secret ${name} for user ${login} on ${IP_ADDRESS_ARG}"
        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" ./"${PASSWORD_FILENAME}" "/tmp/"
        rm -f ./"${PASSWORD_FILENAME}"
-       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.passwd /tmp/${PASSWORD_FILENAME}"
-       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "echo -n \"${NAME}\" | sudo docker secret create ${NAME}.user -"
+       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${name}.passwd /tmp/${PASSWORD_FILENAME}"
+       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "echo -n \"${name}\" | sudo docker secret create ${name}.user -"
        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${PASSWORD_FILENAME}*"       
        cat <<EOF >>"${SECRET_TEMPLATE}"
-    ${NAME}.passwd:
+    ${name}.passwd:
       external: true
-    ${NAME}.user:
+    ${name}.user:
       external: true
 EOF
+      
+       rm -Rf "${PASSWORD_FILENAME}"
    done
 }
 
@@ -425,35 +427,37 @@ create_certificates() {
     log_debug "\t- Creating the secrets for certificates on ${IP_ADDRESS_ARG}"
 
     # Parse certificates
-    echo "${JSON_ARG}" | jq -r '.swarm.secrets.certificates[] | 
-        "NAME=\(.name) DAYS_VALID=\(.["days-valid"]) COUNTRY=\(.country) STATE=\(.state) LOCALITY=\(.locality) ORGANIZATION=\(.organization) COMMON_NAME=\(.["common-name"])"' | while read line; do
-        eval "$line"
-
-        log_warning "\t\t- Creating the secret ${NAME} with common name ${COMMON_NAME} valid for ${DAYS_VALID} days"
+    echo "${JSON_ARG}" | jq -r '.swarm.secrets.credentials[] | "\(.name)|\(.days-valid)|\(.country)|\(.state)|\(.locality)|\(.organization)|\(.common-name)"' |
+    while IFS="|" read -r name days-valid country state locality organization common-name; do
+        log_warning "\t\t- Creating the secret ${name} with common name ${common-name} valid for ${days-valid} days"
         openssl req -x509 -new -nodes -newkey rsa:4096 \
-                -keyout ca.key -out "${NAME}".ca -days ${DAYS_VALID} \
-                -subj "/C=${COUNTRY}/ST=$STATE/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}" 
+                -keyout ca.key -out "${name}".ca -days ${days-valid} \
+                -subj "/C=${country}/ST=$state/L=${locality}/O=${organization}/CN=${common-name}" 
         openssl req -new -nodes -newkey rsa:2048 \
-                -keyout "${NAME}".key -out "${NAME}".csr \
-                -subj "/C=${COUNTRY}/ST=$STATE/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}" 
-        openssl x509 -req -in "${NAME}".csr -CA "${NAME}".ca -CAkey ca.key -CAcreateserial \
-                -out "${NAME}".crt -days 825 -sha256 \
+                -keyout "${name}".key -out "${name}".csr \
+                -subj "/C=${country}/ST=$state/L=${locality}/O=${organization}/CN=${common-name}" 
+        openssl x509 -req -in "${name}".csr -CA "${name}".ca -CAkey ca.key -CAcreateserial \
+                -out "${name}".crt -days 825 -sha256 \
                 -extfile <(printf "subjectAltName=DNS:localhost,IP:127.0.0.1")
 
-        log_warning "\t\t- Importing the secret ${NAME} with common name ${COMMON_NAME} on ${IP_ADDRESS_ARG}"        
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.ca" "/tmp/"
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.crt" "/tmp/"
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.key" "/tmp/"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.ca /tmp/${NAME}.ca"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.crt /tmp/${NAME}.crt"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${NAME}.key /tmp/${NAME}.key"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${NAME}*.crt /tmp/${NAME}*.key"
+        log_warning "\t\t- Importing the secret ${name} with common name ${common-name} on ${IP_ADDRESS_ARG}"        
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${name}.ca" "/tmp/"
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${name}.crt" "/tmp/"
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${name}.key" "/tmp/"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${name}.ca /tmp/${name}.ca"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${name}.crt /tmp/${name}.crt"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker secret create ${name}.key /tmp/${name}.key"
+        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${name}*.crt /tmp/${name}*.key"
         cat <<EOF >>"${SECRET_TEMPLATE}"
-    ${NAME}.crt:
+    ${name}.ca:
       external: true
-    ${NAME}.key:
+    ${name}.crt:
+      external: true
+    ${name}.key:
       external: true
 EOF
+
+        rm -Rf "${name}".ca "${name}".crt "${name}".key "${name}".csr ca.key ca.srl
     done
 }
 
@@ -533,7 +537,7 @@ create_overlay_network() {
     local ATTACHABLE_ARG="${6}"
     local INTERNAL_ARG="${7}"
 
-    log_warning "\t\t- Creating the overlay network ${NAME_ARG} on ${IP_ADDRESS_ARG}"
+    log_warning "\t\t- Creating the overlay network ${NAME_ARG} on ${IP_ADDRESS_ARG} (encrypted: ${ENCRYPTED_ARG}, attachable: ${ATTACHABLE_ARG}, internal: ${INTERNAL_ARG})"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker network create --driver overlay --attachable=${ATTACHABLE_ARG} --internal=${INTERNAL_ARG} --opt encrypted=${ENCRYPTED_ARG} ${NAME_ARG}"
 }
 
@@ -560,13 +564,9 @@ create_overlay_networks() {
         local INTERNAL
 
         NAME=$(echo "$overlay" | jq -r '.name')
-        ENCRYPTED=$(echo "$overlay" | jq -r '.encrypted')
-        ATTACHABLE=$(echo "$overlay" | jq -r '.attachable')
-        INTERNAL=$(echo "$overlay" | jq -r '.internal')
-
-        ENCRYPTED_ARG=${ENCRYPTED_ARG:-false}
-        ATTACHABLE_ARG=${ATTACHABLE_ARG:-true}
-        INTERNAL_ARG=${INTERNAL_ARG:-false}
+        ENCRYPTED=$(echo "$overlay" | jq -er '.encrypted' 2>/dev/null || echo false)
+        ATTACHABLE=$(echo "$overlay" | jq -er '.attachable' 2>/dev/null || echo false)
+        INTERNAL=$(echo "$overlay" | jq -er '.internal' 2>/dev/null || echo false)
 
         create_overlay_network "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${NAME}" "${ENCRYPTED}" "${ATTACHABLE}" "${INTERNAL}"
     done
@@ -809,7 +809,7 @@ main() {
 
     TMP_DIR=$(mktemp -d)
     JSON_CONTENT=$(cat "${CONFIGURATION_FILE}")
-    CONFIG_TEMPLATE="${TMP_DIR}/config-template.yml"
+    CONFIG_TEMPLATE="${PWD}/config-template.yml"
     NETWORK_TEMPLATE="${TMP_DIR}/network-template.yml"
     SECRET_TEMPLATE="${TMP_DIR}/secret-template.yml"
     VOLUME_TEMPLATE="${TMP_DIR}/volume-template.yml"
