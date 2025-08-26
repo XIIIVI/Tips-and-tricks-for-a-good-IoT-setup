@@ -327,9 +327,9 @@ while IFS= read -r entry; do
         "${PASSWORD_ARG}" \
         "${MAIN_MANAGER_IP_ADDRESS}" \
         "${hostname}_env.config" \
-        "${CONFIG_DIR}/${hostname}_env.config"
+        "${CONFIG_DIR}/${hostname}_env.config" < /dev/null
 
-done < <(jq -c 'select(.config != null) | {hostname, config}' <<<"$JSON_OBJECT_ARG")
+done 0< <(jq -c 'select(.config != null) | {hostname, config}' <<<"$JSON_OBJECT_ARG")
 
             # Summary
             log_warning "########################"
@@ -394,48 +394,54 @@ create_credentials() {
     log_debug "\t- Creating the secrets for credentials on ${IP_ADDRESS_ARG}"
 
     # Iterate over each credential object safely
-    while IFS= read -r cred_json; do
-        # Extract fields safely
-        local name login GENERATED_PASSWORD HASH PASSWORD_FILENAME
-        name=$(jq -r '.name' <<<"$cred_json")
-        login=$(jq -r '.login' <<<"$cred_json")
+while IFS= read -r cred_json; do
+    # Extract fields safely
+    local name login GENERATED_PASSWORD HASH PASSWORD_FILENAME
+    name=$(jq -r '.name' <<<"$cred_json")
+    login=$(jq -r '.login' <<<"$cred_json")
 
-        log_warning "\t\t- Creating the secret ${name} for user ${login}"
+    log_warning "\t\t- Creating the secret ${name} for user ${login}"
 
-        PASSWORD_FILENAME="${name}.passwd"
-        GENERATED_PASSWORD=$(openssl rand -base64 16)
-        HASH=$(htpasswd -bnB "${login}" "${GENERATED_PASSWORD}" | cut -d ':' -f2)
+    PASSWORD_FILENAME="${name}.passwd"
+    GENERATED_PASSWORD=$(openssl rand -base64 16)
+    HASH=$(htpasswd -bnB "${login}" "${GENERATED_PASSWORD}" | cut -d ':' -f2)
 
-        # Create local password file
-        echo "${login}:${HASH}" > "./${PASSWORD_FILENAME}"
+    # Create local password file
+    echo "${login}:${HASH}" > "./${PASSWORD_FILENAME}"
 
-        log_warning "\t\t- Importing the secret ${name} for user ${login} on ${IP_ADDRESS_ARG}"
+    log_warning "\t\t- Importing the secret ${name} for user ${login} on ${IP_ADDRESS_ARG}"
 
-        # Copy to host
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${PASSWORD_FILENAME}" "/tmp/"
+    # Copy to host
+    copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${PASSWORD_FILENAME}" "/tmp/" < /dev/null
 
-        # Remove local password file
-        rm -f "./${PASSWORD_FILENAME}"
+    # Remove local password file
+    rm -f "./${PASSWORD_FILENAME}"
 
-        # Create Docker secrets on remote host
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-            "sudo docker secret create ${name}.passwd /tmp/${PASSWORD_FILENAME}"
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-            "echo -n \"${name}\" | sudo docker secret create ${name}.user -"
+    # Create Docker secrets on remote host
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+        "sudo docker secret create ${name}.passwd /tmp/${PASSWORD_FILENAME}" < /dev/null
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+        "echo -n \"${name}\" | sudo docker secret create ${name}.user -" < /dev/null
 
-        # Remove temp files on remote host
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-            "rm -f /tmp/${PASSWORD_FILENAME}*"
+    # Remove temp files on remote host
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+        "rm -f /tmp/${PASSWORD_FILENAME}*" < /dev/null
 
-        # Append to secret template
-        cat <<EOF >>"${SECRET_TEMPLATE}"
+    # Append to secret template
+    cat <<EOF >>"${SECRET_TEMPLATE}"
     ${name}.passwd:
       external: true
     ${name}.user:
       external: true
 EOF
 
-    done < <(jq -c '.swarm.secrets.credentials[]' <<<"$JSON_ARG")
+done 0< <(jq -c '.swarm.secrets.credentials[]' <<<"$JSON_ARG")
+
+    log_warning "########################"
+    log_warning "# Secrets of the Swarm #"
+    log_warning "########################"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" \
+        "sudo docker secret ls"
 }
 
 #
@@ -472,36 +478,36 @@ create_certificates() {
         # Generate CA certificate
         openssl req -x509 -new -nodes -newkey rsa:4096 \
             -keyout ca.key -out "${NAME}.ca" -days "${DAYS_VALID}" \
-            -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}"
+            -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}" < /dev/null
 
         # Generate CSR and private key
         openssl req -new -nodes -newkey rsa:2048 \
             -keyout "${NAME}.key" -out "${NAME}.csr" \
-            -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}"
+            -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}" < /dev/null
 
         # Sign certificate
         openssl x509 -req -in "${NAME}.csr" -CA "${NAME}.ca" -CAkey ca.key -CAcreateserial \
             -out "${NAME}.crt" -days 825 -sha256 \
-            -extfile <(printf "subjectAltName=DNS:localhost,IP:127.0.0.1")
+            -extfile <(printf "subjectAltName=DNS:localhost,IP:127.0.0.1") < /dev/null
 
         log_warning "\t\t- Importing the secret ${NAME} on ${IP_ADDRESS_ARG}"
 
         # Copy to host
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.ca" "/tmp/"
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.crt" "/tmp/"
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.key" "/tmp/"
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.ca" "/tmp/" < /dev/null
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.crt" "/tmp/" < /dev/null
+        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.key" "/tmp/" < /dev/null
 
         # Create Docker secrets
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-            "sudo docker secret create ${NAME}.ca /tmp/${NAME}.ca"
+            "sudo docker secret create ${NAME}.ca /tmp/${NAME}.ca" < /dev/null
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-            "sudo docker secret create ${NAME}.crt /tmp/${NAME}.crt"
+            "sudo docker secret create ${NAME}.crt /tmp/${NAME}.crt" < /dev/null
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-            "sudo docker secret create ${NAME}.key /tmp/${NAME}.key"
+            "sudo docker secret create ${NAME}.key /tmp/${NAME}.key" < /dev/null
 
         # Remove temp files on host
         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-            "rm -f /tmp/${NAME}*.crt /tmp/${NAME}*.key /tmp/${NAME}*.ca"
+            "rm -f /tmp/${NAME}*.crt /tmp/${NAME}*.key /tmp/${NAME}*.ca" < /dev/null
 
         # Append to secret template
         cat <<EOF >>"${SECRET_TEMPLATE}"
@@ -514,7 +520,13 @@ EOF
         # Local cleanup
         rm -f "${NAME}.ca" "${NAME}.crt" "${NAME}.key" "${NAME}.csr" ca.key ca.srl
 
-    done < <(jq -c '.swarm.secrets.certificates[]' <<<"$JSON_ARG")
+    done 0< <(jq -c '.swarm.secrets.certificates[]' <<<"$JSON_ARG")
+
+    log_warning "########################"
+    log_warning "# Secrets of the Swarm #"
+    log_warning "########################"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" \
+        "sudo docker secret ls"
 }
 
 #
@@ -578,9 +590,15 @@ EOF
             "${PASSWORD_ARG}" \
             "${IP_ADDRESS_ARG}" \
             "${name}" \
-            "${file}"
+            "${file}" < /dev/null
 
-    done < <(jq -c '.swarm.configurations[]' <<<"$JSON_ARG")
+    done 0< <(jq -c '.swarm.configurations[]' <<<"$JSON_ARG")
+
+    log_warning "###############################"
+    log_warning "# Configurations of the Swarm #"
+    log_warning "###############################"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" \
+        "sudo docker config ls"
 }
 
 #
@@ -639,9 +657,9 @@ create_overlay_networks() {
             "${NAME}" \
             "${ENCRYPTED}" \
             "${ATTACHABLE}" \
-            "${INTERNAL}"
+            "${INTERNAL}" < /dev/null
 
-    done < <(jq -c '.swarm.networks[].overlays[]' <<<"$JSON_ARG")
+    done 0< <(jq -c '.swarm.networks[].overlays[]' <<<"$JSON_ARG")
 
     log_warning "#################################"
     log_warning "# Overlay networks of the Swarm #"
@@ -678,7 +696,7 @@ create_replicated_volumes() {
         readarray -t FOLDER_LIST < <(jq -r '.folders[]' <<<"$volume_json")
 
         # Setup replicated volumes across hosts
-        setup_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME}" "${HOSTNAME_LIST[@]}"
+        setup_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME}" "${HOSTNAME_LIST[@]}" < /dev/null
 
         log_warning "\t\t- Creating the folders on the volume ${VOLUME_NAME}"
         for FOLDER in "${FOLDER_LIST[@]}"; do
@@ -687,7 +705,7 @@ create_replicated_volumes() {
 
             log_debug "\t\t\t- Creating the folder ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" \
-                "sudo mkdir -p ${MOUNTPOINT_DIR}/${FOLDER}"
+                "sudo mkdir -p ${MOUNTPOINT_DIR}/${FOLDER}" < /dev/null
 
             cat <<EOF >>"${VOLUME_TEMPLATE}"
   ${VOLUME_NAME}-${FOLDER}:
@@ -701,7 +719,7 @@ EOF
             if [ -n "${OWNERSHIP}" ]; then
                 log_debug "\t\t\t- Setting ownership on ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
                 sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" \
-                    "sudo chown -R ${OWNERSHIP} ${MOUNTPOINT_DIR}/${FOLDER}"
+                    "sudo chown -R ${OWNERSHIP} ${MOUNTPOINT_DIR}/${FOLDER}" < /dev/null
             else
                 log_debug "\t\t\t - Skipping ownership due to missing value (ownership: '${OWNERSHIP}')"
             fi
@@ -709,13 +727,13 @@ EOF
             if [ -n "${PERMISSIONS}" ]; then
                 log_debug "\t\t\t- Setting permissions on ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
                 sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" \
-                    "sudo chmod -R ${PERMISSIONS} ${MOUNTPOINT_DIR}/${FOLDER}"
+                    "sudo chmod -R ${PERMISSIONS} ${MOUNTPOINT_DIR}/${FOLDER}" < /dev/null
             else
                 log_debug "\t\t\t - Skipping permissions setting due to missing values (permissions: '${PERMISSIONS}')"
             fi
         done
 
-    done < <(jq -c '.[]' <<<"$REPLICATED_JSON")
+    done 0< <(jq -c '.[]' <<<"$REPLICATED_JSON")
 }
 
 #
