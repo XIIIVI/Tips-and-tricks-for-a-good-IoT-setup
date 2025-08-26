@@ -289,7 +289,7 @@ services:
     image: ${PRIVATE_REPO}/alloy:v1.10.2
     configs:
       - source: alloy-level0.conf
-        target: /etc/alloy/config.yaml
+        target: /etc/alloy/config.alloy
         mode: 0444  # read-only inside container
     deploy:
       mode: global  # Ensures one instance per eligible node
@@ -317,7 +317,7 @@ services:
     image: ${PRIVATE_REPO}/alloy:v1.10.2
     configs:
       - source: alloy-level1.conf
-        target: /etc/alloy/config.yaml
+        target: /etc/alloy/config.alloy
         mode: 0444  # read-only inside container
     deploy:
       mode: global  # Ensures one instance per eligible node
@@ -347,7 +347,7 @@ services:
     image: ${PRIVATE_REPO}/alloy:v1.10.2
     configs:
       - source: alloy-level2.conf
-        target: /etc/alloy/config.yaml
+        target: /etc/alloy/config.alloy
         mode: 0444  # read-only inside container
     deploy:
       mode: global  # Ensures one instance per eligible node
@@ -407,11 +407,11 @@ networks:
     internal: true   # isolates VictoriaMetrics cluster traffic  
 
 configs:
-  alloy-level0.conf:
+  alloy-level0.alloy:
     external: true
-  alloy-level1.conf:
+  alloy-level1.alloy:
     external: true
-  alloy-level2.conf:
+  alloy-level2.alloy:
     external: true
   loki.yaml:
     external: true

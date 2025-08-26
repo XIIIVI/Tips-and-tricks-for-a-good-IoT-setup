@@ -126,16 +126,16 @@
         ],
         "configurations": [
             {
-                "name": "alloy-level0.yml",
-                "file": "./data/configs/alloy-level0.yml"
+                "name": "alloy-level0.alloy",
+                "file": "./data/configs/alloy-level0.alloy"
             },
             {
-                "name": "alloy-level1.yml",
-                "file": "./data/configs/alloy-level1.yml"
+                "name": "alloy-level1.alloy",
+                "file": "./data/configs/alloy-level1.alloy"
             },
             {
-                "name": "alloy-level2.yml",
-                "file": "./data/configs/alloy-level2.yml"
+                "name": "alloy-level2.alloy",
+                "file": "./data/configs/alloy-level2.alloy"
             },
             {
                 "name": "loki-config.yaml",
