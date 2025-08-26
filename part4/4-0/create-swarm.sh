@@ -506,10 +506,9 @@ config:
 EOF
 
     # Parse configurations
-    echo "${JSON_ARG}" | jq -r '.swarm.configurations[] | "NAME=\(.name) FILE=\(.file)"' | while read line; do
-        eval "$line"
-
-        create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${NAME}" "${FILE}"
+    echo "${JSON_ARG}" | jq -r '.swarm.configurations[] | "\(.name)|\(.file)"' |
+    while IFS="|" read -r name file; do
+        create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${name}" "${file}"
     done
 }
 
@@ -533,6 +532,10 @@ create_overlay_network() {
     local ENCRYPTED_ARG="${5}"
     local ATTACHABLE_ARG="${6}"
     local INTERNAL_ARG="${7}"
+
+    ENCRYPTED_ARG=${ENCRYPTED_ARG:-false}
+    ATTACHABLE_ARG=${ATTACHABLE_ARG:-true}
+    INTERNAL_ARG=${INTERNAL_ARG:-false}
 
     log_warning "\t\t- Creating the overlay network ${NAME_ARG} on ${IP_ADDRESS_ARG}"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker network create --driver overlay --attachable=${ATTACHABLE_ARG} --internal=${INTERNAL_ARG} --opt encrypted=${ENCRYPTED_ARG} ${NAME_ARG}"
@@ -642,7 +645,7 @@ EOF
 # create_replicated_volumes
 # - param1: LOGIN_ARG, the login to the host
 # - param2: PASSWORD_ARG, the password to the host
-# - param3: JSON_ARG, the JSON content containing the overlay networks configuration
+# - param3: JSON_ARG, the JSON content containing the volume configuration
 #
 create_volumes() {
     local LOGIN_ARG="${1}"
