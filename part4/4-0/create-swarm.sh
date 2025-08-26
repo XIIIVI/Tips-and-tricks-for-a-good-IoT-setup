@@ -430,13 +430,12 @@ create_certificates() {
         eval "$line"
 
         log_warning "\t\t- Creating the secret ${NAME} with common name ${COMMON_NAME} valid for ${DAYS_VALID} days"
-        # Create CA + server cert in one go
         openssl req -x509 -new -nodes -newkey rsa:4096 \
-                -keyout ca.key -out "${NAME}".ca -days 3650 \
-                -subj "/C=${COUNTRY}/ST=$STATE/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}" \
+                -keyout ca.key -out "${NAME}".ca -days ${DAYS_VALID} \
+                -subj "/C=${COUNTRY}/ST=$STATE/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}" 
         openssl req -new -nodes -newkey rsa:2048 \
                 -keyout "${NAME}".key -out "${NAME}".csr \
-                -subj "/C=${COUNTRY}/ST=$STATE/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}" \
+                -subj "/C=${COUNTRY}/ST=$STATE/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}" 
         openssl x509 -req -in "${NAME}".csr -CA "${NAME}".ca -CAkey ca.key -CAcreateserial \
                 -out "${NAME}".crt -days 825 -sha256 \
                 -extfile <(printf "subjectAltName=DNS:localhost,IP:127.0.0.1")

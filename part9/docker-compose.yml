@@ -381,7 +381,7 @@ services:
       - GF_INSTALL_PLUGINS=volkovlabs-echarts-panel,volkovlabs-variable-panel,marcusolsson-static-datasource
     networks:
       - public-network
-      - secured-network
+      - telemetry-network
     ports:
       - "3000:3000"
     secrets:
