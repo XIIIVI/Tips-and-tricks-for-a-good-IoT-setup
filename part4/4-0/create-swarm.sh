@@ -533,10 +533,6 @@ create_overlay_network() {
     local ATTACHABLE_ARG="${6}"
     local INTERNAL_ARG="${7}"
 
-    ENCRYPTED_ARG=${ENCRYPTED_ARG:-false}
-    ATTACHABLE_ARG=${ATTACHABLE_ARG:-true}
-    INTERNAL_ARG=${INTERNAL_ARG:-false}
-
     log_warning "\t\t- Creating the overlay network ${NAME_ARG} on ${IP_ADDRESS_ARG}"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker network create --driver overlay --attachable=${ATTACHABLE_ARG} --internal=${INTERNAL_ARG} --opt encrypted=${ENCRYPTED_ARG} ${NAME_ARG}"
 }
@@ -567,6 +563,10 @@ create_overlay_networks() {
         ENCRYPTED=$(echo "$overlay" | jq -r '.encrypted')
         ATTACHABLE=$(echo "$overlay" | jq -r '.attachable')
         INTERNAL=$(echo "$overlay" | jq -r '.internal')
+
+        ENCRYPTED_ARG=${ENCRYPTED_ARG:-false}
+        ATTACHABLE_ARG=${ATTACHABLE_ARG:-true}
+        INTERNAL_ARG=${INTERNAL_ARG:-false}
 
         create_overlay_network "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${NAME}" "${ENCRYPTED}" "${ATTACHABLE}" "${INTERNAL}"
     done
