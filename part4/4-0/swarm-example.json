@@ -194,7 +194,7 @@
             {
                 "overlays": [
                     {
-                        "name": "alloy-network",
+                        "name": "log-network",
                         "attachable": true
                     },
                     {
@@ -213,7 +213,7 @@
                         "internal": true
                     },
                     {
-                        "name": "victoria-network",
+                        "name": "timeseries-network",
                         "attachable": true,
                         "internal": true
                     }

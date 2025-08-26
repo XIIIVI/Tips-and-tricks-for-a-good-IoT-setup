@@ -203,7 +203,7 @@ services:
       - vmstorage
     networks:
       - telemetry-network
-      - victoria-network
+      - timeseries-network
     ports:
       - "8480:8480"  # remote_write endpoint for Telegraf
     volumes:
@@ -224,7 +224,7 @@ services:
       - '--retentionPeriod=1d'
       - '--storageDataPath=/vmstorage'
     networks:
-      - victoria-network
+      - timeseries-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -244,7 +244,7 @@ services:
       - vmstorage
     networks:
       - secured-network
-      - victoria-network
+      - timeseries-network
     ports:
       - "8481:8481"  # UI and query API
     volumes:
@@ -275,7 +275,7 @@ services:
         constraints:
           - node.labels.level == 0
     networks:
-      - alloy-network
+      - log-network
       - secured-network
     ports:
       - target: 3100    # container port
@@ -299,7 +299,7 @@ services:
         constraints:
           - node.labels.level == 0
     networks:
-      - alloy-network
+      - log-network
     ports:
       - target: 3110    # container port
         published: 3110 # port exposed on the swarm nodes
@@ -329,7 +329,7 @@ services:
     environment:
       - PARENT_LEVEL_NUMBER=0
     networks:
-      - alloy-network
+      - log-network
     ports:
       - target: 3111    # container port
         published: 3111 # port exposed on the swarm nodes
@@ -359,7 +359,7 @@ services:
     environment:
       - PARENT_LEVEL_NUMBER=1
     networks:
-      - alloy-network
+      - log-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -381,7 +381,7 @@ services:
       - GF_INSTALL_PLUGINS=volkovlabs-echarts-panel,volkovlabs-variable-panel,marcusolsson-static-datasource
     networks:
       - public-network
-      - telemetry-network
+      - secured-network
     ports:
       - "3000:3000"
     secrets:
@@ -395,14 +395,14 @@ services:
           - node.labels.level == 0
 
 networks:
-  alloy-network:
+  log-network:
     driver: overlay
     internal: true   # isolates backend traffic
   secured-network:
     external: true
   telemetry-network:
     external: true
-  victoria-network:
+  timeseries-network:
     driver: overlay
     internal: true   # isolates VictoriaMetrics cluster traffic  
 

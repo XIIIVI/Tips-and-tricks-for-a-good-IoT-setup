@@ -124,7 +124,7 @@ EOF_DOCKER_DAEMON
          sudo modprobe ip_vs
          sudo modprobe ip_vs_rr
          sudo modprobe ip_vs_wrr
-         qsudo modprobe ip_vs_sh
+         sudo modprobe ip_vs_sh
 
         # Restarts Docker to take in charge the new configuration
         echo "      - Restarting Docker service... |"
