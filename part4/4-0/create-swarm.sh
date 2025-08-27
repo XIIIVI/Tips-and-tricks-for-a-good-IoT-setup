@@ -780,7 +780,7 @@ create_replicated_volumes() {
          # Build comma-separated IP string
          IP_LIST=""
         
-         for HOST in $REPLICATED_HOSTS; do
+         for HOST in $HOSTNAME_LIST; do
              IP="${HOST_IP_MAP[$HOST]}"
              
              if [[ -n "$IP" ]]; then
@@ -796,7 +796,7 @@ create_replicated_volumes() {
          sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo mkdir -p ${MOUNTED_GLUSTER_VOLUME}" < /dev/null
 
          if [ -n "${OWNERSHIP}" ]; then
-             log_debug "\t\t\t- Setting ownership ${MOUNTED_GLUSTER_VOLUME} on \"${HOSTNAME_LIST[0]}\" (${MAIN_MANAGER_IP_ADDRESS})"
+             log_debug "\t\t\t- Setting ownership ${OWNERSHIP} on ${MOUNTED_GLUSTER_VOLUME} on \"${HOSTNAME_LIST[0]}\" (${MAIN_MANAGER_IP_ADDRESS})"
              sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" \
                     "sudo chown -R ${OWNERSHIP} ${MOUNTED_GLUSTER_VOLUME}" < /dev/null
          else
@@ -804,7 +804,7 @@ create_replicated_volumes() {
          fi
 
          if [ -n "${PERMISSIONS}" ]; then
-             log_debug "\t\t\t- Setting permissions on ${MOUNTPOINT_DIR}/${FOLDER} on \"${HOSTNAME_LIST[0]}\" (${MAIN_MANAGER_IP_ADDRESS})"
+             log_debug "\t\t\t- Setting permissions ${PERMISSIONS} on ${MOUNTED_GLUSTER_VOLUME} on \"${HOSTNAME_LIST[0]}\" (${MAIN_MANAGER_IP_ADDRESS})"
              sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo chmod -R ${PERMISSIONS} ${MOUNTED_GLUSTER_VOLUME}" < /dev/null
          else
              log_debug "\t\t\t - Skipping permissions setting due to missing values (permissions: '${PERMISSIONS}')"
@@ -817,7 +817,7 @@ create_replicated_volumes() {
 EOF
 
          # Configuring the Docker plugin on each host
-         for HOST in $REPLICATED_HOSTS; do
+         for HOST in $HOSTNAME_LIST; do
              IP="${HOST_IP_MAP[$HOST]}"
              
              if [[ -n "$IP" ]]; then
