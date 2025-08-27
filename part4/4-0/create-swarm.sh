@@ -793,7 +793,7 @@ create_replicated_volumes() {
 
          log_debug "\t- Configuring the folder hierarchy on the main node \"${HOSTNAME_LIST[0]}\" (${MAIN_MANAGER_IP_ADDRESS})"
          log_warning "\t\t- Creating the mount folder ${MOUNTED_GLUSTER_VOLUME}"
-         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo mkdir -p " < /dev/null
+         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo mkdir -p ${MOUNTED_GLUSTER_VOLUME}" < /dev/null
 
          if [ -n "${OWNERSHIP}" ]; then
              log_debug "\t\t\t- Setting ownership on mkdir -p ${MOUNTED_GLUSTER_VOLUME} on \"${HOSTNAME_LIST[0]}\" (${MAIN_MANAGER_IP_ADDRESS})"
