@@ -907,7 +907,7 @@ main() {
 
     TMP_DIR=$(mktemp -d)
     JSON_CONTENT=$(cat "${CONFIGURATION_FILE}")
-    CONFIG_TEMPLATE="${PWD}/config-template.yml"
+    CONFIG_TEMPLATE="${TMP_DIR}/config-template.yml"
     NETWORK_TEMPLATE="${TMP_DIR}/network-template.yml"
     SECRET_TEMPLATE="${TMP_DIR}/secret-template.yml"
     VOLUME_TEMPLATE="${TMP_DIR}/volume-template.yml"
