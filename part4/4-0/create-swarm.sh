@@ -796,7 +796,7 @@ create_replicated_volumes() {
          sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo mkdir -p ${MOUNTED_GLUSTER_VOLUME}" < /dev/null
 
          if [ -n "${OWNERSHIP}" ]; then
-             log_debug "\t\t\t- Setting ownership on mkdir -p ${MOUNTED_GLUSTER_VOLUME} on \"${HOSTNAME_LIST[0]}\" (${MAIN_MANAGER_IP_ADDRESS})"
+             log_debug "\t\t\t- Setting ownership ${MOUNTED_GLUSTER_VOLUME} on \"${HOSTNAME_LIST[0]}\" (${MAIN_MANAGER_IP_ADDRESS})"
              sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" \
                     "sudo chown -R ${OWNERSHIP} ${MOUNTED_GLUSTER_VOLUME}" < /dev/null
          else
