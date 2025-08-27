@@ -73,7 +73,7 @@
         },
         "workers": [
             {
-                "ip-address": "192.168.2.118",
+                "ip-address": "192.168.2.119",
                 "hostname": "sat1",
                 "folders": [
                     "/data/alloy",
@@ -88,7 +88,7 @@
                 "has-display": true
             },
             {
-                "ip-address": "192.168.2.172",
+                "ip-address": "192.168.2.173",
                 "hostname": "sat2",
                 "folders": [
                     "/data/alloy",

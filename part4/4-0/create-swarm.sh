@@ -98,11 +98,6 @@ create_single_manager() {
                 log_debug "\t- Saving the join manager command for managers to ${JOIN_MANAGER_CMD_FILE}"
                 echo "${JOIN_MGR_CMD}" >"${JOIN_MANAGER_CMD_FILE}"
 
-cat <<EOF >>"${SECRET_TEMPLATE}"
-
-secrets:
-EOF
-
                create_credentials "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT_ARG}"
                create_certificates "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT_ARG}"
                create_configurations "${LOGIN}" "${PASSWORD}" "${IP_ADDRESS}" "${JSON_CONTENT_ARG}"
@@ -659,6 +654,12 @@ create_overlay_networks() {
             "${ATTACHABLE}" \
             "${INTERNAL}" < /dev/null
 
+        cat <<EOF >>"${NETWORK_TEMPLATE}"
+  ${NAME}:
+     driver: overlay
+     internal: true   # isolates backend traffic
+EOF
+
     done 0< <(jq -c '.swarm.networks[].overlays[]' <<<"$JSON_ARG")
 
     log_warning "#################################"
@@ -908,6 +909,17 @@ main() {
     NETWORK_TEMPLATE="${TMP_DIR}/network-template.yml"
     SECRET_TEMPLATE="${TMP_DIR}/secret-template.yml"
     VOLUME_TEMPLATE="${TMP_DIR}/volume-template.yml"
+
+    # Initializing the template files  
+    cat <<EOF >>"${SECRET_TEMPLATE}"
+
+secrets:
+EOF
+
+cat <<EOF >>"${NETWORK_TEMPLATE}"
+
+networks:
+EOF
 
     # Creates the Swarm 
     create_swarm "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}"
