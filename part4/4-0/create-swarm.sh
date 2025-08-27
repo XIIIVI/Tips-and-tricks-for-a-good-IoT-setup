@@ -758,27 +758,29 @@ create_replicated_volumes() {
 
     # Iterate over each volume object safely
     while IFS= read -r volume_json; do
-        local VOLUME_NAME OWNERSHIP PERMISSIONS MOUNTPOINT_DIR
-        local HOSTNAME_LIST FOLDER_LIST
-        local MAIN_MANAGER_IP_ADDRESS
-        local MOUNTED_GLUSTER_VOLUME
-        local VOLUME_NAME
+         local VOLUME_NAME OWNERSHIP PERMISSIONS MOUNTPOINT_DIR
+         local HOSTNAME_LIST FOLDER_LIST
+         local MAIN_MANAGER_IP_ADDRESS
+         local MOUNTED_GLUSTER_VOLUME
+         local VOLUME_NAME
+         local FIRST_HOSTNAME
 
-        OWNERSHIP=$(jq -r '.ownership // empty' <<<"$volume_json")
-        PERMISSIONS=$(jq -r '.permissions // empty' <<<"$volume_json")
-        VOLUME_NAME="vol1"
-        MOUNTED_GLUSTER_VOLUME="/mnt/${VOLUME_NAME}"
+         OWNERSHIP=$(jq -r '.ownership // empty' <<<"$volume_json")
+         PERMISSIONS=$(jq -r '.permissions // empty' <<<"$volume_json")
+         VOLUME_NAME="vol1"
+         MOUNTED_GLUSTER_VOLUME="/mnt/${VOLUME_NAME}"
 
-        # Parse 'hosts' and 'folders' arrays as Bash arrays
-        readarray -t HOSTNAME_LIST < <(jq -r '.hosts[]' <<<"$volume_json")
-        readarray -t FOLDER_LIST < <(jq -r '.folders[]' <<<"$volume_json")
+         # Parse 'hosts' and 'folders' arrays as Bash arrays
+         readarray -t HOSTNAME_LIST < <(jq -r '.hosts[]' <<<"$volume_json")
+         readarray -t FOLDER_LIST < <(jq -r '.folders[]' <<<"$volume_json")
 
-        MAIN_MANAGER_IP_ADDRESS="${HOST_IP_MAP[${HOST_IP_MAP[0]}]}"
+         FIRST_HOSTNAME=$(printf "%s\n" "${!HOST_IP_MAP[@]}" | head -n1)
+         MAIN_MANAGER_IP_ADDRESS="${HOST_IP_MAP[$FIRST_HOSTNAME]}"
 
-        # Build comma-separated IP string
-        IP_LIST=""
+         # Build comma-separated IP string
+         IP_LIST=""
         
-        for HOST in $REPLICATED_HOSTS; do
+         for HOST in $REPLICATED_HOSTS; do
              IP="${HOST_IP_MAP[$HOST]}"
              
              if [[ -n "$IP" ]]; then
@@ -789,12 +791,12 @@ create_replicated_volumes() {
          # Remove trailing comma
          IP_LIST="${IP_LIST%,}"
 
-         log_debug "\t- Configuring the folder hierarchy on the main node ${HOSTNAME_LIST[0]} (${MAIN_MANAGER_IP_ADDRESS})"
+         log_debug "\t- Configuring the folder hierarchy on the main node \"${HOSTNAME_LIST[0]}\" (${MAIN_MANAGER_IP_ADDRESS})"
          log_warning "\t\t- Creating the mount folder ${MOUNTED_GLUSTER_VOLUME}"
          sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo mkdir -p " < /dev/null
 
          if [ -n "${OWNERSHIP}" ]; then
-             log_debug "\t\t\t- Setting ownership on mkdir -p ${MOUNTED_GLUSTER_VOLUME} on ${HOSTNAME_LIST[0]} at IP address ${MAIN_MANAGER_IP_ADDRESS}"
+             log_debug "\t\t\t- Setting ownership on mkdir -p ${MOUNTED_GLUSTER_VOLUME} on \"${HOSTNAME_LIST[0]}\" (${MAIN_MANAGER_IP_ADDRESS})"
              sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" \
                     "sudo chown -R ${OWNERSHIP} ${MOUNTED_GLUSTER_VOLUME}" < /dev/null
          else
@@ -802,7 +804,7 @@ create_replicated_volumes() {
          fi
 
          if [ -n "${PERMISSIONS}" ]; then
-             log_debug "\t\t\t- Setting permissions on ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${MAIN_MANAGER_IP_ADDRESS}"
+             log_debug "\t\t\t- Setting permissions on ${MOUNTPOINT_DIR}/${FOLDER} on \"${HOSTNAME_LIST[0]}\" (${MAIN_MANAGER_IP_ADDRESS})"
              sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo chmod -R ${PERMISSIONS} ${MOUNTED_GLUSTER_VOLUME}" < /dev/null
          else
              log_debug "\t\t\t - Skipping permissions setting due to missing values (permissions: '${PERMISSIONS}')"
