@@ -506,6 +506,8 @@ create_certificates() {
 
         # Append to secret template
         cat <<EOF >>"${SECRET_TEMPLATE}"
+    ${NAME}.ca:
+      external: true
     ${NAME}.crt:
       external: true
     ${NAME}.key:
