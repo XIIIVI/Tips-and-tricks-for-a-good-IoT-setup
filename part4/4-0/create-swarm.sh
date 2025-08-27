@@ -8,6 +8,8 @@ source "../../commons/commons-log.sh"
 source "../../commons/commons-net.sh"
 source "../../commons/commons-ssh.sh"
 
+declare -A HOST_IP_MAP
+
 #
 # display_help
 # Displays the help message for the script.
@@ -80,6 +82,8 @@ create_single_manager() {
             log_error "\t 🚫 Abort: Hostname ${NODE_HOSTNAME} is already used by another host."
         else
             remove_ssh_host "${IP_ADDRESS}"
+            HOST_IP_MAP["${NODE_HOSTNAME}"]="${IP_ADDRESS}"
+
 
             if [ -z "${JOIN_MGR_CMD}" ]; then
                 log_debug "\t- Creating the main Swarm manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
@@ -265,6 +269,7 @@ create_single_worker() {
             log_error "\t 🚫 Abort: Hostname ${NODE_HOSTNAME} is already used by another host."
         else
             remove_ssh_host "${IP_ADDRESS}"
+            HOST_IP_MAP["${NODE_HOSTNAME}"]="${IP_ADDRESS}"
 
             FOLDER_LIST=$(echo "$JSON_OBJECT_ARG" | jq -r '.folders | join(" ")')
             HAS_DISPLAY=$(echo "$JSON_OBJECT_ARG" | jq -r '.["has-display"]')
@@ -672,12 +677,12 @@ EOF
 }
 
 #
-# create_replicated_volumes
+# create_replicated_volumes_manually
 # - param1: LOGIN_ARG, the login to the host
 # - param2: PASSWORD_ARG, the password to the host
 # - param3: REPLICATED_JSON, the JSON content containing the replicated volumes configuration
 #
-create_replicated_volumes() {
+create_replicated_volumes_manually() {
     local LOGIN_ARG="$1"
     local PASSWORD_ARG="$2"
     local REPLICATED_JSON="$3"
@@ -739,8 +744,101 @@ EOF
     done 0< <(jq -c '.[]' <<<"$REPLICATED_JSON")
 }
 
+
 #
 # create_replicated_volumes
+# - param1: LOGIN_ARG, the login to the host
+# - param2: PASSWORD_ARG, the password to the host
+# - param3: REPLICATED_JSON, the JSON content containing the replicated volumes configuration
+#
+create_replicated_volumes() {
+    local LOGIN_ARG="$1"
+    local PASSWORD_ARG="$2"
+    local REPLICATED_JSON="$3"
+
+    # Iterate over each volume object safely
+    while IFS= read -r volume_json; do
+        local VOLUME_NAME OWNERSHIP PERMISSIONS MOUNTPOINT_DIR
+        local HOSTNAME_LIST FOLDER_LIST
+        local MAIN_MANAGER_IP_ADDRESS
+        local MOUNTED_GLUSTER_VOLUME
+        local VOLUME_NAME
+
+        OWNERSHIP=$(jq -r '.ownership // empty' <<<"$volume_json")
+        PERMISSIONS=$(jq -r '.permissions // empty' <<<"$volume_json")
+        VOLUME_NAME="vol1"
+        MOUNTED_GLUSTER_VOLUME="/mnt/${VOLUME_NAME}"
+
+        # Parse 'hosts' and 'folders' arrays as Bash arrays
+        readarray -t HOSTNAME_LIST < <(jq -r '.hosts[]' <<<"$volume_json")
+        readarray -t FOLDER_LIST < <(jq -r '.folders[]' <<<"$volume_json")
+
+        MAIN_MANAGER_IP_ADDRESS="${HOST_IP_MAP[${HOST_IP_MAP[0]}]}"
+
+        # Build comma-separated IP string
+        IP_LIST=""
+        
+        for HOST in $REPLICATED_HOSTS; do
+             IP="${HOST_IP_MAP[$HOST]}"
+             
+             if [[ -n "$IP" ]]; then
+                 IP_LIST+="$IP,"
+             fi
+         done
+
+         # Remove trailing comma
+         IP_LIST="${IP_LIST%,}"
+
+         log_debug "\t- Configuring the folder hierarchy on the main node ${HOSTNAME_LIST[0]} (${MAIN_MANAGER_IP_ADDRESS})"
+         log_warning "\t\t- Creating the mount folder ${MOUNTED_GLUSTER_VOLUME}"
+         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo mkdir -p " < /dev/null
+
+         if [ -n "${OWNERSHIP}" ]; then
+             log_debug "\t\t\t- Setting ownership on mkdir -p ${MOUNTED_GLUSTER_VOLUME} on ${HOSTNAME_LIST[0]} at IP address ${MAIN_MANAGER_IP_ADDRESS}"
+             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" \
+                    "sudo chown -R ${OWNERSHIP} ${MOUNTED_GLUSTER_VOLUME}" < /dev/null
+         else
+             log_debug "\t\t\t - Skipping ownership due to missing value (ownership: '${OWNERSHIP}')"
+         fi
+
+         if [ -n "${PERMISSIONS}" ]; then
+             log_debug "\t\t\t- Setting permissions on ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${MAIN_MANAGER_IP_ADDRESS}"
+             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" "sudo chmod -R ${PERMISSIONS} ${MOUNTED_GLUSTER_VOLUME}" < /dev/null
+         else
+             log_debug "\t\t\t - Skipping permissions setting due to missing values (permissions: '${PERMISSIONS}')"
+         fi
+
+         cat <<EOF >>"${VOLUME_TEMPLATE}"
+     ${VOLUME_NAME}:
+       driver: glusterfs
+       name: "gfs/${VOLUME_NAME}"
+EOF
+
+         # Configuring the Docker plugin on each host
+         for HOST in $REPLICATED_HOSTS; do
+             IP="${HOST_IP_MAP[$HOST]}"
+             
+             if [[ -n "$IP" ]]; then
+                 log_debug "\t- Configuring the replicated volume plugin on host ${HOST} at IP address ${IP}"
+
+                 log_warning "\t\t- Installing the GlusterFS Docker volume plugin on ${HOST} at IP address ${IP}"
+                 sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP}" \
+                     "sudo docker plugin install –alias glusterfs trajano/glusterfs-volume-plugin –grant-all-permissions –disable" < /dev/null
+                 log_warning "\t\t- Configuring the GlusterFS Docker volume plugin"    
+                 sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP}" \
+                     "sudo docker plugin set glusterfs SERVERS=${IP_LIST}" < /dev/null
+                 log_warning "\t\t- Enabling the GlusterFS Docker volume plugin"    
+                 sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP}" \
+                     "sudo docker plugin enable glusterfs" < /dev/null
+             else
+                 log_error "❌ Host ${HOST} not found in HOST_IP_MAP"
+             fi
+         done
+    done 0< <(jq -c '.[]' <<<"$REPLICATED_JSON")
+}
+
+#
+# create_volumes
 # - param1: LOGIN_ARG, the login to the host
 # - param2: PASSWORD_ARG, the password to the host
 # - param3: JSON_ARG, the JSON content containing the volume configuration
@@ -763,6 +861,12 @@ EOF
     else
         log_debug "\t -No replicated volumes found in the configuration."    
     fi
+
+    log_warning "########################"
+    log_warning "# Volumes of the Swarm #"
+    log_warning "########################"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" \
+        "sudo docker volume ls"
 }
 
 #

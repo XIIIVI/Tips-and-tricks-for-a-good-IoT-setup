@@ -19,7 +19,7 @@
 ## Secrets
 
 * To list the imported secrets: ```sudo docker secret ls```
-* 
+  
 ---
 
 ## Services
@@ -40,6 +40,12 @@
 * To list all the services of a given stack: ```sudo docker stack ps <STACK_NAME>   ``` 
 * To update a stack: ```sudo PRIVATE_REPO=<IP_ADDRESS_OF_THE_REPO>:<LOCAL_REGISTRY_PORT> docker stack deploy --compose-file docker-compose.yml <Name of the stack>```
 * To fully remove the stack, type ```sudo docker stack rm iot-stack```
+
+---
+
+## Volumes
+
+* To list all the volumes: ```sudo docker volume ls```
 
 ---
 

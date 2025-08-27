@@ -75,7 +75,6 @@ SCRIPT_EOF
              echo "${HOSTNAME}:/$VOLUME_NAME_ARG  ${GLUSTER_DIR}/${COUNTER}  glusterfs  defaults,_netdev  0  0" >> "${ETC_FSTAB_FILE}"
              printf "%s" "${HOSTNAME}:${GLUSTER_DIR}/${COUNTER}/brick " >> "${VOLUME_CREATION_SCRIPT}"
 
-
              COUNTER=$((COUNTER + 1))
          done
 
