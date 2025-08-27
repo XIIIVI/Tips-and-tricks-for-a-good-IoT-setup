@@ -1,23 +1,26 @@
 {
     "swarm": {
-        "device-default-credentials": {
-            "username": "admin",
-            "password": "admin123"
-        },
         "managers": {
-            "default-prefix": "orchestrator",
+            "hostname-default-prefix": "orchestrator",
             "members": [
                 {
                     "ip-address": "192.168.2.191",
                     "folders": [
                         "/data/alloy",
                         "/data/database",
+                        "/data/mosquitto/config",
+                        "/data/mosquitto/data",
+                        "/data/mosquitto/log",
                         "/data/telegraf"
                     ],
                     "labels": [
                         {
                             "key": "mqtt",
                             "value": "true"
+                        },
+                        {
+                            "key": "level",
+                            "value": "0"
                         }
                     ],
                     "has-display": true
@@ -28,6 +31,9 @@
                     "folders": [
                         "/data/alloy",
                         "/data/database",
+                        "/data/mosquitto/config",
+                        "/data/mosquitto/data",
+                        "/data/mosquitto/log",
                         "/data/telegraf"
                     ],
                     "labels": [
@@ -47,6 +53,8 @@
                     "folders": [
                         "/data/alloy",
                         "/data/database",
+                        "/data/mosquitto/data",
+                        "/data/mosquitto/log",
                         "/data/telegraf"
                     ],
                     "labels": [
@@ -65,7 +73,7 @@
         },
         "workers": [
             {
-                "ip-address": "192.168.2.118",
+                "ip-address": "192.168.2.119",
                 "hostname": "sat1",
                 "folders": [
                     "/data/alloy",
@@ -80,7 +88,7 @@
                 "has-display": true
             },
             {
-                "ip-address": "192.168.2.124",
+                "ip-address": "192.168.2.173",
                 "hostname": "sat2",
                 "folders": [
                     "/data/alloy",
@@ -93,19 +101,149 @@
                     }
                 ],
                 "has-display": true
+            },
+            {
+                "ip-address": "192.168.2.120",
+                "hostname": "drone",
+                "folders": [
+                    "/data/alloy",
+                    "/data/telegraf"
+                ],
+                "labels": [
+                    {
+                        "key": "level",
+                        "value": "1"
+                    }
+                ],
+                "config": [
+                    {
+                        "key": "PARENT",
+                        "value": "sat1"
+                    }
+                ],
+                "has-display": true
+            }
+        ],
+        "configurations": [
+            {
+                "name": "alloy-level0.alloy",
+                "file": "./data/configs/alloy-level0.alloy"
+            },
+            {
+                "name": "alloy-level1.alloy",
+                "file": "./data/configs/alloy-level1.alloy"
+            },
+            {
+                "name": "alloy-level2.alloy",
+                "file": "./data/configs/alloy-level2.alloy"
+            },
+            {
+                "name": "loki-config.yaml",
+                "file": "./data/configs/loki-config.yaml"
+            },
+            {
+                "name": "mosquitto.conf",
+                "file": "./data/configs/mosquitto.conf"
+            },
+            {
+                "name": "telegraf-level0.conf",
+                "file": "./data/configs/telegraf-level0.conf"
+            },
+            {
+                "name": "telegraf-level1.conf",
+                "file": "./data/configs/telegraf-level1.conf"
+            },
+            {
+                "name": "telegraf-level2.conf",
+                "file": "./data/configs/telegraf-level2.conf"
             }
         ],
         "secrets": {
-            "passwords": [
-                "mqtt-password",
-                "telegraf-password"
+            "credentials": [
+                {
+                    "name": "grafana",
+                    "login": "admin"
+                },
+                {
+                    "name": "mosquitto",
+                    "login": "mqtt-user"
+                }
             ],
             "certificates": [
-                "mqtt-tls-certificate",
-                "telegraf-tls-certificate"
+                {
+                    "name": "mosquitto",
+                    "days-valid": 3650,
+                    "country": "FR",
+                    "state": "Isère",
+                    "locality": "Grenoble",
+                    "organization": "IoT-MQTT",
+                    "common-name": "mosquitto"
+                },
+                {
+                    "name": "telegraf",
+                    "days-valid": 3650,
+                    "country": "FR",
+                    "state": "Isère",
+                    "locality": "Grenoble",
+                    "organization": "IoT-Telegraf",
+                    "common-name": "telegraf"
+                }
             ]
         },
-        "networks": [],
-        "exposed-ports": []
+        "networks": [
+            {
+                "overlays": [
+                    {
+                        "name": "log-network",
+                        "attachable": true
+                    },
+                    {
+                        "name": "public-network",
+                        "attachable": true
+                    },
+                    {
+                        "name": "secured-network",
+                        "encrypted": true,
+                        "attachable": true,
+                        "internal": true
+                    },
+                    {
+                        "name": "telemetry-network",
+                        "attachable": true,
+                        "internal": true
+                    },
+                    {
+                        "name": "timeseries-network",
+                        "attachable": true,
+                        "internal": true
+                    }
+                ]
+            }
+        ],
+        "exposed-ports": [],
+        "volumes": [
+            {
+                "replicated": [
+                    {
+                        "name": "replicated-data",
+                        "hosts": [
+                            "orchestrator1",
+                            "orchestrator2",
+                            "orchestrator3"
+                        ],
+                        "folders": [
+                            "loki"
+                        ],
+                        "ownership": "1001:1001",
+                        "permissions": "755"
+                    }
+                ]
+            }
+        ]
+    },
+    "registry": {
+        "ip-address": "192.168.2.90",
+        "port": 4443,
+        "certificate-file": "/tmp/registry.crt"
     }
 }

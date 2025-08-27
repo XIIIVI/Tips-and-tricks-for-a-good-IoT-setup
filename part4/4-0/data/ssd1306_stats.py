@@ -42,7 +42,7 @@ font = ImageFont.truetype(
 
 
 # Draw text.
-draw.text((0, 5), "ENERSYS", font=font, fill=255)
+draw.text((0, 5), "IoT Setup", font=font, fill=255)
 # Display image.
 disp.image(image)
 disp.show()

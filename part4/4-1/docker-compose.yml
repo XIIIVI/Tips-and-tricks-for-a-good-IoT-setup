@@ -1,8 +1,8 @@
 version: '3.8'
 
 services:
-  hivemq-edge:
-    image: ${PRIVATE_REPO}/hivemq/hivemq-edge:2025.8
+  mosquitto:
+    image: ${PRIVATE_REPO}/eclipse-mosquitto:2.0.22-openssl
     deploy:
       replicas: 5
       restart_policy:
@@ -14,9 +14,18 @@ services:
       placement:
         constraints:
           - node.labels.mqtt == true
+    networks:
+      - public-network
     ports:
-      - "5001:5100"
+      - "1883:3881"
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
+      - /data/mosquitto/data:/mosquitto/data
+      - /data/mosquitto/log:/mosquitto/log
+
+networks:
+  public-network:
+    driver: overlay
+    internal: true   # isolates backend traffic

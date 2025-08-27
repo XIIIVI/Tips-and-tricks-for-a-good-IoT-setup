@@ -10,6 +10,18 @@ services:
 
   mosquitto:
     image: ${PRIVATE_REPO}/eclipse-mosquitto:2.0.22-openssl
+    configs:
+      - source: mosquitto.conf
+        target: /mosquitto/config/mosquitto.conf
+    networks:
+      - secured-network
+    secrets:
+      - source: mosquitto.crt
+        target: /etc/mosquitto/mosquitto.crt
+      - source: mosquitto.key
+        target: /etc/mosquitto/mosquitto.key
+      - source: mosquitto.pwd
+        target: /etc/mosquitto/mosquitto.pwd
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -21,8 +33,6 @@ services:
       placement:
         constraints:
           - node.labels.mqtt == true
-    networks:
-      - public-network
     ports:
       - "1883:3881"
     volumes:
@@ -38,7 +48,10 @@ services:
 #                               #
 #################################
   telegraf-level0:
-    image: ${PRIVATE_REPO}/telegraf-level0:1.34.4-alpine
+    image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
+    configs:
+      - source: telegraf-level0.conf
+        target: /etc/telegraf/telegraf.conf
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -51,13 +64,19 @@ services:
         constraints:
           - node.labels.level == 0
     networks:
-      - public-network
       - telemetry-network
     ports:
       - target: 8791    # container port
         published: 8791 # port exposed on the swarm nodes
         protocol: tcp
         mode: host      # or 'ingress' for routing mesh
+    secrets:
+      - source: telegraf.crt
+        target: /etc/telegraf/telegraf.crt
+      - source: telegraf.key
+        target: /etc/telegraf/telegraf.key
+      - source: telegraf.ca
+        target: /etc/telegraf/telegraf.ca
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -75,7 +94,10 @@ services:
       - /sys:/host/sys:ro
 
   telegraf-level1:
-    image: ${PRIVATE_REPO}/telegraf-level1:1.34.4-alpine
+    image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
+    configs:
+      - source: telegraf-level1.conf
+        target: /etc/telegraf/telegraf.conf
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -94,6 +116,13 @@ services:
         published: 8791 # port exposed on the swarm nodes
         protocol: tcp
         mode: host      # or 'ingress' for routing mesh
+    secrets:
+      - source: telegraf.crt
+        target: /etc/telegraf/telegraf.crt
+      - source: telegraf.key
+        target: /etc/telegraf/telegraf.key
+      - source: telegraf.ca
+        target: /etc/telegraf/telegraf.ca
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -109,7 +138,10 @@ services:
       - /sys:/host/sys:ro
 
   telegraf-level2:
-    image: ${PRIVATE_REPO}/telegraf-level2:1.34.4-alpine
+    image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
+    configs:
+      - source: telegraf-level2.conf
+        target: /etc/telegraf/telegraf.conf
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -123,6 +155,13 @@ services:
           - node.labels.level == 2
     networks:
       - telemetry-network
+    secrets:
+      - source: telegraf.crt
+        target: /etc/telegraf/telegraf.crt
+      - source: telegraf.key
+        target: /etc/telegraf/telegraf.key
+      - source: telegraf.ca
+        target: /etc/telegraf/telegraf.ca
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -163,7 +202,7 @@ services:
     depends_on:
       - vmstorage
     networks:
-      - public-network
+      - telemetry-network
       - timeseries-network
     ports:
       - "8480:8480"  # remote_write endpoint for Telegraf
@@ -204,7 +243,7 @@ services:
     depends_on:
       - vmstorage
     networks:
-      - public-network
+      - secured-network
       - timeseries-network
     ports:
       - "8481:8481"  # UI and query API
@@ -213,7 +252,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
     command:
-      - '--storageNode=iot-stack_vmstorage:8401'
+      - '--storageNode=vmstorage:8401'
 
 
 #################################
@@ -224,6 +263,10 @@ services:
 
   loki:
     image: ${PRIVATE_REPO}/loki:3.0.0
+    command: -config.file=/etc/loki/local-config.yaml
+    configs:
+      - source: loki.yaml
+        target: /etc/loki/local-config.yaml
     deploy:
       mode: global
       restart_policy:
@@ -232,7 +275,8 @@ services:
         constraints:
           - node.labels.level == 0
     networks:
-      - public-network
+      - log-network
+      - secured-network
     ports:
       - target: 3100    # container port
         published: 3100 # port exposed on the swarm nodes
@@ -240,10 +284,13 @@ services:
         mode: host      # or 'ingress' for routing mesh
     volumes:
       - /mnt/loki:/loki # Persistent storage for Loki
-    command: -config.file=/etc/loki/local-config.yaml
 
   alloy-level0:
-    image: ${PRIVATE_REPO}/alloy-level0:v1.10.2
+    image: ${PRIVATE_REPO}/alloy:v1.10.2
+    configs:
+      - source: alloy-level0.conf
+        target: /etc/alloy/config.alloy
+        mode: 0444  # read-only inside container
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -252,7 +299,7 @@ services:
         constraints:
           - node.labels.level == 0
     networks:
-      - public-network
+      - log-network
     ports:
       - target: 3110    # container port
         published: 3110 # port exposed on the swarm nodes
@@ -267,7 +314,11 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   alloy-level1:
-    image: ${PRIVATE_REPO}/alloy-level1:v1.10.2
+    image: ${PRIVATE_REPO}/alloy:v1.10.2
+    configs:
+      - source: alloy-level1.conf
+        target: /etc/alloy/config.alloy
+        mode: 0444  # read-only inside container
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -278,7 +329,7 @@ services:
     environment:
       - PARENT_LEVEL_NUMBER=0
     networks:
-      - public-network
+      - log-network
     ports:
       - target: 3111    # container port
         published: 3111 # port exposed on the swarm nodes
@@ -293,7 +344,11 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   alloy-level2:
-    image: ${PRIVATE_REPO}/alloy-level2:v1.10.2
+    image: ${PRIVATE_REPO}/alloy:v1.10.2
+    configs:
+      - source: alloy-level2.conf
+        target: /etc/alloy/config.alloy
+        mode: 0444  # read-only inside container
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -304,7 +359,7 @@ services:
     environment:
       - PARENT_LEVEL_NUMBER=1
     networks:
-      - public-network
+      - log-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -313,9 +368,74 @@ services:
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
+#################################
+#                               #
+#          P A R T   8          #
+#                               #
+#################################
 
+  grafana:
+    image: ${PRIVATE_REPO}/grafana:12.2.0-17195718647
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/grafana.passwd
+      - GF_INSTALL_PLUGINS=volkovlabs-echarts-panel,volkovlabs-variable-panel,marcusolsson-static-datasource
+    networks:
+      - public-network
+      - secured-network
+    ports:
+      - "3000:3000"
+    secrets:
+      - grafana.passwd
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.labels.level == 0
 
 networks:
-  public-network:
+  log-network:
     driver: overlay
     internal: true   # isolates backend traffic
+  secured-network:
+    external: true
+  telemetry-network:
+    external: true
+  timeseries-network:
+    driver: overlay
+    internal: true   # isolates VictoriaMetrics cluster traffic  
+
+configs:
+  alloy-level0.alloy:
+    external: true
+  alloy-level1.alloy:
+    external: true
+  alloy-level2.alloy:
+    external: true
+  loki.yaml:
+    external: true
+  mosquitto.conf:
+    external: true
+  telegraf-level0.conf:
+    external: true
+  telegraf-level1.conf:
+    external: true
+  telegraf-level2.conf:
+    external: true
+
+secrets:
+  grafana.passwd:
+    external: true
+  mosquitto.crt:
+    external: true
+  mosquitto.key:
+    external: true
+  mosquitto.passwd:
+    external: true
+  telegraf.crt:
+    external: true
+  telegraf.key:
+    external: true
+  telegraf.ca:
+    external: true    

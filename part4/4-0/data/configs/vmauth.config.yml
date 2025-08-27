@@ -1,0 +1,4 @@
+users:
+  - username: "admin"
+    password: "secret"
+    url_prefix: "http://vmselect:8481/"

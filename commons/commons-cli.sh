@@ -4,7 +4,8 @@ MISSING_PARAMETER_COUNT=0
 
 #
 # check_mandatory_parameter
-# - param1: the variable to check
+# Arguments:
+#   - param: The name of the parameter to check
 #
 check_mandatory_parameter() {
     local VARIABLE_NAME="${1}"
@@ -17,6 +18,7 @@ check_mandatory_parameter() {
 
 #
 # check_all_mandatory_parameters
+# Arguments:
 #   - param*: All the parameters to check
 #
 check_all_mandatory_parameters() {

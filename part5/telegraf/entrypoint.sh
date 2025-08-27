@@ -8,15 +8,7 @@ echo
 # Get the current hostname
 HOSTNAME=$(cat /etc/hostname)
 
-# Remove "-123"-style numeric suffix from the hostname
-PARENT_HOSTNAME="${HOSTNAME%-[0-9]*}"
-
-# If result is same as original, we are at the top level
-if [[ "$PARENT_HOSTNAME" == "$HOSTNAME" ]]; then
-    PARENT_HOSTNAME="orchestrator"
-fi
-
-export PARENT_HOSTNAME
+export HOSTNAME
 
 # Create the log directory if it does not exist
 mkdir -p /telegraf/logs
@@ -24,14 +16,16 @@ mkdir -p /telegraf/logs
 # Create the state file for the plugin
 PLUGIN_STATE_FILE="/telegraf/plugin_state"
 
-echo "Creating the plugin state file"
+echo "Creating the plugin state file ${PLUGIN_STATE_FILE} if it does not exist..."
+
+mkdir -p "$(dirname "${PLUGIN_STATE_FILE}")"
 
 if [[ ! -s "${PLUGIN_STATE_FILE}" ]]; then
     # File does not exist, create it with content {}
     echo "{}" >"${PLUGIN_STATE_FILE}"
     echo "File '${PLUGIN_STATE_FILE}' created with content {}."
 else
-    echo "File '{$PLUGIN_STATE_FILE}' already exists."
+    echo "File '${PLUGIN_STATE_FILE}' already exists."
 fi
 
 printenv | sort

@@ -109,6 +109,6 @@ docker-compose up -d
 
 log_info "Docker registry with UI is set up for $REGISTRY_HOSTNAME!"
 
-log_debug "/!\ ON ALL THE CLIENTS, copy $REGISTRY_DIR/certs/registry.crt into /usr/local/share/ca-certificates/registry.crt"
+log_debug "⚠️ ON ALL THE CLIENTS, copy $REGISTRY_DIR/certs/registry.crt into /usr/local/share/ca-certificates/registry.crt"
 log_debug "Then run 'sudo update-ca-certificates' to trust the self-signed certificate."
 log_debug "Finally, restart the Docker service with 'sudo systemctl restart docker'."

@@ -119,44 +119,27 @@ main() {
     done
 
     LOCAL_REGISTRY_PORT=${LOCAL_REGISTRY_PORT:="4443"}
-    IMAGE_VERSION=${IMAGE_VERSION:="1.9.1"}
-
-    log_info "Installing the required packages"
-    DEBIAN_FRONTEND=noninteractive apt-get -y -qq update
-    DEBIAN_FRONTEND=noninteractive apt-get install -y dos2unix figlet jq
-    DEBIAN_FRONTEND=noninteractive apt autoremove -y
-
-    FIGLET_FONT="${PWD}/larry3d.flf"
+    local DIR_PART5=../../../part5/telegraf
 
     # Check all mandatory parameter are set
     check_all_mandatory_parameters "${MANDATORY_PARAMETER_LIST[@]}"
 
     display_settings
 
-    log_info "Building the Alloy image v${IMAGE_VERSION}"
+    log_info "Preparing the environment from ${DIR_PART5}"
+    log_debug "\t- Copying files from ${DIR_PART5} to the current directory"
+    cp "${DIR_PART5}"/build-telegraf-images.sh .
+    cp "${DIR_PART5}"/*.flf .
+    cp "${DIR_PART5}"/Dockerfile .
+    cp "${DIR_PART5}"/entrypoint.sh .
+    cp "${DIR_PART5}"/level0/telegraf.conf ./level0/telegraf.conf
+    log_debug "\t- Removing the dummy output plugin"
+    sed -i '/# Send metrics to nowhere at all/{N;N;d}' "${DIR_PART5}"/level0/telegraf.conf
+    log_debug "\t- Adding the addon \"prometheus_remote_write\" to the telegraf configuration file"
+    cat ./level0/telegraf.addon >>./level0/telegraf.conf
+    chmod +x build-telegraf-images.sh
 
-    log_debug "Generating the banner"
-    figlet -f "${FIGLET_FONT}" "Alloy" >"level${LEVEL_NUMBER}/banner"
-
-    # entrypoint.sh
-    log_debug "Customizing the file entrypoint.sh"
-    sed -i "s/#-MODULE_VERSION-#/${IMAGE_VERSION}/g" "./entrypoint.sh"
-
-    log_info "Importing image ${IMAGE_NAME}:${IMAGE_VERSION} into local registry ${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}"
-
-    # Build the Telegraf image
-    cd "level${LEVEL_NUMBER}/" || exit
-    log_debug "Importing the image from the folder ${PWD}"
-    docker buildx build \
-        --platform linux/arm64 \
-        --tag "${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/telegraf-level${LEVEL_NUMBER}:${IMAGE_VERSION}" \
-        --build-arg IMAGE_VERSION="${IMAGE_VERSION}" \
-        --build-arg LOCAL_REGISTRY="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}" \
-        --push .
-
-    cd - || exit
-
-    log_info "Telegraf image for level ${LEVEL_NUMBER} with version ${IMAGE_VERSION} has been built and pushed successfully."
+    ./build-telegraf-images.sh --local-registry-address "${LOCAL_REGISTRY_ADDRESS}" --local-registry-port "${LOCAL_REGISTRY_PORT}" --level-number 0
 }
 
 time main "$@"

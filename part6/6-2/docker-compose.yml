@@ -1,3 +1,4 @@
+
 version: '3.8'
 
 services:
@@ -8,8 +9,8 @@ services:
 #                               #
 #################################
 
-  hivemq-edge:
-    image: ${PRIVATE_REPO}/hivemq/hivemq-edge:2025.8
+  mosquitto:
+    image: ${PRIVATE_REPO}/eclipse-mosquitto:2.0.22-openssl
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -21,13 +22,16 @@ services:
       placement:
         constraints:
           - node.labels.mqtt == true
+    networks:
+      - public-network
     ports:
-      - "5001:5100"
+      - "1883:3881"
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
-
+      - /data/mosquitto/data:/mosquitto/data
+      - /data/mosquitto/log:/mosquitto/log
 
 #################################
 #                               #
@@ -47,6 +51,13 @@ services:
       placement:
         constraints:
           - node.labels.level == 0
+    networks:
+      - public-network
+    ports:
+      - target: 8791    # container port
+        published: 8791 # port exposed on the swarm nodes
+        protocol: tcp
+        mode: host      # or 'ingress' for routing mesh
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -76,6 +87,13 @@ services:
       placement:
         constraints:
           - node.labels.level == 1
+    networks:
+      - public-network
+    ports:
+      - target: 8791    # container port
+        published: 8791 # port exposed on the swarm nodes
+        protocol: tcp
+        mode: host      # or 'ingress' for routing mesh
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -103,6 +121,8 @@ services:
       placement:
         constraints:
           - node.labels.level == 2
+    networks:
+      - public-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -130,19 +150,20 @@ services:
 
 
   vminsert:
-    image: ${PRIVATE_REPO}/victoriametrics/vminsert:v1.119.0-cluster
+    image: ${PRIVATE_REPO}/vminsert:v1.119.0-cluster
     deploy:
-      mode: replicated
-      replicas: 2
+      mode: global
       restart_policy:
         condition: on-failure
       placement:
         constraints:
           - node.labels.level == 0
     command:
-      - '--storageNode=vmstorage:8400'
+      - '--storageNode=iot-stack_vmstorage:8400'
     depends_on:
       - vmstorage
+    networks:
+      - public-network
     ports:
       - "8480:8480"  # remote_write endpoint for Telegraf
     volumes:
@@ -151,7 +172,7 @@ services:
       - /etc/hostname:/etc/hostname:ro
 
   vmstorage:
-    image: ${PRIVATE_REPO}/victoriametrics/vmstorage:v1.119.0-cluster
+    image: ${PRIVATE_REPO}/vmstorage:v1.119.0-cluster
     deploy:
       mode: global
       restart_policy:
@@ -162,17 +183,18 @@ services:
     command:
       - '--retentionPeriod=1d'
       - '--storageDataPath=/vmstorage'
+    networks:
+      - public-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
-      - /data/victoriametrics:/vmstorage
+      - /data/database:/vmstorage
 
   vmselect:
-    image: ${PRIVATE_REPO}/victoriametrics/vmselect:v1.119.0-cluster
+    image: ${PRIVATE_REPO}/vmselect:v1.119.0-cluster
     deploy:
-      mode: replicated
-      replicas: 2 
+      mode: global
       restart_policy:
         condition: on-failure
       placement:
@@ -180,6 +202,8 @@ services:
           - node.labels.level == 0
     depends_on:
       - vmstorage
+    networks:
+      - public-network
     ports:
       - "8481:8481"  # UI and query API
     volumes:
@@ -187,24 +211,11 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
     command:
-      - '--storageNode=vmstorage:8401'
+      - '--storageNode=iot-stack_vmstorage:8401'
 
 
-  vmauth:
-    image: ${PRIVATE_REPO}/victoriametrics/vmauth:v1.119.0
-    deploy:
-      mode: replicated
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-      placement:
-        constraints:
-          - node.labels.level == 0
-    depends_on:
-      - vmselect
-    ports:
-      - "8428:8428"
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
+
+networks:
+  public-network:
+    driver: overlay
+    internal: true   # isolates backend traffic

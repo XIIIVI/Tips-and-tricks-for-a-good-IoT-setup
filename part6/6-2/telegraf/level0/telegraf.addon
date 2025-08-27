@@ -1,0 +1,30 @@
+# A plugin that can transmit metrics over HTTP
+[[outputs.http]]
+  ## URL is the address to send metrics to
+  url = "http://iot-stack_vminsert:8480/insert/0/influx/api/v2/write"
+
+  ## Timeout for HTTP message
+  # timeout = "5s"
+
+  ## HTTP method, one of: "POST" or "PUT" or "PATCH"
+  method = "POST"
+
+  ## Data format to output.
+  ## Each data format has it's own unique set of configuration options, read
+  ## more about them here:
+  ## https://github.com/influxdata/telegraf/blob/master/docs/DATA_FORMATS_OUTPUT.md
+  data_format = "influx"
+
+  ## HTTP Content-Encoding for write request body, can be set to "gzip" to
+  ## compress body or "identity" to apply no encoding.
+  content_encoding = "gzip"
+
+
+[[outputs.influxdb]]
+  urls = ["http://iot-stack_vminsert:8480/insert/0/influx"]  # Replace with your vminsert service name or IP
+  database = "telegraf"            # VictoriaMetrics ignores this but Telegraf requires it
+  retention_policy = ""
+  write_consistency = "any"
+  timeout = "5s"
+  username = ""
+  password = ""

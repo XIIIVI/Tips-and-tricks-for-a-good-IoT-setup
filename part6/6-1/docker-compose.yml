@@ -22,7 +22,7 @@ services:
         constraints:
           - node.labels.mqtt == true
     networks:
-      - public-network 
+      - public-network
     ports:
       - "1883:3881"
     volumes:
@@ -88,7 +88,7 @@ services:
         constraints:
           - node.labels.level == 1
     networks:
-      - public-network 
+      - public-network
     ports:
       - target: 8791    # container port
         published: 8791 # port exposed on the swarm nodes
@@ -122,7 +122,7 @@ services:
         constraints:
           - node.labels.level == 2
     networks:
-      - public-network 
+      - public-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -141,8 +141,31 @@ services:
       # For vcgencmd metrics
       - /tmp/telegraf_metrics:/telegraf_metrics:ro
 
+#################################
+#                               #
+#          P A R T   6          #
+#                               #
+#################################
+  victoriametrics:
+    image: ${PRIVATE_REPO}/victoria-metrics:v0.122.0
+    command:
+      - '-retentionPeriod=1d'  # Retention set to 1 day
+      - '-storageDataPath=/mnt/victoria-metrics'
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - public-network
+    ports:
+      - "8428:8428"
+    volumes:
+      - vm_data:/mnt/victoria-metrics
 
 networks:
   public-network:
     driver: overlay
     internal: true   # isolates backend traffic
+
+volumes:
+  vm_data:
