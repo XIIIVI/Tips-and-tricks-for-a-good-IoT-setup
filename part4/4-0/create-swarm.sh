@@ -780,7 +780,7 @@ create_replicated_volumes() {
          # Build comma-separated IP string
          IP_LIST=""
         
-         for HOST in $HOSTNAME_LIST; do
+         for HOST in ${HOSTNAME_LIST[@]}; do
              IP="${HOST_IP_MAP[$HOST]}"
              
              if [[ -n "$IP" ]]; then
@@ -817,7 +817,7 @@ create_replicated_volumes() {
 EOF
 
          # Configuring the Docker plugin on each host
-         for HOST in $HOSTNAME_LIST; do
+         for HOST in ${HOSTNAME_LIST[@]}; do
              IP="${HOST_IP_MAP[$HOST]}"
              
              if [[ -n "$IP" ]]; then
