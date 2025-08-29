@@ -677,12 +677,12 @@ EOF
 }
 
 #
-# create_replicated_volumes_manually
+# create_replicated_volumes_native
 # - param1: LOGIN_ARG, the login to the host
 # - param2: PASSWORD_ARG, the password to the host
 # - param3: REPLICATED_JSON, the JSON content containing the replicated volumes configuration
 #
-create_replicated_volumes_manually() {
+create_replicated_volumes_native() {
     local LOGIN_ARG="$1"
     local PASSWORD_ARG="$2"
     local REPLICATED_JSON="$3"
@@ -746,12 +746,12 @@ EOF
 
 
 #
-# create_replicated_volumes
+# create_replicated_volumes_with_plugin
 # - param1: LOGIN_ARG, the login to the host
 # - param2: PASSWORD_ARG, the password to the host
 # - param3: REPLICATED_JSON, the JSON content containing the replicated volumes configuration
 #
-create_replicated_volumes() {
+create_replicated_volumes_with_plugin() {
     local LOGIN_ARG="$1"
     local PASSWORD_ARG="$2"
     local REPLICATED_JSON="$3"
@@ -825,7 +825,7 @@ EOF
 
                  log_warning "\t\t- Installing the GlusterFS Docker volume plugin on ${HOST} at IP address ${IP}"
                  sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP}" \
-                     "sudo docker plugin install –alias glusterfs trajano/glusterfs-volume-plugin –grant-all-permissions –disable" < /dev/null
+                     "sudo docker plugin install --alias glusterfs trajano/glusterfs-volume-plugin --grant-all-permissions --disable" < /dev/null
                  log_warning "\t\t- Configuring the GlusterFS Docker volume plugin"    
                  sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP}" \
                      "sudo docker plugin set glusterfs SERVERS=${IP_LIST}" < /dev/null
@@ -859,7 +859,7 @@ volumes:
 EOF
 
     if [ -n "${REPLICATED}" ]; then
-        create_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${REPLICATED}"
+        create_replicated_volumes_native "${LOGIN_ARG}" "${PASSWORD_ARG}" "${REPLICATED}"
     else
         log_debug "\t -No replicated volumes found in the configuration."    
     fi
