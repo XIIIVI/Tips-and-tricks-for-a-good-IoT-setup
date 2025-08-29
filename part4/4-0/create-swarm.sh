@@ -703,9 +703,6 @@ create_replicated_volumes_native() {
         readarray -t HOSTNAME_LIST < <(jq -r '.hosts[]' <<<"$volume_json")
         readarray -t FOLDER_LIST < <(jq -r '.folders[]' <<<"$volume_json")
 
-        # Setup replicated volumes across hosts
-        setup_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME}" "${HOSTNAME_LIST[@]}" < /dev/null
-
         log_warning "\t\t- Creating the folders on the volume ${VOLUME_NAME}"
         for FOLDER in "${FOLDER_LIST[@]}"; do
             local IP_ADDRESS
@@ -741,6 +738,8 @@ EOF
             fi
         done
 
+        # Setup replicated volumes across hosts
+        setup_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME}" "${HOSTNAME_LIST[@]}" < /dev/null
     done 0< <(jq -c '.[]' <<<"$REPLICATED_JSON")
 }
 
