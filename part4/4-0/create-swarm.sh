@@ -680,13 +680,18 @@ EOF
 # create_replicated_volumes_native
 # - param1: LOGIN_ARG, the login to the host
 # - param2: PASSWORD_ARG, the password to the host
-# - param3: REPLICATED_JSON, the JSON content containing the replicated volumes configuration
+# - param3: SWARM_JSON_ARG, the JSON content containing the replicated volumes configuration
 #
 create_replicated_volumes_native() {
     local LOGIN_ARG="$1"
     local PASSWORD_ARG="$2"
-    local REPLICATED_JSON="$3"
+    local SWARM_JSON_ARG="$3"
+    local REPLICATED_JSON
 
+    REPLICATED_JSON=$(echo "${SWARM_JSON_ARG}" | jq -c '.swarm.volumes[] | select(.replicated) | .replicated')
+
+    
+    if [ -n "${REPLICATED_JSON}" ]; then
     log_debug "\t- Creating the replicated volumes on ${IP_ADDRESS_ARG}"
 
     # Iterate over each volume object safely
@@ -739,8 +744,11 @@ EOF
         done
 
         # Setup replicated volumes across hosts
-        setup_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME}" "${HOSTNAME_LIST[@]}" < /dev/null
+        setup_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME}" "${SWARM_JSON_ARG}" "${HOSTNAME_LIST[@]}" < /dev/null
     done 0< <(jq -c '.[]' <<<"$REPLICATED_JSON")
+    else
+        log_debug "\t -No replicated volumes found in the configuration."    
+    fi
 }
 
 
@@ -842,26 +850,19 @@ EOF
 # create_volumes
 # - param1: LOGIN_ARG, the login to the host
 # - param2: PASSWORD_ARG, the password to the host
-# - param3: JSON_ARG, the JSON content containing the volume configuration
+# - param3: SWARM_JSON_ARG, the JSON content containing the volume configuration
 #
 create_volumes() {
     local LOGIN_ARG="${1}"
     local PASSWORD_ARG="${2}"
-    local SWARM_JSON="${3}"
-    local REPLICATED
-
-    REPLICATED=$(echo "${SWARM_JSON}" | jq -c '.swarm.volumes[] | select(.replicated) | .replicated')
+    local SWARM_JSON_ARG="${3}"
 
 cat <<EOF >>"${VOLUME_TEMPLATE}"
 
 volumes:
 EOF
 
-    if [ -n "${REPLICATED}" ]; then
-        create_replicated_volumes_native "${LOGIN_ARG}" "${PASSWORD_ARG}" "${REPLICATED}"
-    else
-        log_debug "\t -No replicated volumes found in the configuration."    
-    fi
+    create_replicated_volumes_native "${LOGIN_ARG}" "${PASSWORD_ARG}" "${SWARM_JSON_ARG}"
 
     log_warning "########################"
     log_warning "# Volumes of the Swarm #"

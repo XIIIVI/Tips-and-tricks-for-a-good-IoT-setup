@@ -9,13 +9,14 @@
 #   1. LOGIN_ARG: The username for SSH login.
 #   2. PASSWORD_ARG: The password for SSH login.
 #   3. VOLUME_NAME_ARG: The name of the GlusterFS volume to create.
-#   4. HOSTNAME_LIST_ARG: An array of hostnames where the GlusterFS volume will be set up.
+#   5. HOSTNAME_LIST_ARG: An array of hostnames where the GlusterFS volume will be set up.
 #
 setup_replicated_volumes() {
     local LOGIN_ARG="${1}"
     local PASSWORD_ARG="${2}"
     local VOLUME_NAME_ARG="${3}"
-    shift 3
+    local SWARM_JSON_ARG="${4}"
+    shift 4
     local HOSTNAME_LIST_ARG=("$@")
 
     if [ ${#HOSTNAME_LIST_ARG[@]} -eq 0 ]; then
@@ -37,15 +38,29 @@ setup_replicated_volumes() {
              FINAL_MOUNT_POINT="${FINAL_MOUNT_POINT}/${VOLUME_NAME_ARG}"
          fi
 
-         MASTER_IP_ADDRESS=$(host "${HOSTNAME_LIST_ARG[0]}" | awk '/has address/ { print $4 }')
+         MASTER_IP_ADDRESS=$(echo "${SWARM_JSON_ARG}" | jq -r --arg hn "${HOSTNAME_LIST_ARG[0]}" '
+    (
+      .swarm.managers.members[]? | select(.hostname == $hn) | .["ip-address"]
+    ),
+    (
+      .swarm.workers[]? | select(.hostname == $hn) | .["ip-address"]
+    )
+  ')
 
          # Build the IP address list
          DISCOVERED_IPS=()
 
-         for HOSTNAME in "${HOSTNAME_LIST_ARG[@]}"; do
+         for HOSTNAME_INDEX in "${HOSTNAME_LIST_ARG[@]}"; do
              local IP
-
-             IP=$(host "${HOSTNAME}" | awk '/has address/ { print $4 }')
+               
+             IP=$(echo "${SWARM_JSON_ARG}" | jq -r --arg hn "${HOSTNAME_INDEX}" '
+    (
+      .swarm.managers.members[]? | select(.hostname == $hn) | .["ip-address"]
+    ),
+    (
+      .swarm.workers[]? | select(.hostname == $hn) | .["ip-address"]
+    )
+  ')
              DISCOVERED_IPS+=("${IP}")
          done
 
