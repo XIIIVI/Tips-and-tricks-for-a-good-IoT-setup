@@ -1,6 +1,38 @@
 #!/bin/bash
 
 #
+# get_ip_by_hostname
+# 
+# This function retrieves the IP address associated with a given hostname
+# from a JSON configuration file. It handles default hostname prefixes for
+# swarm managers and workers.
+# Arguments:
+#   1. HOSTNAME_ARG: The hostname to look up.
+#   2. JSON_ARG: The path to the JSON configuration file.
+# Returns:
+#   The IP address corresponding to the provided hostname, or an empty string if not found. 
+get_ip_by_hostname() {
+  local HOSTNAME_ARG="$1"
+  local JSON_ARG="$2"
+
+  # Step 1: Extract all hostnames and IPs into a temp list
+  local HOST_LIST
+  HOST_LIST=$(cat "${JSON_ARG}" | jq -r '
+    def assign_hostnames(prefix; list):
+      [ range(0; list | length) as $i
+        | (list[$i] + {hostname: (list[$i].hostname // (prefix + ($i+1|tostring)))})
+        | "\(.hostname) \(.["ip-address"])"
+      ];
+
+    (assign_hostnames(.swarm.managers["hostname-default-prefix"]; .swarm.managers.members)[]) ,
+    (assign_hostnames("worker"; .swarm.workers)[])
+  ')
+
+  # Step 2: Search for the hostname in the list
+  echo "$HOST_LIST" | awk -v h="$HOSTNAME_ARG" '$1 == h {print $2}'
+}
+
+#
 # setup_replicated_volumes
 #
 # This function sets up replicated disks using GlusterFS on a list of hosts.
@@ -38,14 +70,7 @@ setup_replicated_volumes() {
              FINAL_MOUNT_POINT="${FINAL_MOUNT_POINT}/${VOLUME_NAME_ARG}"
          fi
 
-         MASTER_IP_ADDRESS=$(echo "${SWARM_JSON_ARG}" | jq -r --arg hn "${HOSTNAME_LIST_ARG[0]}" '
-    (
-      .swarm.managers.members[]? | select(.hostname == $hn) | .["ip-address"]
-    ),
-    (
-      .swarm.workers[]? | select(.hostname == $hn) | .["ip-address"]
-    )
-  ')
+         MASTER_IP_ADDRESS=$(get_ip_by_hostname "${HOSTNAME_LIST_ARG[0]}" "${SWARM_JSON_ARG}")
 
          # Build the IP address list
          DISCOVERED_IPS=()
@@ -53,14 +78,8 @@ setup_replicated_volumes() {
          for HOSTNAME_INDEX in "${HOSTNAME_LIST_ARG[@]}"; do
              local IP
                
-             IP=$(echo "${SWARM_JSON_ARG}" | jq -r --arg hn "${HOSTNAME_INDEX}" '
-    (
-      .swarm.managers.members[]? | select(.hostname == $hn) | .["ip-address"]
-    ),
-    (
-      .swarm.workers[]? | select(.hostname == $hn) | .["ip-address"]
-    )
-  ')
+             IP=$(get_ip_by_hostname "${HOSTNAME_INDEX}" "${SWARM_JSON_ARG}")
+
              DISCOVERED_IPS+=("${IP}")
          done
 
