@@ -8,7 +8,7 @@
 # swarm managers and workers.
 # Arguments:
 #   1. HOSTNAME_ARG: The hostname to look up.
-#   2. JSON_ARG: The path to the JSON configuration file.
+#   2. JSON_ARG: The JSON content of the configuration file.
 # Returns:
 #   The IP address corresponding to the provided hostname, or an empty string if not found. 
 get_ip_by_hostname() {
@@ -17,7 +17,7 @@ get_ip_by_hostname() {
 
   # Step 1: Extract all hostnames and IPs into a temp list
   local HOST_LIST
-  HOST_LIST=$(cat "${JSON_ARG}" | jq -r '
+  HOST_LIST=$(echo "${JSON_ARG}" | jq -r '
     def assign_hostnames(prefix; list):
       [ range(0; list | length) as $i
         | (list[$i] + {hostname: (list[$i].hostname // (prefix + ($i+1|tostring)))})
