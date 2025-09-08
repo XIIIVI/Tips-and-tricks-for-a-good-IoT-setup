@@ -138,7 +138,7 @@ setup_replicated_volumes() {
     sudo chmod 755 "${GLUSTER_DIR}/${COUNTER}"
 
     sudo -E apt-get update -qq
-    sudo -E apt-get install glusterfs-server -y -qq \
+    sudo -E apt-get install glusterfs-cli glusterfs-server -y -qq \
          -o Dpkg::Progress-Fancy="0" \
          -o Dpkg::Use-Pty="0"
     sudo -E apt-get dist-upgrade -y -qq \
