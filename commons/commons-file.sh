@@ -54,14 +54,15 @@ setup_replicated_volumes() {
     if [ ${#HOSTNAME_LIST_ARG[@]} -eq 0 ]; then
         log_error "\t⚠️ The list of hosts is empty."
     else
-         local ETC_HOSTS_FILE=/tmp/etc_hosts.addon
-         local ETC_FSTAB_FILE=/tmp/etc_fstab.addon
+         local GLUSTERFS_TMP_DIR=/$(mktemp -d)
+         local ETC_HOSTS_FILE=${GLUSTERFS_TMP_DIR}/etc_hosts.addon
+         local ETC_FSTAB_FILE=${GLUSTERFS_TMP_DIR}/etc_fstab.addon
          local GLUSTER_DIR="/gluster-${VOLUME_NAME_ARG}/bricks"
          local COUNTER=1
          local MASTER_IP_ADDRESS
          local DISCOVERED_IPS
          local FINAL_MOUNT_POINT="/mnt"
-         local GLUSTERFS_CREATE_CMD="sudo gluster volume create replicated-data replica ${#HOSTNAME_LIST_ARG[@]} transport tcp"
+         local GLUSTERFS_CREATE_CMD="sudo /usr/sbin/gluster volume create replicated-data replica ${#HOSTNAME_LIST_ARG[@]} transport tcp"
 
          log_debug "\t- Setting up replicated disks with GlusterFS"
 
@@ -156,26 +157,26 @@ EOF_GLUSTERFS
          # Probing the peers
          for ((IP_INDEX = 1; IP_INDEX < ${#DISCOVERED_IPS[@]}; IP_INDEX++)); do
              log_warning "\t\t- Probing host ${DISCOVERED_IPS[${IP_INDEX}]} ..."
-             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster peer probe ${DISCOVERED_IPS[${IP_INDEX}]}"
+             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo /usr/sbin/gluster peer probe ${DISCOVERED_IPS[${IP_INDEX}]}"
              sleep 5
          done
 
          # Waiting for the peers
          log_debug "\t⏳ Waiting for peers to join trusted pool..."
          sleep 5
-         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster peer status"        
+         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo /usr/sbin/gluster peer status"        
 
          # Creating the volume
          log_warning "\t\t- Creating the volumes ${GLUSTERFS_CREATE_CMD} force"
          sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo ${GLUSTERFS_CREATE_CMD}"
          log_warning "\t\t- Starting the volume ${VOLUME_NAME_ARG}"
-         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster volume start ${VOLUME_NAME_ARG}"
+         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo /usr/sbin/gluster volume start ${VOLUME_NAME_ARG}"
          log_warning "\t\t- Status of the volume ${VOLUME_NAME_ARG}"
-         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster volume status ${VOLUME_NAME_ARG}"
+         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo /usr/sbin/gluster volume status ${VOLUME_NAME_ARG}"
          log_warning "\t\t- Info of the volume ${VOLUME_NAME_ARG}"
-         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster volume info ${VOLUME_NAME_ARG}"
+         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo /usr/sbin/gluster volume info ${VOLUME_NAME_ARG}"
          log_warning "\t\t- Setup security and authentication for the volume ${VOLUME_NAME_ARG}"
-         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster volume set ${VOLUME_NAME_ARG} auth.allow $(IFS=, ; echo "${DISCOVERED_IPS[*]}")"
+         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo /usr/sbin/gluster volume set ${VOLUME_NAME_ARG} auth.allow $(IFS=, ; echo "${DISCOVERED_IPS[*]}")"
 
          # Mount the glusterFS volume where applications can access the files
          log_debug "\t- Mounting the GlusterFS volume ${VOLUME_NAME_ARG} on all nodes" 
@@ -183,7 +184,7 @@ EOF_GLUSTERFS
             log_warning "\t\t- Mounting the GlusterFS volume ${VOLUME_NAME_ARG} (${FINAL_MOUNT_POINT}) on ${IP_INDEX}"
             sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" \
                     "echo \"localhost:/${VOLUME_NAME_ARG} ${FINAL_MOUNT_POINT} glusterfs defaults,_netdev,backupvolfile-server=localhost 0 0\" | sudo tee -a /etc/fstab > /dev/null"
-            sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "sudo mount.glusterfs localhost:/${VOLUME_NAME_ARG} ${FINAL_MOUNT_POINT}"
+            sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "sudo sudo /usr/sbin/mount.glusterfs localhost:/${VOLUME_NAME_ARG} ${FINAL_MOUNT_POINT}"
             sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "df -Th"
             sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "sudo systemctl daemon-reload"
             sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "sudo mount -a"
