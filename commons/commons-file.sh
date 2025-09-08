@@ -58,10 +58,10 @@ setup_replicated_volumes() {
          local ETC_FSTAB_FILE=/tmp/etc_fstab.addon
          local GLUSTER_DIR="/gluster-${VOLUME_NAME_ARG}/bricks"
          local COUNTER=1
-         local VOLUME_CREATION_SCRIPT=/tmp/glusterfs_volume_creation_script.sh
          local MASTER_IP_ADDRESS
          local DISCOVERED_IPS
          local FINAL_MOUNT_POINT="/mnt"
+         local GLUSTERFS_CREATE_CMD="sudo gluster volume create replicated-data replica ${#HOSTNAME_LIST_ARG[@]} transport tcp"
 
          log_debug "\t- Setting up replicated disks with GlusterFS"
 
@@ -83,17 +83,6 @@ setup_replicated_volumes() {
              DISCOVERED_IPS+=("${IP}")
          done
 
-         # Clean up temp files
-         rm -Rf "${ETC_HOSTS_FILE}" "${ETC_FSTAB_FILE}" "${VOLUME_CREATION_SCRIPT}"
-         touch "${ETC_HOSTS_FILE}" "${ETC_FSTAB_FILE}" "${VOLUME_CREATION_SCRIPT}"
-
-         # Initializing the script glusterfs_volume_creation_script.sh
-         cat << SCRIPT_EOF >> "${VOLUME_CREATION_SCRIPT}"
-#!/bin/bash
-
-gluster volume create ${VOLUME_NAME_ARG} replica ${#HOSTNAME_LIST_ARG[@]} \\
-SCRIPT_EOF
-
          log_warning "\t\t- Installing required packages"
          apt-get install -qq -y dnsutils
 
@@ -107,12 +96,10 @@ SCRIPT_EOF
 
              echo "${IP_INDEX} ${HOSTNAME}" >>"${ETC_HOSTS_FILE}"
              echo "${HOSTNAME}:/$VOLUME_NAME_ARG  ${GLUSTER_DIR}/${COUNTER}  glusterfs  defaults,_netdev  0  0" >> "${ETC_FSTAB_FILE}"
-             printf "%s" "${HOSTNAME}:${GLUSTER_DIR}/${COUNTER}/brick " >> "${VOLUME_CREATION_SCRIPT}"
 
              COUNTER=$((COUNTER + 1))
+             GLUSTERFS_CREATE_CMD="${GLUSTERFS_CREATE_CMD} ${HOSTNAME}:${GLUSTER_DIR}/${COUNTER}"
          done
-
-         printf "%s" " force" >> "${VOLUME_CREATION_SCRIPT}"
 
          unset COUNTER
 
@@ -136,16 +123,18 @@ SCRIPT_EOF
     export DEBCONF_NOWARNINGS=yes 
 
 
-     # ✅ Check that FINAL_MOUNT_POINT does not already exist
+     # ✅ Check that ${FINAL_MOUNT_POINT} does not already exist
      if [[ -e "${FINAL_MOUNT_POINT}" ]]; then
          echo "\t❌ Mount point '${FINAL_MOUNT_POINT}' already exists."
          exit 1
      else
          echo "Creating mount point '${FINAL_MOUNT_POINT}'"
-         sudo mkdir -p "${FINAL_MOUNT_POINT}"    
+         sudo mkdir -p "${FINAL_MOUNT_POINT}"
      fi
 
     sudo mkdir -p "${GLUSTER_DIR}/${COUNTER}"
+    sudo chown -R root:root "${GLUSTER_DIR}/${COUNTER}"
+    sudo chmod 755 "${GLUSTER_DIR}/${COUNTER}"
 
     sudo -E apt-get update -qq
     sudo -E apt-get install glusterfs-server -y -qq \
@@ -156,9 +145,7 @@ SCRIPT_EOF
          -o Dpkg::Use-Pty="0"
     sudo systemctl enable glusterd
     sudo systemctl start glusterd
-
-    sudo mount -a
-    sudo mkdir -p "${GLUSTER_DIR}/${COUNTER}/brick"
+    sudo systemctl status glusterd
 EOF_GLUSTERFS
 
              COUNTER=$((COUNTER + 1))
@@ -179,17 +166,15 @@ EOF_GLUSTERFS
          sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster peer status"        
 
          # Creating the volume
-         log_warning "\t\t- Setting up th GlusterFS volume with the following script: ${VOLUME_CREATION_SCRIPT}"
-         log_warning "\t\t\t- Creating the volume ${VOLUME_NAME_ARG}"
-         copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MASTER_IP_ADDRESS}" "${VOLUME_CREATION_SCRIPT}" "/tmp"
-         sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo bash /tmp/$(basename ${VOLUME_CREATION_SCRIPT})"
-         log_warning "\t\t\t- Starting the volume ${VOLUME_NAME_ARG}"
+         log_warning "\t\t- Creating the volumes ${GLUSTERFS_CREATE_CMD} force"
+         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo ${GLUSTERFS_CREATE_CMD}"
+         log_warning "\t\t- Starting the volume ${VOLUME_NAME_ARG}"
          sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster volume start ${VOLUME_NAME_ARG}"
-         log_warning "\t\t\t- Status of the volume ${VOLUME_NAME_ARG}"
+         log_warning "\t\t- Status of the volume ${VOLUME_NAME_ARG}"
          sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster volume status ${VOLUME_NAME_ARG}"
-         log_warning "\t\t\t- Info of the volume ${VOLUME_NAME_ARG}"
+         log_warning "\t\t- Info of the volume ${VOLUME_NAME_ARG}"
          sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster volume info ${VOLUME_NAME_ARG}"
-         log_warning "\t\t\t- Setup security and authentication for the volume ${VOLUME_NAME_ARG}"
+         log_warning "\t\t- Setup security and authentication for the volume ${VOLUME_NAME_ARG}"
          sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo gluster volume set ${VOLUME_NAME_ARG} auth.allow $(IFS=, ; echo "${DISCOVERED_IPS[*]}")"
 
          # Mount the glusterFS volume where applications can access the files
@@ -200,6 +185,8 @@ EOF_GLUSTERFS
                     "echo \"localhost:/${VOLUME_NAME_ARG} ${FINAL_MOUNT_POINT} glusterfs defaults,_netdev,backupvolfile-server=localhost 0 0\" | sudo tee -a /etc/fstab > /dev/null"
             sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "sudo mount.glusterfs localhost:/${VOLUME_NAME_ARG} ${FINAL_MOUNT_POINT}"
             sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "df -Th"
+            sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "sudo systemctl daemon-reload"
+            sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP_INDEX}" "sudo mount -a"
          done
 
          # Testing
