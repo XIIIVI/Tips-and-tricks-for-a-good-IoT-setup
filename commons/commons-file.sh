@@ -100,8 +100,8 @@ setup_replicated_volumes() {
              echo "${IP_INDEX} ${HOSTNAME}" >>"${ETC_HOSTS_FILE}"
              echo "${HOSTNAME}:/$VOLUME_NAME_ARG  ${GLUSTER_DIR}/${COUNTER}  glusterfs  defaults,_netdev  0  0" >> "${ETC_FSTAB_FILE}"
 
-             COUNTER=$((COUNTER + 1))
              GLUSTERFS_CREATE_CMD="${GLUSTERFS_CREATE_CMD} ${HOSTNAME}:${GLUSTER_DIR}/${COUNTER}"
+             COUNTER=$((COUNTER + 1))
          done
 
          unset COUNTER
@@ -128,7 +128,7 @@ setup_replicated_volumes() {
 
      # ✅ Check that ${FINAL_MOUNT_POINT} does not already exist
      if [[ -e "${FINAL_MOUNT_POINT}" ]]; then
-         echo "\\t⚠️ Mount point '${FINAL_MOUNT_POINT}' already exists."
+         echo "\\\\t⚠️ Mount point '${FINAL_MOUNT_POINT}' already exists."
      else
          echo "Creating mount point '${FINAL_MOUNT_POINT}'"
          sudo mkdir -p "${FINAL_MOUNT_POINT}"
