@@ -147,6 +147,19 @@ setup_replicated_volumes() {
     sudo systemctl enable glusterd
     sudo systemctl start glusterd
     sudo systemctl status glusterd
+
+    DEADLINE=\$((SECONDS+30));
+    while [ ! -x /usr/sbin/gluster ] && [ \$SECONDS -lt \$DEADLINE ]; do
+         echo "\t💤 Waiting for gluster CLI...";
+         sleep 2;
+    done;
+  
+    if [ -x /usr/sbin/gluster ]; then
+         echo "\t✅ Gluster CLI is ready!";
+    else
+         echo "\t❌ Timeout: gluster CLI not found within 30s";
+         exit 1;
+     fi    
 EOF_GLUSTERFS
 
              COUNTER=$((COUNTER + 1))
