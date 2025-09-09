@@ -692,7 +692,7 @@ create_replicated_volumes_native() {
 
     
     if [ -n "${REPLICATED_JSON}" ]; then
-    log_debug "\t- Creating the replicated volumes on ${IP_ADDRESS_ARG}"
+    log_debug "\t- Creating the replicated volumes"
 
     # Iterate over each volume object safely
     while IFS= read -r volume_json; do

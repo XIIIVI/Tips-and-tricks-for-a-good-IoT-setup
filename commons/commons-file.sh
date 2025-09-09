@@ -129,7 +129,6 @@ setup_replicated_volumes() {
      # ✅ Check that ${FINAL_MOUNT_POINT} does not already exist
      if [[ -e "${FINAL_MOUNT_POINT}" ]]; then
          echo "\\t⚠️ Mount point '${FINAL_MOUNT_POINT}' already exists."
-         exit 1
      else
          echo "Creating mount point '${FINAL_MOUNT_POINT}'"
          sudo mkdir -p "${FINAL_MOUNT_POINT}"
