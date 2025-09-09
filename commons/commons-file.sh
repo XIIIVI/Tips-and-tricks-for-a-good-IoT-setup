@@ -156,7 +156,7 @@ EOF_GLUSTERFS
          unset COUNTER
 
          # Probing the peers
-         for ((IP_INDEX = 1; IP_INDEX < ${#DISCOVERED_IPS[@]}; IP_INDEX++)); do
+         for ((IP_INDEX = 0; IP_INDEX < ${#DISCOVERED_IPS[@]}; IP_INDEX++)); do
              log_warning "\t\t- Probing host ${DISCOVERED_IPS[${IP_INDEX}]} ..."
              sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo /usr/sbin/gluster peer probe ${DISCOVERED_IPS[${IP_INDEX}]}"
              sleep 5
