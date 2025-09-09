@@ -73,6 +73,8 @@ setup_replicated_volumes() {
 
          MASTER_IP_ADDRESS=$(get_ip_by_hostname "${HOSTNAME_LIST_ARG[0]}" "${SWARM_JSON_ARG}")
 
+         log_warning "\t\t- Master node for GlusterFS setup is ${MASTER_IP_ADDRESS} (${HOSTNAME_LIST_ARG[0]})"
+
          # Build the IP address list
          DISCOVERED_IPS=()
 
@@ -126,7 +128,7 @@ setup_replicated_volumes() {
 
      # ✅ Check that ${FINAL_MOUNT_POINT} does not already exist
      if [[ -e "${FINAL_MOUNT_POINT}" ]]; then
-         echo "\t❌ Mount point '${FINAL_MOUNT_POINT}' already exists."
+         echo "\\t⚠️ Mount point '${FINAL_MOUNT_POINT}' already exists."
          exit 1
      else
          echo "Creating mount point '${FINAL_MOUNT_POINT}'"
@@ -147,19 +149,6 @@ setup_replicated_volumes() {
     sudo systemctl enable glusterd
     sudo systemctl start glusterd
     sudo systemctl status glusterd
-
-    DEADLINE=\$((SECONDS+30));
-    while [ ! -x /usr/sbin/gluster ] && [ \$SECONDS -lt \$DEADLINE ]; do
-         echo "\t💤 Waiting for gluster CLI...";
-         sleep 2;
-    done;
-  
-    if [ -x /usr/sbin/gluster ]; then
-         echo "\t✅ Gluster CLI is ready!";
-    else
-         echo "\t❌ Timeout: gluster CLI not found within 30s";
-         exit 1;
-     fi    
 EOF_GLUSTERFS
 
              COUNTER=$((COUNTER + 1))

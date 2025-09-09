@@ -4,7 +4,7 @@
             "hostname-default-prefix": "orchestrator",
             "members": [
                 {
-                    "ip-address": "192.168.2.193",
+                    "ip-address": "192.168.2.191",
                     "folders": [
                         "/data/alloy",
                         "/data/database",
@@ -26,7 +26,7 @@
                     "has-display": true
                 },
                 {
-                    "ip-address": "192.168.2.126",
+                    "ip-address": "192.168.2.124",
                     "hostname": "orchestrator2",
                     "folders": [
                         "/data/alloy",
@@ -49,7 +49,7 @@
                     "has-display": true
                 },
                 {
-                    "ip-address": "192.168.2.246",
+                    "ip-address": "192.168.2.244",
                     "folders": [
                         "/data/alloy",
                         "/data/database",
@@ -73,7 +73,7 @@
         },
         "workers": [
             {
-                "ip-address": "192.168.2.174",
+                "ip-address": "192.168.2.118",
                 "hostname": "sat1",
                 "folders": [
                     "/data/alloy",
