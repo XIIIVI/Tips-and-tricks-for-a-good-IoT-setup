@@ -169,7 +169,7 @@ EOF_GLUSTERFS
 
          # Creating the volume
          log_warning "\t\t- Creating the volumes ${GLUSTERFS_CREATE_CMD} force"
-         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo ${GLUSTERFS_CREATE_CMD}"
+         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo ${GLUSTERFS_CREATE_CMD} force"
          log_warning "\t\t- Starting the volume ${VOLUME_NAME_ARG}"
          sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo /usr/sbin/gluster volume start ${VOLUME_NAME_ARG}"
          log_warning "\t\t- Status of the volume ${VOLUME_NAME_ARG}"

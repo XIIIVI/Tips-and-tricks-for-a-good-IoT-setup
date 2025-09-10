@@ -936,7 +936,7 @@ main() {
     JOIN_WORKER_CMD_FILE="./join_worker_cmd.swarm"
     MANAGER_IP_ADDRESS_FILE="./ip.swarm"
     JOIN_MANAGER_CMD_FILE="./join_mgr_cmd.swarm"
-    CONFIG_DIR=$(mktemp -d -t "swarm-config")
+    CONFIG_DIR=$(mktemp -d)
 
     # Parses the parameters
     while (("$#")); do
