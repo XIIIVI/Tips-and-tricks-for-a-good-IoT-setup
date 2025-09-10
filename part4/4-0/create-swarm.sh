@@ -723,7 +723,7 @@ create_replicated_volumes_native() {
     driver_opts:
       type: "none"
       o: "bind"
-      device: "/${MOUNTPOINT_DIR}/${FOLDER}"
+      device: "${MOUNTPOINT_DIR}/${FOLDER}"
 EOF
 
             if [ -n "${OWNERSHIP}" ]; then
