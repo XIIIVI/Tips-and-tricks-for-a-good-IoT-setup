@@ -155,6 +155,10 @@ EOF_GLUSTERFS
 
          unset COUNTER
 
+         # Adding force to the create command to avoid issues with previous failed attempts
+         # (as the folder is created in the root folder)
+         GLUSTERFS_CREATE_CMD="${GLUSTERFS_CREATE_CMD} force"
+
          # Probing the peers
          for ((IP_INDEX = 0; IP_INDEX < ${#DISCOVERED_IPS[@]}; IP_INDEX++)); do
              log_warning "\t\t- Probing host ${DISCOVERED_IPS[${IP_INDEX}]} ..."
@@ -168,8 +172,8 @@ EOF_GLUSTERFS
          sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo /usr/sbin/gluster peer status"        
 
          # Creating the volume
-         log_warning "\t\t- Creating the volumes ${GLUSTERFS_CREATE_CMD} force"
-         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo ${GLUSTERFS_CREATE_CMD} force"
+         log_warning "\t\t- Creating the volumes ${GLUSTERFS_CREATE_CMD}"
+         sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo ${GLUSTERFS_CREATE_CMD}"
          log_warning "\t\t- Starting the volume ${VOLUME_NAME_ARG}"
          sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo /usr/sbin/gluster volume start ${VOLUME_NAME_ARG}"
          log_warning "\t\t- Status of the volume ${VOLUME_NAME_ARG}"
