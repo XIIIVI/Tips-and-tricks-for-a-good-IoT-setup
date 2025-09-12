@@ -9,8 +9,8 @@ logging {
 // #####################################
 local.file_match "local_files" {
     path_targets = [
-        {__path__ = "/host/log/*.log"},
-        {__path__ = "/data/telegraf/logs/*.log"}
+        {"__path__" = "/host/log/*.log"},
+        {"__path__" = "/data/telegraf/logs/*.log"}
         ]
     sync_period = "5s"
 }
