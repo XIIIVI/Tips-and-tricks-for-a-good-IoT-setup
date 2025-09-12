@@ -283,7 +283,7 @@ services:
         protocol: tcp
         mode: host      # or 'ingress' for routing mesh
     volumes:
-      - /mnt/loki:/loki # Persistent storage for Loki
+      - /mnt/replicated-data/loki:/loki # Persistent storage for Loki
 
   alloy-level0:
     image: ${PRIVATE_REPO}/alloy:v1.10.2

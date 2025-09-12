@@ -236,7 +236,7 @@ services:
         protocol: tcp
         mode: host      # or 'ingress' for routing mesh
     volumes:
-      - /mnt/loki:/loki # Persistent storage for Loki
+      - /mnt/replicated-data/loki:/loki # Persistent storage for Loki
     command: -config.file=/etc/loki/local-config.yaml
 
   alloy-level0:
