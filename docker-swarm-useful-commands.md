@@ -24,6 +24,7 @@
 
 ## Services
 
+* List all the services: ```sudo docker service ls```
 * Remove all the services: ```sudo docker service rm $(sudo docker service ls -q)```
 
 ### Logs

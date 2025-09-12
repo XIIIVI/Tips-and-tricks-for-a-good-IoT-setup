@@ -8,11 +8,16 @@ logging {
 // #### Local logging Configuration ####
 // #####################################
 local.file_match "local_files" {
-    path_targets = [
-        {"__path__" = "/host/log/*.log"},
-        {"__path__" = "/data/telegraf/logs/*.log"}
-        ]
-    sync_period = "5s"
+  path_targets = [
+    {
+      "__path__"    = "/host/log/*.log"
+    },
+    {
+      "__path__"       = "/storage/telegraf/logs/*.log"
+    }
+  ]
+
+  sync_period = "5s"
 }
 
 loki.source.file "log_scrape" {
