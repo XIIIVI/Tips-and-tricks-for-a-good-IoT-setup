@@ -387,7 +387,8 @@ services:
     secrets:
       - grafana.passwd
     deploy:
-      mode: global
+      mode: replicated
+      replicas: 1
       restart_policy:
         condition: on-failure
       placement:
