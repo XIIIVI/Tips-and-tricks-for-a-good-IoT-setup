@@ -195,11 +195,11 @@ EOF_GLUSTERFS
          done
 
          # Testing
-         log_warning "\t\t- Testing the GlusterFS volume ${VOLUME_NAME_ARG} on all nodes"
+         log_warning "\t\t- Testing the GlusterFS volume \"${VOLUME_NAME_ARG}\" on all nodes"
          sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "echo 'Hello World!' | sudo tee ${FINAL_MOUNT_POINT}/test.txt"
 
          for IP_INDEX in "${DISCOVERED_IPS[@]}"; do
-             log_warning "\t\t- Checking test file on host ${IP_INDEX} ..."
+             log_warning "\t\t- Checking the test file on host ${IP_INDEX} ..."
              sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "cat ${FINAL_MOUNT_POINT}/test.txt"
              sleep 5
          done
