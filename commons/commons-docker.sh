@@ -13,13 +13,15 @@ install_docker_container_viewer() {
     export DEBIAN_FRONTEND=noninteractive
     export DEBCONF_NOWARNINGS=yes 
 
-echo "Installing Golang"
-apt remove -y golang-go
-apt autoremove -y
-rm -rf /usr/local/go
+LOCAL_ARCHITECTURE=$(dpkg --print-architecture)
+
+echo "Installing Golang for ${LOCAL_ARCHITECTURE}"
+sudo apt remove -y golang-go
+sudo apt autoremove -y
+sudo rm -rf /usr/local/go
 cd /tmp
-wget https://go.dev/dl/go1.24.0.linux-arm64.tar.gz
-tar -C /usr/local -xzf go1.24.0.linux-arm64.tar.gz
+wget https://go.dev/dl/go1.24.0.linux-${LOCAL_ARCHITECTURE}.tar.gz
+sudo tar -C /usr/local -xzf go1.24.0.linux-${LOCAL_ARCHITECTURE}.tar.gz
 
 cat << 'EOF' >> $HOME/.bashrc
 export PATH=$PATH:/usr/local/go/bin
@@ -30,9 +32,9 @@ source $HOME/.bashrc
 go version
 
 echo "Installing DCV"
-wget https://github.com/tokuhirom/dcv/releases/latest/download/dcv_linux_arm64.tar.gz
-tar -xzf dcv_linux_arm64.tar.gz
-mv dcv /usr/local/bin/
+wget https://github.com/tokuhirom/dcv/releases/latest/download/dcv_linux_${LOCAL_ARCHITECTURE}.tar.gz
+tar -xzf dcv_linux_${LOCAL_ARCHITECTURE}.tar.gz
+sudo mv dcv /usr/local/bin/
 EOF_DCV
 }
 
