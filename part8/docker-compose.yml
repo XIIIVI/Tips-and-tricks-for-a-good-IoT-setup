@@ -221,6 +221,7 @@ services:
 
   loki:
     image: ${PRIVATE_REPO}/loki:3.0.0
+    user: "1000:1000"
     deploy:
       mode: global
       restart_policy:

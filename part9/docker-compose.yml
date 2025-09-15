@@ -263,6 +263,7 @@ services:
 
   loki:
     image: ${PRIVATE_REPO}/loki:3.0.0
+    user: "1000:1000"
     command: -config.file=/etc/loki/local-config.yaml
     configs:
       - source: loki.yaml

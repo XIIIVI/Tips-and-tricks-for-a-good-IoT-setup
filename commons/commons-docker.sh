@@ -20,7 +20,7 @@ sudo apt remove -y golang-go
 sudo apt autoremove -y
 sudo rm -rf /usr/local/go
 cd /tmp
-wget https://go.dev/dl/go1.24.0.linux-${LOCAL_ARCHITECTURE}.tar.gz
+wget -q --show-progress https://go.dev/dl/go1.24.0.linux-${LOCAL_ARCHITECTURE}.tar.gz
 sudo tar -C /usr/local -xzf go1.24.0.linux-${LOCAL_ARCHITECTURE}.tar.gz
 
 cat << 'EOF' >> $HOME/.bashrc
@@ -29,10 +29,10 @@ EOF
 
 source $HOME/.bashrc
 
-go version
+/usr/local/go/bin/go version
 
 echo "Installing DCV"
-wget https://github.com/tokuhirom/dcv/releases/latest/download/dcv_linux_${LOCAL_ARCHITECTURE}.tar.gz
+wget -q --show-progress https://github.com/tokuhirom/dcv/releases/latest/download/dcv_linux_${LOCAL_ARCHITECTURE}.tar.gz
 tar -xzf dcv_linux_${LOCAL_ARCHITECTURE}.tar.gz
 sudo mv dcv /usr/local/bin/
 EOF_DCV
