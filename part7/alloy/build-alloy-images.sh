@@ -138,7 +138,7 @@ main() {
 
     display_settings
 
-    log_info "Building the Alloy image v${IMAGE_VERSION}"
+    log_info "Building the Alloy image ${IMAGE_VERSION}"
 
     log_debug "Generating the banner"
     figlet -f "${FIGLET_FONT}" "Alloy" >"level${LEVEL_NUMBER}/banner"

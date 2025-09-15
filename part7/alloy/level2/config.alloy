@@ -8,10 +8,7 @@ logging {
 // #### Local logging Configuration ####
 // #####################################
 local.file_match "local_files" {
-    path_targets = [
-        {"__path__" = "/host/log/*.log"}
-        ]
-    sync_period = "5s"
+  path_targets = [ { "__path__" = "/host/log/*.log" }, { "__path__" = "/storage/telegraf/logs/*.log" } ]
 }
 
 loki.source.file "log_scrape" {
@@ -52,7 +49,7 @@ loki.source.docker "default" {
 
 // Add custom labels to each log record
 loki.process "add_labels" {
-    forward_to = [loki.process.parent.receiver]
+    forward_to = [loki.write.parent.receiver]
 
     // Add static labels from environment variables
     stage.static_labels {

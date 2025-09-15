@@ -234,8 +234,8 @@
                         "folders": [
                             "loki"
                         ],
-                        "ownership": "1001:1001",
-                        "permissions": "755"
+                        "ownership": "1000:1000",
+                        "permissions": "777"
                     }
                 ]
             }

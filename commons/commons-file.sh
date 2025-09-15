@@ -139,7 +139,7 @@ setup_replicated_volumes() {
     sudo chmod 755 "${GLUSTER_DIR}/${COUNTER}"
 
     sudo -E apt-get update -qq
-    sudo -E apt-get install glusterfs-cli glusterfs-server -y -qq \
+    sudo -E apt-get install glusterfs-cli glusterfs-server tree -y -qq \
          -o Dpkg::Progress-Fancy="0" \
          -o Dpkg::Use-Pty="0"
     sudo -E apt-get dist-upgrade -y -qq \
@@ -183,7 +183,7 @@ EOF_GLUSTERFS
          log_warning "\t\t- Setup security and authentication for the volume ${VOLUME_NAME_ARG}"
          sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "sudo /usr/sbin/gluster volume set ${VOLUME_NAME_ARG} auth.allow $(IFS=, ; echo "${DISCOVERED_IPS[*]}")"
 
-         # Mount the glusterFS volume where applications can access the files
+         # Mounting the glusterFS volume where applications can access the files
          log_debug "\t- Mounting the GlusterFS volume ${VOLUME_NAME_ARG} on all nodes" 
          for IP_INDEX in "${DISCOVERED_IPS[@]}"; do
             log_warning "\t\t- Mounting the GlusterFS volume ${VOLUME_NAME_ARG} (${FINAL_MOUNT_POINT}) on ${IP_INDEX}"
@@ -195,11 +195,11 @@ EOF_GLUSTERFS
          done
 
          # Testing
-         log_warning "\t\t- Testing the GlusterFS volume ${VOLUME_NAME_ARG} on all nodes"
+         log_warning "\t\t- Testing the GlusterFS volume \"${VOLUME_NAME_ARG}\" on all nodes"
          sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${MASTER_IP_ADDRESS}" "echo 'Hello World!' | sudo tee ${FINAL_MOUNT_POINT}/test.txt"
 
          for IP_INDEX in "${DISCOVERED_IPS[@]}"; do
-             log_warning "\t\t- Checking test file on host ${IP_INDEX} ..."
+             log_warning "\t\t- Checking the test file on host ${IP_INDEX} ..."
              sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_INDEX}" "cat ${FINAL_MOUNT_POINT}/test.txt"
              sleep 5
          done

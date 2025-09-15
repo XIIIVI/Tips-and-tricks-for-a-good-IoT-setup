@@ -221,6 +221,7 @@ services:
 
   loki:
     image: ${PRIVATE_REPO}/loki:3.0.0
+    user: "1000:1000"
     deploy:
       mode: global
       restart_policy:
@@ -236,7 +237,7 @@ services:
         protocol: tcp
         mode: host      # or 'ingress' for routing mesh
     volumes:
-      - /mnt/loki:/loki # Persistent storage for Loki
+      - /mnt/replicated-data/loki:/loki # Persistent storage for Loki
     command: -config.file=/etc/loki/local-config.yaml
 
   alloy-level0:
@@ -319,7 +320,8 @@ services:
   grafana:
     image: ${PRIVATE_REPO}/grafana:12.2.0-17195718647
     deploy:
-      mode: global
+      mode: replicated
+      replicas: 1
       restart_policy:
         condition: on-failure
       placement:

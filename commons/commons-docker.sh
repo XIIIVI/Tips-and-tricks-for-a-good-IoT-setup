@@ -1,6 +1,44 @@
 #!/bin/bash
 
 #
+
+install_docker_container_viewer() {
+    local ROOT_USER_ARG="$1"
+    local ROOT_PASS_ARG="$2"
+    local HOST_IP_ARG="$3"
+
+    log_debug "\t- Installing Docker Container Viewer (DCV) on $HOST_IP_ARG ..."
+
+    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_DCV'
+    export DEBIAN_FRONTEND=noninteractive
+    export DEBCONF_NOWARNINGS=yes 
+
+LOCAL_ARCHITECTURE=$(dpkg --print-architecture)
+
+echo "Installing Golang for ${LOCAL_ARCHITECTURE}"
+sudo apt remove -y golang-go
+sudo apt autoremove -y
+sudo rm -rf /usr/local/go
+cd /tmp
+wget -q --show-progress https://go.dev/dl/go1.24.0.linux-${LOCAL_ARCHITECTURE}.tar.gz
+sudo tar -C /usr/local -xzf go1.24.0.linux-${LOCAL_ARCHITECTURE}.tar.gz
+
+cat << 'EOF' >> $HOME/.bashrc
+export PATH=$PATH:/usr/local/go/bin
+EOF
+
+source $HOME/.bashrc
+
+/usr/local/go/bin/go version
+
+echo "Installing DCV"
+wget -q --show-progress https://github.com/tokuhirom/dcv/releases/latest/download/dcv_linux_${LOCAL_ARCHITECTURE}.tar.gz
+tar -xzf dcv_linux_${LOCAL_ARCHITECTURE}.tar.gz
+sudo mv dcv /usr/local/bin/
+EOF_DCV
+}
+
+#
 # install_docker
 # This function installs Docker on the specified host.
 # Arguments:
@@ -200,6 +238,7 @@ EOF_SSH
 
     if [ $? -eq 0 ]; then
        log_debug "\t✅ Docker installation completed successfully."
+       install_docker_container_viewer "${ROOT_USER_ARG}" "${ROOT_PASS_ARG}" "${HOST_IP_ARG}"
     else
        log_debug "\t❌ Docker installation has failed ..."
        exit 1
