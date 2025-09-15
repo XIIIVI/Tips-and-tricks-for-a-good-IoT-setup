@@ -727,7 +727,7 @@ create_replicated_volumes_native() {
 EOF
 
             if [ -n "${OWNERSHIP}" ]; then
-                log_debug "\t\t\t- Setting ownership on ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
+                log_debug "\t\t\t- Setting ownership ${OWNERSHIP} on ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
                 sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" \
                     "sudo chown -R ${OWNERSHIP} ${MOUNTPOINT_DIR}/${FOLDER}" < /dev/null
             else
@@ -735,7 +735,7 @@ EOF
             fi
 
             if [ -n "${PERMISSIONS}" ]; then
-                log_debug "\t\t\t- Setting permissions on ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
+                log_debug "\t\t\t- Setting permissions ${PERMISSIONS} on ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
                 sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" \
                     "sudo chmod -R ${PERMISSIONS} ${MOUNTPOINT_DIR}/${FOLDER}" < /dev/null
             else
