@@ -52,7 +52,6 @@ services:
           - node.labels.level == 0
     networks:
       - public-network
-      - telemetry-network
     ports:
       - target: 8791    # container port
         published: 8791 # port exposed on the swarm nodes
@@ -88,7 +87,7 @@ services:
         constraints:
           - node.labels.level == 1
     networks:
-      - telemetry-network
+      - public-network
     ports:
       - target: 8791    # container port
         published: 8791 # port exposed on the swarm nodes
@@ -122,7 +121,7 @@ services:
         constraints:
           - node.labels.level == 2
     networks:
-      - telemetry-network
+      - public-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -164,7 +163,6 @@ services:
       - vmstorage
     networks:
       - public-network
-      - timeseries-network
     ports:
       - "8480:8480"  # remote_write endpoint for Telegraf
     volumes:
@@ -185,7 +183,7 @@ services:
       - '--retentionPeriod=1d'
       - '--storageDataPath=/vmstorage'
     networks:
-      - timeseries-network
+      - public-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -205,7 +203,6 @@ services:
       - vmstorage
     networks:
       - public-network
-      - timeseries-network
     ports:
       - "8481:8481"  # UI and query API
     volumes:

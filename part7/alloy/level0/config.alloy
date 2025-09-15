@@ -59,7 +59,7 @@ loki.source.docker "default" {
 
 // Add custom labels to each log record
 loki.process "add_labels" {
-    forward_to = [loki.process.parent.receiver]
+    forward_to = [loki.write.parent.receiver]
 
     // Add static labels from environment variables
     stage.static_labels {
