@@ -708,6 +708,9 @@ create_replicated_volumes_native() {
         readarray -t HOSTNAME_LIST < <(jq -r '.hosts[]' <<<"$volume_json")
         readarray -t FOLDER_LIST < <(jq -r '.folders[]' <<<"$volume_json")
 
+        # Setup replicated volumes across hosts
+        setup_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME}" "${SWARM_JSON_ARG}" "${HOSTNAME_LIST[@]}" < /dev/null
+
         log_warning "\t\t- Creating the folders on the volume ${VOLUME_NAME}"
         for FOLDER in "${FOLDER_LIST[@]}"; do
             local IP_ADDRESS
@@ -743,8 +746,16 @@ EOF
             fi
         done
 
-        # Setup replicated volumes across hosts
-        setup_replicated_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME}" "${SWARM_JSON_ARG}" "${HOSTNAME_LIST[@]}" < /dev/null
+        # Folder replication check
+        log_warning "\t\t- Checking the folder replication on the volume ${VOLUME_NAME}"
+        for IP_ADDRESS_INDEX in "${!HOSTNAME_LIST[@]}"; do
+            local IP_ADDRESS
+            IP_ADDRESS=$(host "${HOSTNAME_LIST[$IP_ADDRESS_INDEX]}" | awk '/has address/ { print $4 }')
+
+            log_debug "\t\t\t- Checking the folder replication on ${HOSTNAME_LIST[$IP_ADDRESS_INDEX]} at IP address ${IP_ADDRESS}"
+            sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" \
+                "sudo tree ${MOUNTPOINT_DIR}" < /dev/null
+        done
     done 0< <(jq -c '.[]' <<<"$REPLICATED_JSON")
     else
         log_debug "\t -No replicated volumes found in the configuration."    
