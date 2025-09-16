@@ -112,7 +112,7 @@ GRAFANA_URL="http://${GRAFANA_HOST}:${GRAFANA_PORT}"
 
 # Names & tags
 GRAFANA_IMAGE="grafana/grafana:${VERSION_NUMBER}"
-GRAFANA_CONTAINER="grafana_${VERSION_NUMBER//[^a-zA-Z0-9]/_}_${TARGET_ARCH}"
+GRAFANA_CONTAINER="grafana_tmp_${VERSION_NUMBER//[^a-zA-Z0-9]/_}_$RANDOM"
 CUSTOM_DB="grafana.db"
 TARGET_IMAGE="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/grafana:${IMAGE_VERSION}"
 
@@ -124,11 +124,11 @@ DOCKER_DEFAULT_PLATFORM="linux/${TARGET_ARCH}" docker pull --platform "linux/${T
 
 # Stop/remove if exists
 if docker ps -a --format '{{.Names}}' | grep -q "^${GRAFANA_CONTAINER}\$"; then
-  log_warning "\t-🚮 Container ${GRAFANA_CONTAINER} exists. Removing..."
+  log_warning "\t- 🚮 Container ${GRAFANA_CONTAINER} exists. Removing..."
   docker rm -f "${GRAFANA_CONTAINER}" >/dev/null 2>&1 || true
 fi
 
-log_debug "\t-▶️ Starting Grafana container ${GRAFANA_CONTAINER}..."
+log_debug "\t- ▶️ Starting Grafana container ${GRAFANA_CONTAINER}..."
 docker run -d --name "${GRAFANA_CONTAINER}" \
   -p "${GRAFANA_PORT}:3000" \
   -e "GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWD}" \
@@ -136,7 +136,7 @@ docker run -d --name "${GRAFANA_CONTAINER}" \
   "${GRAFANA_IMAGE}" >/dev/null
 
 # Wait for Grafana readiness
-log_debug "\t-🕗 Waiting for Grafana to be ready at ${GRAFANA_URL}..."
+log_debug "\t- 🕗 Waiting for Grafana to be ready at ${GRAFANA_URL}..."
 for i in {1..60}; do
   if curl -fsS "${GRAFANA_URL}/api/health" >/dev/null 2>&1; then
     break
@@ -199,7 +199,7 @@ if ! command -v grr >/dev/null 2>&1; then
   log_warning "\t grr not found. Attempting installation via 'go install'..."
   if ! command -v go >/dev/null 2>&1; then
     echo "Go not found. Installing for host arch ${HOST_ARCH}..."
-    GO_VERSION="1.23.1"
+    GO_VERSION="1.22.7"
     case "${HOST_ARCH}" in
       amd64|arm64) GO_TARBALL="go${GO_VERSION}.linux-${HOST_ARCH}.tar.gz" ;;
       armv7)       GO_TARBALL="go${GO_VERSION}.linux-armv6l.tar.gz" ;; # closest available; adjust if needed
