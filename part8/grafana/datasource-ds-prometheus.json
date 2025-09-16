@@ -1,0 +1,20 @@
+{
+  "apiVersion": "grizzly.grafana.com/v1alpha1",
+  "kind": "Datasource",
+  "metadata": {
+    "name": "ds-prometheus"
+  },
+  "spec": {
+    "access": "proxy",
+    "isDefault": true,
+    "jsonData": {
+      "pdcInjected": false
+    },
+    "name": "prometheus",
+    "orgId": 1,
+    "type": "prometheus",
+    "typeLogoUrl": "public/plugins/prometheus/img/prometheus_logo.svg",
+    "uid": "ds-prometheus",
+    "url": "http://iot-stack_vmselect:8481/select/0/prometheus"
+  }
+}

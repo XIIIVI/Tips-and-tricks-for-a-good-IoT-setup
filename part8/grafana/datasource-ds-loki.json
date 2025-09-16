@@ -1,0 +1,19 @@
+{
+  "apiVersion": "grizzly.grafana.com/v1alpha1",
+  "kind": "Datasource",
+  "metadata": {
+    "name": "ds-loki"
+  },
+  "spec": {
+    "access": "proxy",
+    "jsonData": {
+      "pdcInjected": false
+    },
+    "name": "loki",
+    "orgId": 1,
+    "type": "loki",
+    "typeLogoUrl": "public/plugins/loki/img/loki_icon.svg",
+    "uid": "ds-loki",
+    "url": "http://iot-stack_loki:3100"
+  }
+}
