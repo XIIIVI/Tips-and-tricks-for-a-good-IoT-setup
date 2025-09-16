@@ -1,26 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Disable history expansion so '!!' in passwords stays literal
+set +o histexpand
 
 source "../../commons/commons-log.sh"
 
 # ------------------------------------------------------------------------------
-# Grafana + Grizzly one-shot bootstrapper
-# - Pulls a specific Grafana version into Docker
-# - Sets admin password
-# - Creates a 1-day service account token (SA_TOKEN)
-# - Installs Grafana/grizzly and configures it
-# - Pushes resources from a Grizzly base directory
-# - Commits the container to an image, tars it, then imports/pushes to a local registry
+# Grafana + Grizzly bootstrapper with cross-arch support
+# - Pulls/starts Grafana for TARGET_ARCH (default arm64) even on an amd64 host
+# - Sets admin password, creates SA token (1 day)
+# - Installs Go (HOST_ARCH) if missing, installs grr
+# - Configures grr and pushes resources
+# - Commits container, saves to tar, loads and pushes to local registry
+# - Optional: create a multi-arch manifest if you have other arch images pushed
 #
-# Requirements:
-# - docker, curl, jq
-# - grr (Grizzly) or Go toolchain to install it (go >= 1.20 recommended)
+# Requirements: docker, curl, jq
+# Optional: buildx available for multi-arch manifest creation
 # ------------------------------------------------------------------------------
 
 # --------------------------------------
 # Defaults
 # --------------------------------------
-ARCH="arm64"
+TARGET_ARCH="arm64"
 LOCAL_REGISTRY_PORT="4443"
 
 # --------------------------------------
@@ -64,9 +65,9 @@ while [[ $# -gt 0 ]]; do
     --local-registry-address) LOCAL_REGISTRY_ADDRESS="$2"; shift 2 ;;
     --local-registry-port) LOCAL_REGISTRY_PORT="$2"; shift 2 ;;
     --image-version) IMAGE_VERSION="$2"; shift 2 ;;
-    --arch) ARCH="$2"; shift 2 ;;
+    --arch) TARGET_ARCH="$2"; shift 2 ;;
     -h|--help) usage ;;
-    *) log_error "Unknown argument: $1"; usage ;;
+    *) log_error "❌ Unknown argument: $1"; usage ;;
   esac
 done
 
@@ -85,8 +86,24 @@ fi
 # --------------------------------------
 REQUIRED_BINS=(docker curl jq)
 for b in "${REQUIRED_BINS[@]}"; do
-  command -v "$b" >/dev/null 2>&1 || { log_error "Required binary not found: $b"; exit 1; }
+  command -v "$b" >/dev/null 2>&1 || { log_error "❌ Required binary not found: $b"; exit 1; }
 done
+
+# Normalize HOST_ARCH to Go/Docker naming
+uname_m="$(uname -m)"
+case "$uname_m" in
+  x86_64) HOST_ARCH="amd64" ;;
+  aarch64) HOST_ARCH="arm64" ;;
+  armv7l) HOST_ARCH="armv7" ;;
+  *) log_error "❌ Unsupported host arch: $uname_m"; exit 1 ;;
+esac
+
+# Enable binfmt for cross-arch containers if needed
+if [[ "${HOST_ARCH}" != "${TARGET_ARCH}" ]]; then
+  log_info "Host arch is ${HOST_ARCH}; target image arch is ${TARGET_ARCH}. Enabling binfmt..."
+  # Requires privileged helper (Docker Desktop usually has this already)
+  docker run --rm --privileged tonistiigi/binfmt --install "${TARGET_ARCH}" >/dev/null 2>&1 || true
+fi
 
 # Use loopback to avoid docker-for-mac/iptables oddities
 GRAFANA_HOST="127.0.0.1"
@@ -95,32 +112,31 @@ GRAFANA_URL="http://${GRAFANA_HOST}:${GRAFANA_PORT}"
 
 # Names & tags
 GRAFANA_IMAGE="grafana/grafana:${VERSION_NUMBER}"
-GRAFANA_CONTAINER="grafana_${VERSION_NUMBER//[^a-zA-Z0-9]/_}_${ARCH}"
-CUSTOM_IMAGE_LOCAL="grafana-custom:${IMAGE_VERSION}-${ARCH}"
-TAR_FILE="grafana-${IMAGE_VERSION}-${ARCH}.tar"
+GRAFANA_CONTAINER="grafana_${VERSION_NUMBER//[^a-zA-Z0-9]/_}_${TARGET_ARCH}"
+CUSTOM_DB="grafana.db"
 TARGET_IMAGE="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/grafana:${IMAGE_VERSION}"
 
 # --------------------------------------
 # Pull and run Grafana
 # --------------------------------------
-log_info "Pulling Grafana image ${GRAFANA_IMAGE} for linux/${ARCH}..."
-DOCKER_DEFAULT_PLATFORM="linux/${ARCH}" docker pull --platform "linux/${ARCH}" "${GRAFANA_IMAGE}"
+log_info "⤵️ Pulling Grafana image ${GRAFANA_IMAGE} for linux/${TARGET_ARCH}..."
+DOCKER_DEFAULT_PLATFORM="linux/${TARGET_ARCH}" docker pull --platform "linux/${TARGET_ARCH}" "${GRAFANA_IMAGE}"
 
 # Stop/remove if exists
 if docker ps -a --format '{{.Names}}' | grep -q "^${GRAFANA_CONTAINER}\$"; then
-  log_warning "\t- Container ${GRAFANA_CONTAINER} exists. Removing..."
+  log_warning "\t-🚮 Container ${GRAFANA_CONTAINER} exists. Removing..."
   docker rm -f "${GRAFANA_CONTAINER}" >/dev/null 2>&1 || true
 fi
 
-log_debug "\t- Starting Grafana container ${GRAFANA_CONTAINER}..."
+log_debug "\t-▶️ Starting Grafana container ${GRAFANA_CONTAINER}..."
 docker run -d --name "${GRAFANA_CONTAINER}" \
   -p "${GRAFANA_PORT}:3000" \
   -e "GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWD}" \
-  --platform "linux/${ARCH}" \
+  --platform "linux/${TARGET_ARCH}" \
   "${GRAFANA_IMAGE}" >/dev/null
 
 # Wait for Grafana readiness
-log_debug "\t- Waiting for Grafana to be ready at ${GRAFANA_URL}..."
+log_debug "\t-🕗 Waiting for Grafana to be ready at ${GRAFANA_URL}..."
 for i in {1..60}; do
   if curl -fsS "${GRAFANA_URL}/api/health" >/dev/null 2>&1; then
     break
@@ -149,25 +165,25 @@ log_debug "\t- Creating service account and token valid for 1 day..."
 SA_NAME="grizzly-sa-$(date +%s)"
 # Create Service Account
 SA_ID=$(
-  curl -fsS -X POST "${GRAFANA_URL}/api/service-accounts" \
+  curl -fsS -X POST "${GRAFANA_URL}/api/serviceaccounts" \
     -u "admin:${ADMIN_PASSWD}" \
     -H 'Content-Type: application/json' \
     -d "{\"name\":\"${SA_NAME}\",\"role\":\"Admin\"}" | jq -r '.id'
 )
 if [[ -z "${SA_ID}" || "${SA_ID}" == "null" ]]; then
-  log_error "Failed to create service account."
+  log_error "❌ Failed to create service account."
   exit 1
 fi
 
 # Create Service Account token (1 day = 86400 seconds)
 SA_TOKEN=$(
-  curl -fsS -X POST "${GRAFANA_URL}/api/service-accounts/${SA_ID}/tokens" \
+  curl -fsS -X POST "${GRAFANA_URL}/api/serviceaccounts/${SA_ID}/tokens" \
     -u "admin:${ADMIN_PASSWD}" \
     -H 'Content-Type: application/json' \
     -d "{\"name\":\"${SA_NAME}-token\",\"role\":\"Admin\",\"secondsToLive\":86400}" | jq -r '.key'
 )
 if [[ -z "${SA_TOKEN}" || "${SA_TOKEN}" == "null" ]]; then
-  log_error "Failed to create service account token."
+  log_error "❌ Failed to create service account token."
   exit 1
 fi
 
@@ -177,14 +193,28 @@ export SA_TOKEN
 # --------------------------------------
 # Install grizzly (grr) if missing
 # --------------------------------------
-log_info "Installing Grizzly"
+log_info "📦 Installing Grizzly"
 
 if ! command -v grr >/dev/null 2>&1; then
   log_warning "\t grr not found. Attempting installation via 'go install'..."
   if ! command -v go >/dev/null 2>&1; then
-    log_error "Go is not installed. Please install Go or pre-install grr, then re-run."
-    exit 1
+    echo "Go not found. Installing for host arch ${HOST_ARCH}..."
+    GO_VERSION="1.23.1"
+    case "${HOST_ARCH}" in
+      amd64|arm64) GO_TARBALL="go${GO_VERSION}.linux-${HOST_ARCH}.tar.gz" ;;
+      armv7)       GO_TARBALL="go${GO_VERSION}.linux-armv6l.tar.gz" ;; # closest available; adjust if needed
+      *) echo "Unsupported host arch for Go: ${HOST_ARCH}"; exit 1 ;;
+    esac
+    GO_URL="https://go.dev/dl/${GO_TARBALL}"
+    TMP_DIR="$(mktemp -d)"
+    pushd "${TMP_DIR}" >/dev/null
+    curl -fsSLO "${GO_URL}"
+    sudo tar -C /usr/local -xzf "${GO_TARBALL}"
+    popd >/dev/null
+    rm -rf "${TMP_DIR}"
+    export PATH="/usr/local/go/bin:${PATH}"
   fi
+  
   # Respect GOBIN; otherwise use GOPATH/bin or default ~/go/bin
   GOBIN_DIR="${GOBIN:-}"
   if [[ -z "${GOBIN_DIR}" ]]; then
@@ -196,7 +226,7 @@ if ! command -v grr >/dev/null 2>&1; then
   GO111MODULE=on GOBIN="${GOBIN_DIR}" go install github.com/grafana/grizzly/cmd/grr@latest
   export PATH="${GOBIN_DIR}:${PATH}"
   if ! command -v grr >/dev/null 2>&1; then
-    log_error "Failed to install grr."
+    log_error "❌ Failed to install grr."
     exit 1
   fi
 fi
@@ -205,77 +235,64 @@ fi
 # Configure grizzly with token and Grafana URL
 # --------------------------------------
 log_debug "\t- Configuring Grizzly context..."
-GRIZZLY_DIR="${HOME}/.grizzly"
-mkdir -p "${GRIZZLY_DIR}"
-GRIZZLY_CONFIG="${GRIZZLY_DIR}/config.yaml"
-
-cat > "${GRIZZLY_CONFIG}" <<YAML
-contexts:
-  default:
-    providers:
-      grafana:
-        url: ${GRAFANA_URL}
-        auth:
-          token: ${SA_TOKEN}
-YAML
-
-log_debug "\t- Grizzly configured at ${GRIZZLY_CONFIG}"
+grr config set grafana.url "http://127.0.0.1:3000/"
+grr config set grafana.token "${SA_TOKEN}"
+grr config set targets Datasource,DashboardFolder,LibraryElement,Dashboard,AlertRuleGroup,AlertNotificationPolicy,AlertContactPoint,AlertNotificationTemplate
+grr config set output-format json
 
 # --------------------------------------
 # Run grr push
 # --------------------------------------
 if [[ ! -d "${GRIZZLY_BASEDIR}" ]]; then
-  log_error "Grizzly base directory not found: ${GRIZZLY_BASEDIR}"
+  log_error "❌ Grizzly base directory not found: ${GRIZZLY_BASEDIR}"
   exit 1
 fi
 
-log_debug "\t- Pushing resources from ${GRIZZLY_BASEDIR} with grr..."
-grr push "${GRIZZLY_BASEDIR}" --context default
+log_debug "\t-⤴️ Pushing resources from ${GRIZZLY_BASEDIR} with grr..."
+grr push "${GRIZZLY_BASEDIR}"
 
 # --------------------------------------
-# Commit container to image and save as tar
+# Copy grafana.db out of the container
 # --------------------------------------
-log_info "Generating the customized image of Grafana"
+log_info "📤 Extracting grafana.db from the running container..."
+docker cp "${GRAFANA_CONTAINER}:/var/lib/grafana/grafana.db" "./${CUSTOM_DB}"
 
-log_debug "\t- Committing container ${GRAFANA_CONTAINER} to image ${CUSTOM_IMAGE_LOCAL}..."
-docker commit "${GRAFANA_CONTAINER}" "${CUSTOM_IMAGE_LOCAL}" >/dev/null
-
-log_debug "\t- Saving image to tar: ${TAR_FILE}..."
-docker save -o "${TAR_FILE}" "${CUSTOM_IMAGE_LOCAL}"
+# Stop and remove the container
+docker rm -f "${GRAFANA_CONTAINER}" >/dev/null 2>&1 || true
 
 # --------------------------------------
-# Import and push to local registry
+# Build TARGET arch image by injecting grafana.db and push
 # --------------------------------------
-log_debug "\t- Loading tar into Docker..."
-docker load -i "${TAR_FILE}" >/dev/null
+log_info "🔧 Preparing build context for target arch ${TARGET_ARCH}..."
+BUILD_CTX="$(mktemp -d)"
+cp "./${CUSTOM_DB}" "${BUILD_CTX}/grafana.db"
 
-log_debug "\t- Tagging for registry ${TARGET_IMAGE}..."
-docker tag "${CUSTOM_IMAGE_LOCAL}" "${TARGET_IMAGE}"
-
-log_debug "\t- Pushing to ${TARGET_IMAGE}..."
-docker push "${TARGET_IMAGE}"
-
-cat <<EOF
-
-Done.
-
-Details:
-- Grafana container: ${GRAFANA_CONTAINER} (${GRAFANA_IMAGE}, linux/${ARCH})
-- Admin password set via env and API.
-- Service account token exported as SA_TOKEN (expires in ~24h).
-- Grizzly configured at: ${GRIZZLY_CONFIG}
-- Grizzly push sources: ${GRIZZLY_BASEDIR}
-- Committed image: ${CUSTOM_IMAGE_LOCAL}
-- Tar archive: ${TAR_FILE}
-- Pushed image: ${TARGET_IMAGE}
-
-Notes:
-- Architecture used: ${ARCH}. For a different arch, pass --arch amd64 (or other).
-- Multi-platform: this script prepares a single-arch image (default arm64). To publish multiple architectures,
-  run the full pipeline per architecture and create a manifest list afterwards, e.g.:
-    docker buildx imagetools create \
-      --tag ${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/grafana:${IMAGE_VERSION} \
-      ${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/grafana:${IMAGE_VERSION}-arm64 \
-      ${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/grafana:${IMAGE_VERSION}-amd64
-
+# Minimal Dockerfile that injects the DB into the official image for TARGET_ARCH
+cat > "${BUILD_CTX}/Dockerfile" <<EOF
+# Use the official image for the desired version; buildx will pull the ${TARGET_ARCH} variant
+FROM grafana/grafana:${VERSION_NUMBER}
+# Replace SQLite database with customized one
+COPY grafana.db /var/lib/grafana/grafana.db
 EOF
+
+# Ensure buildx exists and a builder is selected
+if ! docker buildx version >/dev/null 2>&1; then
+  log_error "❌ docker buildx is required. Please install/enable Docker Buildx."
+  exit 1
+fi
+# Create a throwaway builder if none is active
+if ! docker buildx inspect >/dev/null 2>&1; then
+  docker buildx create --use >/dev/null
+fi
+
+log_info "⚙️ Building and pushing ${TARGET_IMAGE} for linux/${TARGET_ARCH}..."
+docker buildx build \
+  --platform "linux/${TARGET_ARCH}" \
+  -t "${TARGET_IMAGE}" \
+  --push \
+  "${BUILD_CTX}"
+
+# Cleanup build context + local DB copy
+rm -rf "${BUILD_CTX}" "./${CUSTOM_DB}"
+
+log_info "✅ Custom Grafana image built and pushed successfully: ${TARGET_IMAGE}"
