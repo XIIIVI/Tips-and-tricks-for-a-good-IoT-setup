@@ -7,6 +7,7 @@ source "../../commons/commons-i2c.sh"
 source "../../commons/commons-log.sh"
 source "../../commons/commons-net.sh"
 source "../../commons/commons-ssh.sh"
+source "../../commons/commons-uart.sh"
 
 declare -A HOST_IP_MAP
 
@@ -145,6 +146,8 @@ create_single_manager() {
                 install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "./data"
             fi
 
+            activate_uart "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
+
             log_debug "\t- Creating the folders"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo mkdir -p ${FOLDER_LIST}"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo chmod -R 777 ${FOLDER_LIST}"
@@ -278,6 +281,7 @@ create_single_worker() {
                 install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "./data"
             fi
 
+            activate_uart "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
             install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${REGISTRY_IP_ADDRESS_ARG}" "${REGISTRY_PORT_ARG}" "${REGISTRY_CERTIFICATE_FILE_ARG}"
 
             log_debug "\t- Adding the worker ${NODE_HOSTNAME} to the Swarm"

@@ -1,36 +1,6 @@
 #!/bin/bash
 
-#
-# log_error
-#   - param: message
-#
-log_error() {
-    echo -e "\e[91m${1}\e[97m"
-}
-
-#
-# log_warning
-#   - param: message
-#
-log_warning() {
-    echo -e "\e[33m${1}\e[97m"
-}
-
-#
-# log_info
-#   - param: message
-#
-log_info() {
-    echo -e "\e[92m${1}\e[97m"
-}
-
-#
-# log_debug
-#  - param: message
-#
-log_debug() {
-    echo -e "\e[95m${1}\e[97m"
-}
+source "../commons/commons-log.sh"
 
 # Ensure a hostname is provided
 if [ -z "$1" ]; then
@@ -46,18 +16,18 @@ REGISTRY_DIR="$(pwd)/docker-registry"
 rm -Rf "${REGISTRY_DIR}"
 
 # Create necessary directories
-mkdir -p "$REGISTRY_DIR/certs" "$REGISTRY_DIR/data"
+mkdir -p "${REGISTRY_DIR}/certs" "${REGISTRY_DIR}/data"
 
-openssl req -newkey rsa:4096 -nodes -sha256 -keyout "$REGISTRY_DIR/certs/registry.key" \
+openssl req -newkey rsa:4096 -nodes -sha256 -keyout "${REGISTRY_DIR}/certs/registry.key" \
   -addext "subjectAltName = IP:192.168.2.90" \
-  -x509 -days 3650 -out "$REGISTRY_DIR/certs/registry.crt" \
+  -x509 -days 3650 -out "${REGISTRY_DIR}/certs/registry.crt" \
   -subj "/C=FR/ST=IDF/L=Paris/O=MyOrg/CN=$REGISTRY_HOSTNAME"
 
-openssl x509 -in "$REGISTRY_DIR/certs/registry.crt" -text -noout | grep -A1 "Subject Alternative Name"
+openssl x509 -in "${REGISTRY_DIR}/certs/registry.crt" -text -noout | grep -A1 "Subject Alternative Name"
 
 
 # Create docker-compose file
-cat <<EOF >"$REGISTRY_DIR/docker-compose.yml"
+cat <<EOF >"${REGISTRY_DIR}/docker-compose.yml"
 version: '3.8'
 
 services:
@@ -104,11 +74,11 @@ services:
 EOF
 
 # Start the services
-cd "$REGISTRY_DIR" || exit
+cd "${REGISTRY_DIR}" || exit
 docker-compose up -d
 
 log_info "Docker registry with UI is set up for $REGISTRY_HOSTNAME!"
 
-log_debug "⚠️ ON ALL THE CLIENTS, copy $REGISTRY_DIR/certs/registry.crt into /usr/local/share/ca-certificates/registry.crt"
+log_debug "⚠️ ON ALL THE CLIENTS, copy ${REGISTRY_DIR}/certs/registry.crt into /usr/local/share/ca-certificates/registry.crt"
 log_debug "Then run 'sudo update-ca-certificates' to trust the self-signed certificate."
 log_debug "Finally, restart the Docker service with 'sudo systemctl restart docker'."
