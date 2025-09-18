@@ -1,0 +1,16 @@
+{
+  "apiVersion": "grizzly.grafana.com/v1alpha1",
+  "kind": "AlertContactPoint",
+  "metadata": {
+    "name": ""
+  },
+  "spec": {
+    "disableResolveMessage": false,
+    "name": "email receiver",
+    "settings": {
+      "addresses": "\u003cexample@email.com\u003e"
+    },
+    "type": "email",
+    "uid": ""
+  }
+}

@@ -2,7 +2,7 @@
   "apiVersion": "grizzly.grafana.com/v1alpha1",
   "kind": "Dashboard",
   "metadata": {
-    "folder": "general",
+    "folder": "dir_logs",
     "name": "dashboard_loki_example"
   },
   "spec": {
@@ -115,7 +115,7 @@
       }
     ],
     "preload": false,
-    "schemaVersion": 41,
+    "schemaVersion": 42,
     "tags": [],
     "templating": {
       "list": [
