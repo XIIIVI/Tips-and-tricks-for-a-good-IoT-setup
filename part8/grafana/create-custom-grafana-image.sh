@@ -112,7 +112,7 @@ GRAFANA_URL="http://${GRAFANA_HOST}:${GRAFANA_PORT}"
 
 # Names & tags
 GRAFANA_IMAGE="grafana/grafana:${VERSION_NUMBER}"
-GRAFANA_CONTAINER="grafana_tmp_${VERSION_NUMBER//[^a-zA-Z0-9]/_}_$RANDOM"
+GRAFANA_CONTAINER="grafana_builder"
 CUSTOM_DB="grafana.db"
 TARGET_IMAGE="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/grafana:${IMAGE_VERSION}"
 
@@ -120,7 +120,7 @@ TARGET_IMAGE="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/grafana:${IMAGE_V
 # Pull and run Grafana
 # --------------------------------------
 log_info "⤵️ Pulling Grafana image ${GRAFANA_IMAGE} for linux/${TARGET_ARCH}..."
-DOCKER_DEFAULT_PLATFORM="linux/${TARGET_ARCH}" docker pull --platform "linux/${TARGET_ARCH}" "${GRAFANA_IMAGE}"
+docker pull --platform "linux/${TARGET_ARCH}" "${GRAFANA_IMAGE}"
 
 # Stop/remove if exists
 if docker ps -a --format '{{.Names}}' | grep -q "^${GRAFANA_CONTAINER}\$"; then
@@ -258,7 +258,7 @@ log_info "📤 Extracting grafana.db from the running container..."
 docker cp "${GRAFANA_CONTAINER}:/var/lib/grafana/grafana.db" "./${CUSTOM_DB}"
 
 # Stop and remove the container
-log_info "📤 Removing the running container..."
+log_info "🚮 Removing the running container..."
 docker rm -f "${GRAFANA_CONTAINER}" >/dev/null 2>&1 || true
 
 # --------------------------------------
