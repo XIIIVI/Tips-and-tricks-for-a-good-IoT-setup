@@ -221,7 +221,7 @@ services:
 
   loki:
     image: ${PRIVATE_REPO}/loki:3.0.0
-    user: "1000:1000"
+    user: "10001:10001"
     deploy:
       mode: global
       restart_policy:
@@ -318,7 +318,7 @@ services:
 #################################
 
   grafana:
-    image: ${PRIVATE_REPO}/grafana:12.2.0-17195718647
+    image: ${PRIVATE_REPO}/grafana:12.3.0-17750354453
     deploy:
       mode: replicated
       replicas: 1
@@ -329,6 +329,9 @@ services:
           - node.labels.level == 0
     environment:
       - GF_INSTALL_PLUGINS=volkovlabs-echarts-panel,volkovlabs-variable-panel,marcusolsson-static-datasource
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_NAME=Main Org.
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
     networks:
       - public-network
     ports:

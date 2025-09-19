@@ -1,38 +1,7 @@
 #!/bin/bash
 
-MISSING_PARAMETER_COUNT=0
-
-#
-# log_error
-#   - param: message
-#
-log_error() {
-    echo -e "\e[91m${1}\e[97m"
-}
-
-#
-# log_warning
-#   - param: message
-#
-log_warning() {
-    echo -e "\e[33m${1}\e[97m"
-}
-
-#
-# log_info
-#   - param: message
-#
-log_info() {
-    echo -e "\e[92m${1}\e[97m"
-}
-
-#
-# log_debug
-#  - param: message
-#
-log_debug() {
-    echo -e "\e[95m${1}\e[97m"
-}
+source "../../commons/commons-cli.sh"
+source "../../commons/commons-log.sh"
 
 #
 # display_help
@@ -55,39 +24,6 @@ display_settings() {
     log_debug "LEVEL_NUMBER          : ${LEVEL_NUMBER}"
     log_debug "LOCAL_REGISTRY_ADDRESS: ${LOCAL_REGISTRY_ADDRESS}"
     log_debug "LOCAL_REGISTRY_PORT   : ${LOCAL_REGISTRY_PORT}"
-}
-
-#
-# check_mandatory_parameter
-# - param1: the variable to check
-#
-check_mandatory_parameter() {
-    local VARIABLE_NAME="${1}"
-
-    if [[ -z "${!VARIABLE_NAME}" ]]; then
-        MISSING_PARAMETER_COUNT=$((MISSING_PARAMETER_COUNT + 1))
-        log_error "[MISSING] ${1}"
-    fi
-}
-
-#
-# check_all_mandatory_parameters
-#   - param*: All the parameters to check
-#
-check_all_mandatory_parameters() {
-    log_info "Checking all the mandatory parameters"
-    local MANDATORY_PARAMETER_LIST_ARG=("$@")
-
-    for index in "${MANDATORY_PARAMETER_LIST_ARG[@]}"; do
-        check_mandatory_parameter "${index}"
-    done
-
-    if [ ${MISSING_PARAMETER_COUNT} -gt 0 ]; then
-        display_help
-        exit 1
-    else
-        log_info "All the required parameters have been defined"
-    fi
 }
 
 #
