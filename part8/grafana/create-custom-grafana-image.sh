@@ -59,13 +59,13 @@ IMAGE_VERSION=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --version-number) VERSION_NUMBER="$2"; shift 2 ;;
     --admin-passwd) ADMIN_PASSWD="$2"; shift 2 ;;
+    --arch) TARGET_ARCH="$2"; shift 2 ;;
     --grizzly-basedir) GRIZZLY_BASEDIR="$2"; shift 2 ;;
+    --image-version) IMAGE_VERSION="$2"; shift 2 ;;
     --local-registry-address) LOCAL_REGISTRY_ADDRESS="$2"; shift 2 ;;
     --local-registry-port) LOCAL_REGISTRY_PORT="$2"; shift 2 ;;
-    --image-version) IMAGE_VERSION="$2"; shift 2 ;;
-    --arch) TARGET_ARCH="$2"; shift 2 ;;
+    --version-number) VERSION_NUMBER="$2"; shift 2 ;;
     -h|--help) usage ;;
     *) log_error "❌ Unknown argument: $1"; usage ;;
   esac
