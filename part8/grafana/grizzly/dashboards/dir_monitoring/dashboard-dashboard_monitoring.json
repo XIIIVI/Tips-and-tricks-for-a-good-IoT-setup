@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "folder": "dir_monitoring",
-    "name": "dashboard_monitoring"
+    "name": "dash_monitoring"
   },
   "spec": {
     "annotations": {
@@ -135,6 +135,6 @@
     "timepicker": {},
     "timezone": "browser",
     "title": "Resource monitoring",
-    "uid": "dashboard_monitoring"
+    "uid": "dash_monitoring"
   }
 }

@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "folder": "dir_logs",
-    "name": "dashboard_loki_example"
+    "name": "dash_loki_example"
   },
   "spec": {
     "annotations": {
@@ -176,6 +176,6 @@
     "timepicker": {},
     "timezone": "browser",
     "title": "Loki example",
-    "uid": "dashboard_loki_example"
+    "uid": "dash_loki_example"
   }
 }
