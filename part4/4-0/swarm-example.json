@@ -161,10 +161,6 @@
         "secrets": {
             "credentials": [
                 {
-                    "name": "grafana",
-                    "login": "admin"
-                },
-                {
                     "name": "mosquitto",
                     "login": "mqtt-user"
                 }
