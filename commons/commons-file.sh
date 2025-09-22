@@ -271,7 +271,7 @@ sudo mkdir -p "${FINAL_MOUNT_POINT}"
 
 export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update -qq
-sudo apt-get install -y -qq glusterfs-server glusterfs-cli
+sudo apt-get install -y -qq glusterfs-server glusterfs-cli tree
 sudo systemctl enable --now glusterd
 EOF
   done
