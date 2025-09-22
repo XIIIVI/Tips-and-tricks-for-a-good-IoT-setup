@@ -217,7 +217,7 @@ EOF_GLUSTERFS
 #   5+. HOSTNAME_LIST_ARG: hostnames (order defines brick index)
 #
 setup_replicated_volumes() {
-  set -euo pipefail
+  set -eo pipefail
 
   local LOGIN_ARG="${1}"
   local PASSWORD_ARG="${2}"
@@ -256,7 +256,7 @@ setup_replicated_volumes() {
   for IP in "${DISCOVERED_IPS[@]}"; do
     IDX=$((IDX+1))
     sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP}" bash -s <<EOF
-set -euo pipefail
+set -eo pipefail
 while read -r LINE; do
   grep -qxF "\$LINE" /etc/hosts || echo "\$LINE" | sudo tee -a /etc/hosts >/dev/null
 done < <(cat <<EOT
@@ -286,7 +286,7 @@ EOF
 
   # Wait for trusted pool
   sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP}" bash -s <<EOF
-set -euo pipefail
+set -eo pipefail
 for i in {1..60}; do
   COUNT=\$(sudo gluster peer status | awk '/State: Peer in Cluster/{c++} END{print c+0}')
   [[ "\$COUNT" -ge $((REPLICA_COUNT - 1)) ]] && exit 0
@@ -306,7 +306,7 @@ EOF
   CREATE_CMD+=" force"
 
   sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP}" bash -s <<EOF
-set -euo pipefail
+set -eo pipefail
 if ! sudo gluster volume info "${VOLUME_NAME_ARG}" >/dev/null 2>&1; then
   ${CREATE_CMD}
 fi
@@ -328,7 +328,7 @@ EOF
     local MOUNTLINE="${IP}:/${VOLUME_NAME_ARG} ${FINAL_MOUNT_POINT} glusterfs defaults,_netdev,backupvolfile-server=${BACKUP} 0 0"
 
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP}" bash -s <<EOF
-set -euo pipefail
+set -eo pipefail
 sudo sed -i '\#[[:space:]]${FINAL_MOUNT_POINT}[[:space:]]#d' /etc/fstab
 echo '${MOUNTLINE}' | sudo tee -a /etc/fstab >/dev/null
 sudo systemctl daemon-reload
