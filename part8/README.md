@@ -27,6 +27,7 @@ sudo create-custom-grafana-image.sh --local-registry-address <LOCAL_REGISTRY_IP_
 To check the installation, please check the [list of the useful commands](../../../docker-swarm-useful-commands.md).
 
 ---
+
 # Troubleshootings
 
 If you face any issues, please refer to this [page](../../../docker-swarm-troubleshooting.md).
