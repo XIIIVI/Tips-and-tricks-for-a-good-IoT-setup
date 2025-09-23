@@ -42,18 +42,19 @@ get_ip_by_hostname() {
 #   1. LOGIN_ARG
 #   2. PASSWORD_ARG
 #   3. VOLUME_NAME_ARG
-#   4. MASTER_IP (primary peer to contact)
-#   5. BACKUP_IP (secondary peer for resilience)
-#   6+. NODE_IPS (list of all node IPs)
+#   4. MASTER_IP_ARG (primary peer to contact)
+#   6+. TARGET_IPS_ARG (list of all node IPs)
 #
 deploy_glusterfs_mount_units() {
     local ROOT_USER_ARG="$1"
     local ROOT_PASS_ARG="$2"
-    local HOST_IP_ARG="$3"
-    local MOUNT_PATH="$4"        # e.g. /mnt/replicated-data
-    local GLUSTER_VOL="$5"       # e.g. replicated-data
+    local GLUSTER_VOL_ARG="$3"        # e.g. replicated-data
+    local MASTER_IP_ARG="$4"          # the Gluster master node
+    shift 4
+    local TARGET_IPS_ARG=("$@")       # all discovered nodes
 
-    log_debug "\t- Deploying GlusterFS mount units on $HOST_IP_ARG ..."
+    # Define mount path from volume name
+    local MOUNT_PATH="/mnt/$GLUSTER_VOL_ARG"
 
     # Derive proper unit names from the mount path
     local MOUNT_UNIT
@@ -61,18 +62,24 @@ deploy_glusterfs_mount_units() {
     MOUNT_UNIT="$(systemd-escape -p --suffix=mount "$MOUNT_PATH")"
     AUTOMOUNT_UNIT="$(systemd-escape -p --suffix=automount "$MOUNT_PATH")"
 
-    log_warning "\t\t- Using units: $MOUNT_UNIT / $AUTOMOUNT_UNIT"
+    for TARGET_IP_INDEX in "${TARGET_IPS_ARG[@]}"; do
+        log_debug "\t- Deploying GlusterFS mount units on $TARGET_IP_INDEX ..."
+        log_warning "\t\t- Using units: $MOUNT_UNIT / $AUTOMOUNT_UNIT"
 
-    # Create the .mount unit
-    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
-        "$ROOT_USER_ARG@$HOST_IP_ARG" "cat <<'EOF' | sudo tee /etc/systemd/system/$MOUNT_UNIT > /dev/null
+        # Ensure mountpoint exists
+        sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
+            "$ROOT_USER_ARG@$TARGET_IP_INDEX" "sudo mkdir -p $MOUNT_PATH"
+
+        # Create .mount unit
+        sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
+            "$ROOT_USER_ARG@$TARGET_IP_INDEX" "cat <<EOF | sudo tee /etc/systemd/system/$MOUNT_UNIT > /dev/null
 [Unit]
-Description=GlusterFS mount for $GLUSTER_VOL
+Description=GlusterFS mount for $GLUSTER_VOL_ARG
 After=network-online.target
 Wants=network-online.target
 
 [Mount]
-What=localhost:/$GLUSTER_VOL
+What=$MASTER_IP_ARG:/$GLUSTER_VOL_ARG
 Where=$MOUNT_PATH
 Type=glusterfs
 Options=_netdev
@@ -81,11 +88,11 @@ Options=_netdev
 WantedBy=multi-user.target
 EOF"
 
-    # Create the .automount unit
-    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
-        "$ROOT_USER_ARG@$HOST_IP_ARG" "cat <<'EOF' | sudo tee /etc/systemd/system/$AUTOMOUNT_UNIT > /dev/null
+        # Create .automount unit
+        sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
+            "$ROOT_USER_ARG@$TARGET_IP_INDEX" "cat <<EOF | sudo tee /etc/systemd/system/$AUTOMOUNT_UNIT > /dev/null
 [Unit]
-Description=Automount GlusterFS $GLUSTER_VOL
+Description=Automount GlusterFS $GLUSTER_VOL_ARG
 
 [Automount]
 Where=$MOUNT_PATH
@@ -95,16 +102,12 @@ TimeoutIdleSec=60
 WantedBy=multi-user.target
 EOF"
 
-    # Ensure mountpoint exists
-    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
-        "$ROOT_USER_ARG@$HOST_IP_ARG" "sudo mkdir -p $MOUNT_PATH"
-
-    # Reload systemd and enable automount
-    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
-        "$ROOT_USER_ARG@$HOST_IP_ARG" "sudo systemctl daemon-reload && \
-                                        sudo systemctl enable --now $AUTOMOUNT_UNIT"
+        # Reload and enable automount
+        sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
+            "$ROOT_USER_ARG@$TARGET_IP_INDEX" "sudo systemctl daemon-reload && \
+                                         sudo systemctl enable --now $AUTOMOUNT_UNIT"
+    done
 }
-
 
 #
 # setup_replicated_volumes
@@ -296,5 +299,10 @@ done
   echo "✅ GlusterFS volume ${VOLUME_NAME_ARG} is set up and replicating."
 
   # Deploying healthcheck
-  deploy_glusterfs_mount_units "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME_ARG}" "${MASTER_IP_ADDRESS}" "${DISCOVERED_IPS[1]}" "${DISCOVERED_IPS[@]}"
+  deploy_glusterfs_mount_units \
+    "${LOGIN_ARG}" \
+    "${PASSWORD_ARG}" \
+    "${VOLUME_NAME_ARG}" \
+    "${MASTER_IP_ADDRESS}" \
+    "${DISCOVERED_IPS[@]}"
 }
