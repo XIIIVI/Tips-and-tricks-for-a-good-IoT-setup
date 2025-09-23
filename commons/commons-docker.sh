@@ -50,7 +50,7 @@ install_docker_container_viewer() {
         rm -rf /usr/local/go
         cd /tmp
         curl_retry "https://go.dev/dl/go1.24.0.linux-${GO_ARCH}.tar.gz" "go.tar.gz"
-        tar -C /usr/local -xzf go.tar.gz
+        sudo tar -C /usr/local -xzf go.tar.gz
         echo 'export PATH=$PATH:/usr/local/go/bin' | tee /etc/profile.d/go.sh
     fi
 
@@ -60,7 +60,7 @@ install_docker_container_viewer() {
         echo "Installing DCV"
         cd /tmp
         curl_retry "https://github.com/tokuhirom/dcv/releases/latest/download/dcv_linux_${LOCAL_ARCHITECTURE}.tar.gz" "dcv.tar.gz"
-        tar -xzf dcv.tar.gz
+        sudo tar -xzf dcv.tar.gz
         DCV_BIN=$(find . -type f -name dcv | head -n1)
         [ -x "$DCV_BIN" ] || { echo "DCV binary not found"; exit 1; }
         mv "$DCV_BIN" /usr/local/bin/dcv
