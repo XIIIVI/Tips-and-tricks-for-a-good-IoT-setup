@@ -51,7 +51,7 @@ install_docker_container_viewer() {
         cd /tmp
         curl_retry "https://go.dev/dl/go1.24.0.linux-${GO_ARCH}.tar.gz" "go.tar.gz"
         sudo tar -C /usr/local -xzf go.tar.gz
-        echo 'export PATH=$PATH:/usr/local/go/bin' | tee /etc/profile.d/go.sh
+        echo 'export PATH=$PATH:/usr/local/go/bin' | sudo tee /etc/profile.d/go.sh
     fi
 
     /usr/local/go/bin/go version
