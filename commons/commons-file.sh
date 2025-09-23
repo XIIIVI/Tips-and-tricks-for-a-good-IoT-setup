@@ -56,33 +56,33 @@ deploy_glusterfs_mount_units() {
     # Define mount path from volume name
     local MOUNT_PATH="/mnt/$GLUSTER_VOL_ARG"
 
-    # Derive proper unit names from the mount path
+    # Derive proper unit filenames from the mount path
     local MOUNT_UNIT
     local AUTOMOUNT_UNIT
-    MOUNT_UNIT="$(systemd-escape -p --suffix=mount "$MOUNT_PATH")"
-    AUTOMOUNT_UNIT="$(systemd-escape -p --suffix=automount "$MOUNT_PATH")"
+    MOUNT_UNIT="$(systemd-escape --suffix=mount "$MOUNT_PATH")"
+    AUTOMOUNT_UNIT="$(systemd-escape --suffix=automount "$MOUNT_PATH")"
 
-    for TARGET_IP_INDEX in "${TARGET_IPS_ARG[@]}"; do
-        log_debug "\t- Deploying GlusterFS mount units on $TARGET_IP_INDEX ..."
+    for TARGET_IP in "${TARGET_IPS_ARG[@]}"; do
+        log_debug "\t- Deploying GlusterFS mount units on $TARGET_IP ..."
         log_warning "\t\t- Using units: $MOUNT_UNIT / $AUTOMOUNT_UNIT"
 
         # Ensure mountpoint exists
         sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
-            "$ROOT_USER_ARG@$TARGET_IP_INDEX" "sudo mkdir -p $MOUNT_PATH"
+            "$ROOT_USER_ARG@$TARGET_IP" "sudo mkdir -p '$MOUNT_PATH'"
 
         # Create .mount unit
         sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
-            "$ROOT_USER_ARG@$TARGET_IP_INDEX" "cat <<EOF | sudo tee /etc/systemd/system/$MOUNT_UNIT > /dev/null
+            "$ROOT_USER_ARG@$TARGET_IP" "cat <<'EOF' | sudo tee /etc/systemd/system/$MOUNT_UNIT > /dev/null
 [Unit]
 Description=GlusterFS mount for $GLUSTER_VOL_ARG
-After=network-online.target
-Wants=network-online.target
+After=network-online.target glusterd.service
+Wants=network-online.target glusterd.service
 
 [Mount]
 What=$MASTER_IP_ARG:/$GLUSTER_VOL_ARG
 Where=$MOUNT_PATH
 Type=glusterfs
-Options=_netdev
+Options=_netdev,backupvolfile-server=$MASTER_IP_ARG
 
 [Install]
 WantedBy=multi-user.target
@@ -90,9 +90,11 @@ EOF"
 
         # Create .automount unit
         sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
-            "$ROOT_USER_ARG@$TARGET_IP_INDEX" "cat <<EOF | sudo tee /etc/systemd/system/$AUTOMOUNT_UNIT > /dev/null
+            "$ROOT_USER_ARG@$TARGET_IP" "cat <<'EOF' | sudo tee /etc/systemd/system/$AUTOMOUNT_UNIT > /dev/null
 [Unit]
 Description=Automount GlusterFS $GLUSTER_VOL_ARG
+After=network-online.target glusterd.service
+Wants=network-online.target glusterd.service
 
 [Automount]
 Where=$MOUNT_PATH
@@ -104,8 +106,8 @@ EOF"
 
         # Reload and enable automount
         sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
-            "$ROOT_USER_ARG@$TARGET_IP_INDEX" "sudo systemctl daemon-reload && \
-                                         sudo systemctl enable --now $AUTOMOUNT_UNIT"
+            "$ROOT_USER_ARG@$TARGET_IP" "sudo systemctl daemon-reload && \
+                                         sudo systemctl enable --now '$AUTOMOUNT_UNIT'"
     done
 }
 

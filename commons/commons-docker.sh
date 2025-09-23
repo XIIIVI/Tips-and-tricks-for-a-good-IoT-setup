@@ -1,7 +1,13 @@
 #!/bin/bash
 
 #
-
+# install_docker_container_viewer
+# This function installs Docker Container Viewer (DCV) on the specified host.
+# Arguments:
+#   1. ROOT_USER_ARG: The username for SSH login.
+#   2. ROOT_PASS_ARG: The password for SSH login.
+#   3. HOST_IP_ARG: The IP address of the host where DCV should be installed.
+#
 install_docker_container_viewer() {
     local ROOT_USER_ARG="$1"
     local ROOT_PASS_ARG="$2"
@@ -13,28 +19,48 @@ install_docker_container_viewer() {
     export DEBIAN_FRONTEND=noninteractive
     export DEBCONF_NOWARNINGS=yes 
 
-LOCAL_ARCHITECTURE=$(dpkg --print-architecture)
+    # --- Retry wrapper for curl ---
+    curl_retry() {
+        local url="$1"
+        local output="$2"
+        local max_retries=5
+        local delay=5
+        local count=0
 
-echo "Installing Golang for ${LOCAL_ARCHITECTURE}"
-sudo apt remove -y golang-go
-sudo apt autoremove -y
-sudo rm -rf /usr/local/go
-cd /tmp
-curl -# -L -o go1.24.0.linux-${LOCAL_ARCHITECTURE}.tar.gz https://go.dev/dl/go1.24.0.linux-${LOCAL_ARCHITECTURE}.tar.gz
-sudo tar -C /usr/local -xzf go1.24.0.linux-${LOCAL_ARCHITECTURE}.tar.gz
+        until [ $count -ge $max_retries ]; do
+            if curl -fsSL --retry 3 --retry-delay 3 -o "$output" "$url"; then
+                return 0
+            fi
+            count=$((count+1))
+            echo "curl failed ($count/$max_retries). Retrying in ${delay}s..."
+            sleep $delay
+        done
+        echo "ERROR: Failed to download $url after $max_retries attempts"
+        exit 1
+    }
 
-cat << 'EOF' >> $HOME/.bashrc
-export PATH=$PATH:/usr/local/go/bin
+    LOCAL_ARCHITECTURE=\$(dpkg --print-architecture)
+
+    echo "Installing Golang for \${LOCAL_ARCHITECTURE}"
+    sudo apt remove -y golang-go
+    sudo apt autoremove -y
+    sudo rm -rf /usr/local/go
+    cd /tmp
+    curl_retry "https://go.dev/dl/go1.24.0.linux-\${LOCAL_ARCHITECTURE}.tar.gz" "go1.24.0.linux-\${LOCAL_ARCHITECTURE}.tar.gz"
+    sudo tar -C /usr/local -xzf go1.24.0.linux-\${LOCAL_ARCHITECTURE}.tar.gz
+
+    cat << 'EOF' >> \$HOME/.bashrc
+export PATH=\$PATH:/usr/local/go/bin
 EOF
 
-source $HOME/.bashrc
+    source \$HOME/.bashrc
 
-/usr/local/go/bin/go version
+    /usr/local/go/bin/go version
 
-echo "Installing DCV"
-curl -# -L -o dcv_linux_${LOCAL_ARCHITECTURE}.tar.gz https://github.com/tokuhirom/dcv/releases/latest/download/dcv_linux_${LOCAL_ARCHITECTURE}.tar.gz
-tar -xzf dcv_linux_${LOCAL_ARCHITECTURE}.tar.gz
-sudo mv dcv /usr/local/bin/
+    echo "Installing DCV"
+    curl_retry "https://github.com/tokuhirom/dcv/releases/latest/download/dcv_linux_\${LOCAL_ARCHITECTURE}.tar.gz" "dcv_linux_\${LOCAL_ARCHITECTURE}.tar.gz"
+    tar -xzf dcv_linux_\${LOCAL_ARCHITECTURE}.tar.gz
+    sudo mv dcv /usr/local/bin/
 EOF_DCV
 }
 
