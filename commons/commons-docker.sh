@@ -15,18 +15,13 @@ install_docker_container_viewer() {
 
     log_debug "\t- Installing Docker Container Viewer (DCV) on $HOST_IP_ARG ..."
 
-    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_DCV'
+    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" << 'EOF_DCV'
+    set -euo pipefail
     export DEBIAN_FRONTEND=noninteractive
     export DEBCONF_NOWARNINGS=yes 
 
-    # --- Retry wrapper for curl ---
     curl_retry() {
-        local url="$1"
-        local output="$2"
-        local max_retries=5
-        local delay=5
-        local count=0
-
+        local url="$1" output="$2" max_retries=5 delay=5 count=0
         until [ $count -ge $max_retries ]; do
             if curl -fsSL --retry 3 --retry-delay 3 -o "$output" "$url"; then
                 return 0
@@ -39,28 +34,39 @@ install_docker_container_viewer() {
         exit 1
     }
 
-    LOCAL_ARCHITECTURE=\$(dpkg --print-architecture)
+    LOCAL_ARCHITECTURE=$(dpkg --print-architecture)
+    case "$LOCAL_ARCHITECTURE" in
+        amd64) GO_ARCH="amd64" ;;
+        arm64) GO_ARCH="arm64" ;;
+        armhf) GO_ARCH="armv6l" ;; # adjust if Pi is armv7
+        *) echo "Unsupported arch: $LOCAL_ARCHITECTURE"; exit 1 ;;
+    esac
 
-    echo "Installing Golang for \${LOCAL_ARCHITECTURE}"
-    sudo apt remove -y golang-go
-    sudo apt autoremove -y
-    sudo rm -rf /usr/local/go
-    cd /tmp
-    curl_retry "https://go.dev/dl/go1.24.0.linux-\${LOCAL_ARCHITECTURE}.tar.gz" "go1.24.0.linux-\${LOCAL_ARCHITECTURE}.tar.gz"
-    sudo tar -C /usr/local -xzf go1.24.0.linux-\${LOCAL_ARCHITECTURE}.tar.gz
+    echo "Installing the version for $LOCAL_ARCHITECTURE"
 
-    cat << 'EOF' >> \$HOME/.bashrc
-export PATH=\$PATH:/usr/local/go/bin
-EOF
-
-    source \$HOME/.bashrc
+    if ! command -v go >/dev/null 2>&1; then
+        echo "Installing Go for $GO_ARCH"
+        apt-get remove -y golang-go || true
+        rm -rf /usr/local/go
+        cd /tmp
+        curl_retry "https://go.dev/dl/go1.24.0.linux-${GO_ARCH}.tar.gz" "go.tar.gz"
+        tar -C /usr/local -xzf go.tar.gz
+        echo 'export PATH=$PATH:/usr/local/go/bin' | tee /etc/profile.d/go.sh
+    fi
 
     /usr/local/go/bin/go version
 
-    echo "Installing DCV"
-    curl_retry "https://github.com/tokuhirom/dcv/releases/latest/download/dcv_linux_\${LOCAL_ARCHITECTURE}.tar.gz" "dcv_linux_\${LOCAL_ARCHITECTURE}.tar.gz"
-    tar -xzf dcv_linux_\${LOCAL_ARCHITECTURE}.tar.gz
-    sudo mv dcv /usr/local/bin/
+    if ! command -v dcv >/dev/null 2>&1; then
+        echo "Installing DCV"
+        cd /tmp
+        curl_retry "https://github.com/tokuhirom/dcv/releases/latest/download/dcv_linux_${LOCAL_ARCHITECTURE}.tar.gz" "dcv.tar.gz"
+        tar -xzf dcv.tar.gz
+        DCV_BIN=$(find . -type f -name dcv | head -n1)
+        [ -x "$DCV_BIN" ] || { echo "DCV binary not found"; exit 1; }
+        mv "$DCV_BIN" /usr/local/bin/dcv
+    fi
+
+    dcv --version || echo "DCV installed but version check failed"
 EOF_DCV
 }
 
