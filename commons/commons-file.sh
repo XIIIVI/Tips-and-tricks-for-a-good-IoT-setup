@@ -70,9 +70,9 @@ deploy_glusterfs_mount_units() {
         sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
             "$ROOT_USER_ARG@$TARGET_IP" "sudo mkdir -p '$MOUNT_PATH'"
 
-        # Create .mount unit
+        # Create .mount unit (variables expanded locally before sending)
         sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
-            "$ROOT_USER_ARG@$TARGET_IP" "cat <<'EOF' | sudo tee /etc/systemd/system/$MOUNT_UNIT > /dev/null
+            "$ROOT_USER_ARG@$TARGET_IP" "cat <<EOF | sudo tee /etc/systemd/system/$MOUNT_UNIT > /dev/null
 [Unit]
 Description=GlusterFS mount for $GLUSTER_VOL_ARG
 After=network-online.target glusterd.service
@@ -90,7 +90,7 @@ EOF"
 
         # Create .automount unit
         sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
-            "$ROOT_USER_ARG@$TARGET_IP" "cat <<'EOF' | sudo tee /etc/systemd/system/$AUTOMOUNT_UNIT > /dev/null
+            "$ROOT_USER_ARG@$TARGET_IP" "cat <<EOF | sudo tee /etc/systemd/system/$AUTOMOUNT_UNIT > /dev/null
 [Unit]
 Description=Automount GlusterFS $GLUSTER_VOL_ARG
 After=network-online.target glusterd.service
@@ -107,7 +107,7 @@ EOF"
         # Reload and enable automount
         sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
             "$ROOT_USER_ARG@$TARGET_IP" "sudo systemctl daemon-reload && \
-                                         sudo systemctl enable --now '$AUTOMOUNT_UNIT'"
+                                         sudo systemctl enable --now $AUTOMOUNT_UNIT"
     done
 }
 
