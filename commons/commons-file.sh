@@ -47,60 +47,62 @@ get_ip_by_hostname() {
 #   6+. NODE_IPS (list of all node IPs)
 #
 deploy_glusterfs_mount_units() {
-  set -euo pipefail
-  local LOGIN_ARG="${1}"
-  local PASSWORD_ARG="${2}"
-  local VOLUME_NAME_ARG="${3}"
-  local MASTER_IP="${4}"
-  local BACKUP_IP="${5}"
-  shift 5
-  local NODE_IPS=("$@")
+    local ROOT_USER_ARG="$1"
+    local ROOT_PASS_ARG="$2"
+    local HOST_IP_ARG="$3"
+    local MOUNT_PATH="$4"        # e.g. /mnt/replicated-data
+    local GLUSTER_VOL="$5"       # e.g. replicated-data
 
-  for IP in "${NODE_IPS[@]}"; do
-    echo "⚙️ Deploying mount+automount units on ${IP}..."
+    log_debug "\t- Deploying GlusterFS mount units on $HOST_IP_ARG ..."
 
-    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP}" bash -s <<EOF
-set -euo pipefail
+    # Derive proper unit names from the mount path
+    local MOUNT_UNIT
+    local AUTOMOUNT_UNIT
+    MOUNT_UNIT="$(systemd-escape -p --suffix=mount "$MOUNT_PATH")"
+    AUTOMOUNT_UNIT="$(systemd-escape -p --suffix=automount "$MOUNT_PATH")"
 
-# Create .mount unit
-sudo tee /etc/systemd/system/mnt-${VOLUME_NAME_ARG}.mount >/dev/null <<UNIT
+    log_warning "\t\t- Using units: $MOUNT_UNIT / $AUTOMOUNT_UNIT"
+
+    # Create the .mount unit
+    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
+        "$ROOT_USER_ARG@$HOST_IP_ARG" "cat <<'EOF' | sudo tee /etc/systemd/system/$MOUNT_UNIT > /dev/null
 [Unit]
-Description=GlusterFS mount for ${VOLUME_NAME_ARG}
-After=network-online.target glusterd.service
-Wants=network-online.target glusterd.service
+Description=GlusterFS mount for $GLUSTER_VOL
+After=network-online.target
+Wants=network-online.target
 
 [Mount]
-What=${MASTER_IP}:/${VOLUME_NAME_ARG}
-Where=/mnt/${VOLUME_NAME_ARG}
+What=localhost:/$GLUSTER_VOL
+Where=$MOUNT_PATH
 Type=glusterfs
-Options=_netdev,backupvolfile-server=${BACKUP_IP}
+Options=_netdev
 
 [Install]
 WantedBy=multi-user.target
-UNIT
+EOF"
 
-# Create .automount unit
-sudo tee /etc/systemd/system/mnt-${VOLUME_NAME_ARG}.automount >/dev/null <<AUTOUNIT
+    # Create the .automount unit
+    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
+        "$ROOT_USER_ARG@$HOST_IP_ARG" "cat <<'EOF' | sudo tee /etc/systemd/system/$AUTOMOUNT_UNIT > /dev/null
 [Unit]
-Description=Automount GlusterFS ${VOLUME_NAME_ARG}
-After=network-online.target glusterd.service
-Wants=network-online.target glusterd.service
+Description=Automount GlusterFS $GLUSTER_VOL
 
 [Automount]
-Where=/mnt/${VOLUME_NAME_ARG}
+Where=$MOUNT_PATH
+TimeoutIdleSec=60
 
 [Install]
 WantedBy=multi-user.target
-AUTOUNIT
+EOF"
 
-# Ensure mountpoint exists
-sudo mkdir -p /mnt/${VOLUME_NAME_ARG}
+    # Ensure mountpoint exists
+    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
+        "$ROOT_USER_ARG@$HOST_IP_ARG" "sudo mkdir -p $MOUNT_PATH"
 
-# Enable automount (this will pull in the .mount unit on demand)
-sudo systemctl daemon-reload
-sudo systemctl enable --now mnt-${VOLUME_NAME_ARG}.automount
-EOF
-  done
+    # Reload systemd and enable automount
+    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
+        "$ROOT_USER_ARG@$HOST_IP_ARG" "sudo systemctl daemon-reload && \
+                                        sudo systemctl enable --now $AUTOMOUNT_UNIT"
 }
 
 
