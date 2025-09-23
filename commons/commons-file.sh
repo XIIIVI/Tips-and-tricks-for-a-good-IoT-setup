@@ -33,86 +33,73 @@ get_ip_by_hostname() {
 }
 
 #
-# deploy_glusterfs_healthcheck
+# deploy_glusterfs_mount_units
 #
-# Installs a systemd service + timer + script that verifies
-# GlusterFS replication health after boot and periodically.
+# Installs systemd .mount and .automount units for GlusterFS
+# on each node, ensuring reliable on-demand mounting.
 #
 # Args:
 #   1. LOGIN_ARG
 #   2. PASSWORD_ARG
-#   3+. DISCOVERED_IPS (list of node IPs)
+#   3. VOLUME_NAME_ARG
+#   4. MASTER_IP (primary peer to contact)
+#   5. BACKUP_IP (secondary peer for resilience)
+#   6+. NODE_IPS (list of all node IPs)
 #
-deploy_glusterfs_healthcheck() {
+deploy_glusterfs_mount_units() {
   set -euo pipefail
   local LOGIN_ARG="${1}"
   local PASSWORD_ARG="${2}"
-  shift 2
-  local NODES=("$@")
+  local VOLUME_NAME_ARG="${3}"
+  local MASTER_IP="${4}"
+  local BACKUP_IP="${5}"
+  shift 5
+  local NODE_IPS=("$@")
 
-  for IP in "${NODES[@]}"; do
-    log_debug "\t- ⚙️ Deploying healthcheck on ${IP}..."
+  for IP in "${NODE_IPS[@]}"; do
+    echo "⚙️ Deploying mount+automount units on ${IP}..."
 
-    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP}" bash -s <<'EOF'
+    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP}" bash -s <<EOF
 set -euo pipefail
 
-# Install healthcheck script
-sudo tee /usr/local/bin/glusterfs-healthcheck.sh >/dev/null <<'SCRIPT'
-#!/bin/bash
-set -euo pipefail
-MOUNTPOINT="/mnt/replicated-data"
-TESTFILE="${MOUNTPOINT}/.healthcheck-$(date +%s)"
-
-log() { logger -t glusterfs-healthcheck "$1"; echo "$1"; }
-
-if ! mountpoint -q "$MOUNTPOINT"; then
-  log "❌ $MOUNTPOINT not mounted"
-  exit 1
-fi
-
-echo "healthcheck $(hostname) $(date)" | sudo tee "$TESTFILE" >/dev/null || {
-  log "❌ Failed to write test file"
-  exit 1
-}
-
-sleep 2
-[[ -s "$TESTFILE" ]] || { log "❌ Test file missing"; exit 1; }
-
-sudo rm -f "$TESTFILE"
-log "✅ GlusterFS healthy on $(hostname)"
-SCRIPT
-sudo chmod +x /usr/local/bin/glusterfs-healthcheck.sh
-
-# Service unit
-sudo tee /etc/systemd/system/glusterfs-healthcheck.service >/dev/null <<'UNIT'
+# Create .mount unit
+sudo tee /etc/systemd/system/mnt-${VOLUME_NAME_ARG}.mount >/dev/null <<UNIT
 [Unit]
-Description=GlusterFS Replication Health Check
-After=mnt-replicated-data.mount
-Requires=mnt-replicated-data.mount
+Description=GlusterFS mount for ${VOLUME_NAME_ARG}
+After=network-online.target glusterd.service
+Wants=network-online.target glusterd.service
 
-[Service]
-Type=oneshot
-ExecStart=/usr/local/bin/glusterfs-healthcheck.sh
-UNIT
-
-# Timer unit
-sudo tee /etc/systemd/system/glusterfs-healthcheck.timer >/dev/null <<'TIMER'
-[Unit]
-Description=Run GlusterFS health check every 5 minutes
-
-[Timer]
-OnBootSec=2min
-OnUnitActiveSec=5min
-Unit=glusterfs-healthcheck.service
+[Mount]
+What=${MASTER_IP}:/${VOLUME_NAME_ARG}
+Where=/mnt/${VOLUME_NAME_ARG}
+Type=glusterfs
+Options=_netdev,backupvolfile-server=${BACKUP_IP}
 
 [Install]
-WantedBy=timers.target
-TIMER
+WantedBy=multi-user.target
+UNIT
 
+# Create .automount unit
+sudo tee /etc/systemd/system/mnt-${VOLUME_NAME_ARG}.automount >/dev/null <<AUTOUNIT
+[Unit]
+Description=Automount GlusterFS ${VOLUME_NAME_ARG}
+After=network-online.target glusterd.service
+Wants=network-online.target glusterd.service
+
+[Automount]
+Where=/mnt/${VOLUME_NAME_ARG}
+
+[Install]
+WantedBy=multi-user.target
+AUTOUNIT
+
+# Ensure mountpoint exists
+sudo mkdir -p /mnt/${VOLUME_NAME_ARG}
+
+# Enable automount (this will pull in the .mount unit on demand)
 sudo systemctl daemon-reload
-sudo systemctl enable --now glusterfs-healthcheck.timer
+sudo systemctl enable --now mnt-${VOLUME_NAME_ARG}.automount
 EOF
-
   done
 }
 
@@ -307,5 +294,5 @@ done
   echo "✅ GlusterFS volume ${VOLUME_NAME_ARG} is set up and replicating."
 
   # Deploying healthcheck
-  deploy_glusterfs_healthcheck "${LOGIN_ARG}" "${PASSWORD_ARG}" "${DISCOVERED_IPS[@]}"
+  deploy_glusterfs_mount_units "${LOGIN_ARG}" "${PASSWORD_ARG}" "${VOLUME_NAME_ARG}" "${MASTER_IP_ADDRESS}" "${DISCOVERED_IPS[1]}" "${DISCOVERED_IPS[@]}"
 }
