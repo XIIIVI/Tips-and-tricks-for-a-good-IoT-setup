@@ -66,48 +66,48 @@ deploy_glusterfs_mount_units() {
         log_debug "\t- Deploying GlusterFS mount units on $TARGET_IP ..."
         log_warning "\t\t- Using units: $MOUNT_UNIT / $AUTOMOUNT_UNIT"
 
-        # Ensure mountpoint exists
-        sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
-            "$ROOT_USER_ARG@$TARGET_IP" "sudo mkdir -p '$MOUNT_PATH'"
+        sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$TARGET_IP" bash -s <<EOF
+set -euo pipefail
 
-        # Create .mount unit (variables expanded locally before sending)
-        sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
-            "$ROOT_USER_ARG@$TARGET_IP" "cat <<EOF | sudo tee /etc/systemd/system/$MOUNT_UNIT > /dev/null
+# 1. Ensure mountpoint exists
+sudo mkdir -p "${MOUNT_PATH}"
+
+# 2. Create .mount unit
+sudo tee /etc/systemd/system/${MOUNT_UNIT} >/dev/null <<UNIT
 [Unit]
-Description=GlusterFS mount for $GLUSTER_VOL_ARG
+Description=GlusterFS mount for ${GLUSTER_VOL_ARG}
 After=network-online.target glusterd.service
 Wants=network-online.target glusterd.service
 
 [Mount]
-What=$MASTER_IP_ARG:/$GLUSTER_VOL_ARG
-Where=$MOUNT_PATH
+What=${MASTER_IP_ARG}:/${GLUSTER_VOL_ARG}
+Where=${MOUNT_PATH}
 Type=glusterfs
-Options=_netdev,backupvolfile-server=$MASTER_IP_ARG
+Options=_netdev,backupvolfile-server=${MASTER_IP_ARG}
 
 [Install]
 WantedBy=multi-user.target
-EOF"
+UNIT
 
-        # Create .automount unit
-        sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
-            "$ROOT_USER_ARG@$TARGET_IP" "cat <<EOF | sudo tee /etc/systemd/system/$AUTOMOUNT_UNIT > /dev/null
+# 3. Create .automount unit
+sudo tee /etc/systemd/system/${AUTOMOUNT_UNIT} >/dev/null <<AUTOUNIT
 [Unit]
-Description=Automount GlusterFS $GLUSTER_VOL_ARG
+Description=Automount GlusterFS ${GLUSTER_VOL_ARG}
 After=network-online.target glusterd.service
 Wants=network-online.target glusterd.service
 
 [Automount]
-Where=$MOUNT_PATH
+Where=${MOUNT_PATH}
 TimeoutIdleSec=60
 
 [Install]
 WantedBy=multi-user.target
-EOF"
+AUTOUNIT
 
-        # Reload and enable automount
-        sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no \
-            "$ROOT_USER_ARG@$TARGET_IP" "sudo systemctl daemon-reload && \
-                                         sudo systemctl enable --now $AUTOMOUNT_UNIT"
+# 4. Reload and enable automount
+sudo systemctl daemon-reload
+sudo systemctl enable --now ${AUTOMOUNT_UNIT}
+EOF
     done
 }
 
@@ -136,7 +136,6 @@ setup_replicated_volumes() {
     return 1
   fi
 
-  local FINAL_MOUNT_POINT="/mnt/${VOLUME_NAME_ARG}"
   local GLUSTER_DIR="/gluster-${VOLUME_NAME_ARG}/bricks"
   local GLUSTERFS_TMP_DIR="$(mktemp -d)"
   trap 'rm -rf "${GLUSTERFS_TMP_DIR}"' EXIT
@@ -172,7 +171,6 @@ EOT
 sudo mkdir -p "${GLUSTER_DIR}/${IDX}"
 sudo chown root:root "${GLUSTER_DIR}/${IDX}"
 sudo chmod 755 "${GLUSTER_DIR}/${IDX}"
-sudo mkdir -p "${FINAL_MOUNT_POINT}"
 
 export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update -qq
@@ -224,25 +222,6 @@ EOF
   sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP}" \
     "sudo gluster volume set ${VOLUME_NAME_ARG} auth.allow ${ALLOW_LIST}"
 
-  # Mount volume on each node
-  IDX=0
-  for IP in "${DISCOVERED_IPS[@]}"; do
-    IDX=$((IDX+1))
-    local BACKUP="${MASTER_IP}"
-    [[ "${IP}" == "${BACKUP}" ]] && BACKUP="${DISCOVERED_IPS[1]:-${MASTER_IP}}"
-    local MOUNTLINE="${IP}:/${VOLUME_NAME_ARG} ${FINAL_MOUNT_POINT} glusterfs defaults,_netdev,backupvolfile-server=${BACKUP} 0 0"
-
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP}" bash -s <<EOF
-set -eo pipefail
-sudo sed -i '\#[[:space:]]${FINAL_MOUNT_POINT}[[:space:]]#d' /etc/fstab
-echo '${MOUNTLINE}' | sudo tee -a /etc/fstab >/dev/null
-sudo systemctl daemon-reload
-sudo mkdir -p "${FINAL_MOUNT_POINT}"
-mountpoint -q "${FINAL_MOUNT_POINT}" && sudo umount "${FINAL_MOUNT_POINT}" || true
-sudo mount -a
-EOF
-  done
-
 # Create systemd mount + automount units on each node
 log_debug "\t- Setting up systemd mount units on all nodes..."
 
@@ -288,6 +267,14 @@ sudo systemctl enable mnt-replicated-data.automount
 EOF
 done
 
+  # Deploying healthcheck
+  deploy_glusterfs_mount_units \
+    "${LOGIN_ARG}" \
+    "${PASSWORD_ARG}" \
+    "${VOLUME_NAME_ARG}" \
+    "${MASTER_IP_ADDRESS}" \
+    "${DISCOVERED_IPS[@]}"
+
   # Test replication
   local TS="$(date +%s)"
   sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP}" \
@@ -299,12 +286,4 @@ done
   done
 
   echo "✅ GlusterFS volume ${VOLUME_NAME_ARG} is set up and replicating."
-
-  # Deploying healthcheck
-  deploy_glusterfs_mount_units \
-    "${LOGIN_ARG}" \
-    "${PASSWORD_ARG}" \
-    "${VOLUME_NAME_ARG}" \
-    "${MASTER_IP_ADDRESS}" \
-    "${DISCOVERED_IPS[@]}"
 }
