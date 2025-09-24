@@ -53,15 +53,12 @@ deploy_glusterfs_mount_units() {
     shift 4
     local TARGET_IPS_ARG=("$@")       # all discovered nodes
 
-    # Define mount path from volume name
     local MOUNT_PATH="/mnt/$GLUSTER_VOL_ARG"
 
-    # Derive proper unit filenames from the mount path
     local MOUNT_UNIT
     local AUTOMOUNT_UNIT
     MOUNT_UNIT="$(systemd-escape --suffix=mount "$MOUNT_PATH")"
     AUTOMOUNT_UNIT="$(systemd-escape --suffix=automount "$MOUNT_PATH")"
-    # Strip only a leading dash if present, but keep backslashes
     MOUNT_UNIT="${MOUNT_UNIT#-}"
     AUTOMOUNT_UNIT="${AUTOMOUNT_UNIT#-}"
 
@@ -72,10 +69,9 @@ deploy_glusterfs_mount_units() {
         sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$TARGET_IP" bash -s <<EOF
 set -euo pipefail
 
-# 1. Ensure mountpoint exists
 sudo mkdir -p "${MOUNT_PATH}"
 
-# 2. Create .mount unit
+# .mount unit
 sudo tee /etc/systemd/system/${MOUNT_UNIT} >/dev/null <<UNIT
 [Unit]
 Description=GlusterFS mount for ${GLUSTER_VOL_ARG}
@@ -92,7 +88,7 @@ Options=_netdev,backupvolfile-server=${MASTER_IP_ARG}
 WantedBy=multi-user.target
 UNIT
 
-# 3. Create .automount unit
+# .automount unit
 sudo tee /etc/systemd/system/${AUTOMOUNT_UNIT} >/dev/null <<AUTOUNIT
 [Unit]
 Description=Automount GlusterFS ${GLUSTER_VOL_ARG}
@@ -107,9 +103,22 @@ TimeoutIdleSec=60
 WantedBy=multi-user.target
 AUTOUNIT
 
-# 4. Reload and enable automount
+# Step 6: reload + enable
 sudo systemctl daemon-reload
 sudo systemctl enable --now ${AUTOMOUNT_UNIT}
+
+# Step 7: verify units are loaded
+echo "=== Systemd unit status for ${AUTOMOUNT_UNIT} ==="
+systemctl is-enabled ${AUTOMOUNT_UNIT} || true
+systemctl is-active ${AUTOMOUNT_UNIT} || true
+
+# Step 8: trigger automount by accessing the path
+echo "=== Triggering automount by listing ${MOUNT_PATH} ==="
+ls -la ${MOUNT_PATH} || true
+
+# Step 9: confirm mount is active
+echo "=== mount output check ==="
+mount | grep ${MOUNT_PATH} || echo "❌ ${MOUNT_PATH} not mounted yet"
 EOF
     done
 }
