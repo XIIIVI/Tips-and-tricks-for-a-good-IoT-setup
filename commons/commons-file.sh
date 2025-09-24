@@ -149,12 +149,14 @@ setup_replicated_volumes() {
   fi
 
   local GLUSTER_DIR="/gluster-${VOLUME_NAME_ARG}/bricks"
+  local FINAL_MOUNT_POINT="/mnt/${VOLUME_NAME_ARG}"
   local GLUSTERFS_TMP_DIR="$(mktemp -d)"
   trap 'rm -rf "${GLUSTERFS_TMP_DIR}"' EXIT
 
   local ETC_HOSTS_FILE="${GLUSTERFS_TMP_DIR}/etc_hosts.addon"
   : > "${ETC_HOSTS_FILE}"
 
+  # Resolve hostnames to IPs and build /etc/hosts additions
   local DISCOVERED_IPS=()
   for HOST in "${HOSTNAME_LIST_ARG[@]}"; do
     local IP="$(get_ip_by_hostname "${HOST}" "${SWARM_JSON_ARG}" 2>/dev/null || true)"
@@ -164,43 +166,49 @@ setup_replicated_volumes() {
     DISCOVERED_IPS+=("${IP}")
   done
 
+  local MASTER_HOST="${HOSTNAME_LIST_ARG[0]}"
+  local BACKUP_HOST="${HOSTNAME_LIST_ARG[1]:-${HOSTNAME_LIST_ARG[0]}}"
   local MASTER_IP="${DISCOVERED_IPS[0]}"
   local REPLICA_COUNT="${#DISCOVERED_IPS[@]}"
 
-  # Prepare each node
+  # Prepare each node: ensure /etc/hosts entries, bricks, and glusterd
   local IDX=0
   for IP in "${DISCOVERED_IPS[@]}"; do
     IDX=$((IDX+1))
     sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP}" bash -s <<EOF
 set -eo pipefail
+
+# Ensure consistent hostnames everywhere
 while read -r LINE; do
   grep -qxF "\$LINE" /etc/hosts || echo "\$LINE" | sudo tee -a /etc/hosts >/dev/null
-done < <(cat <<EOT
+done < <(cat <<'EOT'
 $(<"${ETC_HOSTS_FILE}")
 EOT
 )
 
+# Brick directory
 sudo mkdir -p "${GLUSTER_DIR}/${IDX}"
 sudo chown root:root "${GLUSTER_DIR}/${IDX}"
 sudo chmod 755 "${GLUSTER_DIR}/${IDX}"
 
+# Gluster services
 export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update -qq
-sudo apt-get install -y -qq glusterfs-server glusterfs-cli tree
+sudo apt-get install -y -qq glusterfs-server glusterfs-cli glusterfs-client tree
 sudo systemctl enable --now glusterd
 EOF
   done
 
-  # Probe peers
+  # Probe peers from master
   for IP in "${DISCOVERED_IPS[@]}"; do
     [[ "${IP}" == "${MASTER_IP}" ]] && continue
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP}" \
+    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${MASTER_IP}" \
       "sudo gluster peer probe ${IP} || true"
     sleep 1
   done
 
   # Wait for trusted pool
-  sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP}" bash -s <<EOF
+  sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${MASTER_IP}" bash -s <<EOF
 set -eo pipefail
 for i in {1..60}; do
   COUNT=\$(sudo gluster peer status | awk '/State: Peer in Cluster/{c++} END{print c+0}')
@@ -211,7 +219,7 @@ echo "❌ Peers did not join in time" >&2
 exit 1
 EOF
 
-  # Create volume if missing
+  # Create volume if missing; use hostnames for bricks
   local CREATE_CMD="sudo gluster volume create ${VOLUME_NAME_ARG} replica ${REPLICA_COUNT} transport tcp"
   IDX=0
   for HOST in "${HOSTNAME_LIST_ARG[@]}"; do
@@ -220,7 +228,7 @@ EOF
   done
   CREATE_CMD+=" force"
 
-  sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP}" bash -s <<EOF
+  sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${MASTER_IP}" bash -s <<EOF
 set -eo pipefail
 if ! sudo gluster volume info "${VOLUME_NAME_ARG}" >/dev/null 2>&1; then
   ${CREATE_CMD}
@@ -229,72 +237,41 @@ STATE=\$(sudo gluster volume info "${VOLUME_NAME_ARG}" | awk -F': ' '/Status:/ {
 [[ "\$STATE" != "Started" ]] && sudo gluster volume start "${VOLUME_NAME_ARG}"
 EOF
 
-  # Set auth.allow
-  local ALLOW_LIST="$(IFS=, ; echo "${DISCOVERED_IPS[*]}")"
-  sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP}" \
+  # Set auth.allow to discovered IPs
+  local ALLOW_LIST
+  ALLOW_LIST="$(IFS=, ; echo "${DISCOVERED_IPS[*]}")"
+  sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${MASTER_IP}" \
     "sudo gluster volume set ${VOLUME_NAME_ARG} auth.allow ${ALLOW_LIST}"
 
-# Create systemd mount + automount units on each node
-log_debug "\t- Setting up systemd mount units on all nodes..."
-
-for IP in "${DISCOVERED_IPS[@]}"; do
-  sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP}" bash -s <<EOF
-set -euo pipefail
-
-# Mount unit
-cat <<UNIT | sudo tee /etc/systemd/system/mnt-replicated-data.mount > /dev/null
-[Unit]
-Description=GlusterFS mount for replicated-data
-After=network-online.target glusterd.service
-Wants=network-online.target glusterd.service
-
-[Mount]
-What=${IP}:/${VOLUME_NAME_ARG}
-Where=/mnt/replicated-data
-Type=glusterfs
-Options=_netdev,backupvolfile-server=${MASTER_IP}
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-
-# Automount unit
-cat <<AUTOUNIT | sudo tee /etc/systemd/system/mnt-replicated-data.automount > /dev/null
-[Unit]
-Description=Automount for GlusterFS replicated-data
-After=network-online.target glusterd.service
-Wants=network-online.target glusterd.service
-
-[Automount]
-Where=/mnt/replicated-data
-
-[Install]
-WantedBy=multi-user.target
-AUTOUNIT
-
-# Enable and reload
-sudo systemctl daemon-reload
-sudo systemctl enable mnt-replicated-data.mount
-sudo systemctl enable mnt-replicated-data.automount
-EOF
-done
-
-  # Deploying healthcheck
+  # Deploy correct systemd .mount + .automount units using hostnames
   deploy_glusterfs_mount_units \
     "${LOGIN_ARG}" \
     "${PASSWORD_ARG}" \
     "${VOLUME_NAME_ARG}" \
-    "${MASTER_IP_ADDRESS}" \
+    "${MASTER_HOST}" \
+    "${BACKUP_HOST}" \
     "${DISCOVERED_IPS[@]}"
 
-  # Test replication
-  local TS="$(date +%s)"
-  sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MASTER_IP}" \
-    "echo 'Hello ${VOLUME_NAME_ARG} ${TS}' | sudo tee '${FINAL_MOUNT_POINT}/test-${TS}.txt' >/dev/null"
+  # Trigger automount and test replication
+  local TS
+  TS="$(date +%s)"
 
+  # Touch a file from master node
+  sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${MASTER_IP}" bash -s <<EOF
+set -eo pipefail
+# Trigger automount
+ls -la "${FINAL_MOUNT_POINT}" >/dev/null 2>&1 || true
+echo "Hello ${VOLUME_NAME_ARG} ${TS}" | sudo tee "${FINAL_MOUNT_POINT}/test-${TS}.txt" >/dev/null
+EOF
+
+  # Verify on all nodes
   for IP in "${DISCOVERED_IPS[@]}"; do
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP}" \
-      "sudo cat '${FINAL_MOUNT_POINT}/test-${TS}.txt' || echo '❌ Missing test file on ${IP}'"
+    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${IP}" bash -s <<EOF
+set -eo pipefail
+# Trigger automount
+ls -la "${FINAL_MOUNT_POINT}" >/dev/null 2>&1 || true
+sudo cat "${FINAL_MOUNT_POINT}/test-${TS}.txt" || echo "❌ Missing test file on ${IP}"
+EOF
   done
 
   echo "✅ GlusterFS volume ${VOLUME_NAME_ARG} is set up and replicating."
