@@ -78,7 +78,7 @@ install_docker_container_viewer() {
         $SUDO mv "$DCV_BIN" /usr/local/bin/dcv
     fi
 
-    dcv || echo "⚠️ DCV installed but version check failed"
+    command -v dcv >/dev/null && echo "✅ DCV installed at $(command -v dcv)"
 EOF_DCV
 }
 
