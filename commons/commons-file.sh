@@ -59,8 +59,8 @@ deploy_glusterfs_mount_units() {
     # Derive proper unit filenames from the mount path
     local MOUNT_UNIT
     local AUTOMOUNT_UNIT
-    MOUNT_UNIT="$(systemd-escape --suffix=mount "$MOUNT_PATH")"
-    AUTOMOUNT_UNIT="$(systemd-escape --suffix=automount "$MOUNT_PATH")"
+    MOUNT_UNIT="$(systemd-escape --suffix=mount "$MOUNT_PATH" | sed 's/^-//')"
+    AUTOMOUNT_UNIT="$(systemd-escape --suffix=automount "$MOUNT_PATH" | sed 's/^-//')"
 
     for TARGET_IP in "${TARGET_IPS_ARG[@]}"; do
         log_debug "\t- Deploying GlusterFS mount units on $TARGET_IP ..."
