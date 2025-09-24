@@ -18,55 +18,67 @@ install_docker_container_viewer() {
     sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" << 'EOF_DCV'
     set -euo pipefail
     export DEBIAN_FRONTEND=noninteractive
-    export DEBCONF_NOWARNINGS=yes 
+    export DEBCONF_NOWARNINGS=yes
 
-    curl_retry() {
-        local url="$1" output="$2" max_retries=5 delay=5 count=0
-        until [ $count -ge $max_retries ]; do
-            if curl -fsSL --retry 3 --retry-delay 3 -o "$output" "$url"; then
+    # --- Detect if we need sudo ---
+    if [ "$(id -u)" -eq 0 ]; then
+        SUDO=""
+    else
+        SUDO="sudo"
+    fi
+
+    # --- Retry wrapper for curl ---
+    CURL_RETRY() {
+        local URL="$1" OUTPUT="$2" MAX_RETRIES=5 DELAY=5 COUNT=0
+        until [ $COUNT -ge $MAX_RETRIES ]; do
+            if curl -fsSL --retry 3 --retry-delay 3 -o "$OUTPUT" "$URL"; then
                 return 0
             fi
-            count=$((count+1))
-            echo "curl failed ($count/$max_retries). Retrying in ${delay}s..."
-            sleep $delay
+            COUNT=$((COUNT+1))
+            echo "⚠️ curl failed ($COUNT/$MAX_RETRIES). Retrying in ${DELAY}s..."
+            sleep $DELAY
         done
-        echo "ERROR: Failed to download $url after $max_retries attempts"
+        echo "❌ ERROR: Failed to download $URL after $MAX_RETRIES attempts"
         exit 1
     }
 
-    LOCAL_ARCHITECTURE=$(dpkg --print-architecture)
+    # --- Architecture detection ---
+    LOCAL_ARCHITECTURE=$(dpkg --print-architecture 2>/dev/null || uname -m)
     case "$LOCAL_ARCHITECTURE" in
-        amd64) GO_ARCH="amd64" ;;
-        arm64) GO_ARCH="arm64" ;;
-        armhf) GO_ARCH="armv6l" ;; # adjust if Pi is armv7
-        *) echo "Unsupported arch: $LOCAL_ARCHITECTURE"; exit 1 ;;
+        amd64 | x86_64) GO_ARCH="amd64"; DCV_ARCH="amd64" ;;
+        arm64 | aarch64) GO_ARCH="arm64"; DCV_ARCH="arm64" ;;
+        armhf | armv7l) GO_ARCH="armv6l"; DCV_ARCH="armhf" ;;  # adjust if needed
+        *) echo "❌ Unsupported architecture: $LOCAL_ARCHITECTURE"; exit 1 ;;
     esac
 
-    echo "Installing the version for $LOCAL_ARCHITECTURE"
+    echo "Installing for architecture: $LOCAL_ARCHITECTURE"
 
+    # --- Install Go if missing ---
     if ! command -v go >/dev/null 2>&1; then
         echo "Installing Go for $GO_ARCH"
-        apt-get remove -y golang-go || true
-        rm -rf /usr/local/go
+        $SUDO apt-get update -y
+        $SUDO apt-get remove -y golang-go || true
+        $SUDO rm -rf /usr/local/go
         cd /tmp
-        curl_retry "https://go.dev/dl/go1.24.0.linux-${GO_ARCH}.tar.gz" "go.tar.gz"
-        sudo tar -C /usr/local -xzf go.tar.gz
-        echo 'export PATH=$PATH:/usr/local/go/bin' | sudo tee /etc/profile.d/go.sh
+        CURL_RETRY "https://go.dev/dl/go1.24.0.linux-${GO_ARCH}.tar.gz" "GO.TAR.GZ"
+        $SUDO tar -C /usr/local -xzf GO.TAR.GZ
+        echo 'export PATH=$PATH:/usr/local/go/bin' | $SUDO tee /etc/profile.d/go.sh
     fi
 
-    /usr/local/go/bin/go version
+    /usr/local/go/bin/go version || echo "Go installed but version check failed"
 
+    # --- Install DCV if missing ---
     if ! command -v dcv >/dev/null 2>&1; then
         echo "Installing DCV"
         cd /tmp
-        curl_retry "https://github.com/tokuhirom/dcv/releases/latest/download/dcv_linux_${LOCAL_ARCHITECTURE}.tar.gz" "dcv.tar.gz"
-        sudo tar -xzf dcv.tar.gz
-        DCV_BIN=$(find . -type f -name dcv | head -n1)
-        [ -x "$DCV_BIN" ] || { echo "DCV binary not found"; exit 1; }
-        mv "$DCV_BIN" /usr/local/bin/dcv
+        CURL_RETRY "https://github.com/tokuhirom/dcv/releases/latest/download/dcv_linux_${DCV_ARCH}.tar.gz" "DCV.TAR.GZ"
+        $SUDO tar -xzf DCV.TAR.GZ
+        DCV_BIN=$($SUDO find . -type f -name dcv -perm -u+x | head -n1)
+        [ -n "$DCV_BIN" ] && [ -x "$DCV_BIN" ] || { echo "❌ DCV binary not found"; exit 1; }
+        $SUDO mv "$DCV_BIN" /usr/local/bin/dcv
     fi
 
-    dcv --version || echo "DCV installed but version check failed"
+    dcv --version || echo "⚠️ DCV installed but version check failed"
 EOF_DCV
 }
 

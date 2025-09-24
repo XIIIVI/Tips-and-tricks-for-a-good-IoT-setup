@@ -4,7 +4,7 @@
             "hostname-default-prefix": "orchestrator",
             "members": [
                 {
-                    "ip-address": "192.168.2.192",
+                    "ip-address": "192.168.2.191",
                     "folders": [
                         "/data/alloy",
                         "/data/database",
