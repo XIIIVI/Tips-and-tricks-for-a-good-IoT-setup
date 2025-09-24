@@ -65,7 +65,11 @@ install_docker_container_viewer() {
         echo 'export PATH=$PATH:/usr/local/go/bin' | $SUDO tee /etc/profile.d/go.sh
     fi
 
-    /usr/local/go/bin/go version || echo "Go installed but version check failed"
+    if /usr/local/go/bin/go version >/dev/null 2>&1; then
+         echo "✅ Go is installed: $(/usr/local/go/bin/go version)"
+    else
+         echo "❌ Go installed but version check failed"
+    fi
 
     # --- Install DCV if missing ---
     if ! command -v dcv >/dev/null 2>&1; then
