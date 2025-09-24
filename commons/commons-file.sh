@@ -49,9 +49,10 @@ deploy_glusterfs_mount_units() {
     local ROOT_USER_ARG="$1"
     local ROOT_PASS_ARG="$2"
     local GLUSTER_VOL_ARG="$3"        # e.g. replicated-data
-    local MASTER_IP_ARG="$4"          # the Gluster master node
-    shift 4
-    local TARGET_IPS_ARG=("$@")       # all discovered nodes
+    local MASTER_HOST_ARG="$4"        # e.g. orchestrator1
+    local BACKUP_HOST_ARG="$5"        # e.g. orchestrator2
+    shift 5
+    local TARGET_IPS_ARG=("$@")       # all discovered nodes (IPs for SSH)
 
     local MOUNT_PATH="/mnt/$GLUSTER_VOL_ARG"
 
@@ -80,10 +81,10 @@ After=network-online.target glusterd.service
 Wants=network-online.target glusterd.service
 
 [Mount]
-What=${MASTER_IP_ARG}:/${GLUSTER_VOL_ARG}
+What=${MASTER_HOST_ARG}:/${GLUSTER_VOL_ARG}
 Where=${MOUNT_PATH}
 Type=glusterfs
-Options=_netdev,backupvolfile-server=${MASTER_IP_ARG}
+Options=_netdev,backupvolfile-server=${BACKUP_HOST_ARG}
 
 [Install]
 WantedBy=multi-user.target
@@ -104,20 +105,18 @@ TimeoutIdleSec=60
 WantedBy=multi-user.target
 AUTOUNIT
 
-# Step 6: reload + enable
+# Reload + enable
 sudo systemctl daemon-reload
 sudo systemctl enable --now "${AUTOMOUNT_UNIT}"
 
-# Step 7: verify units are loaded
+# Verification
 echo "=== Systemd unit status for ${AUTOMOUNT_UNIT} ==="
 systemctl is-enabled "${AUTOMOUNT_UNIT}" || true
 systemctl is-active "${AUTOMOUNT_UNIT}" || true
 
-# Step 8: trigger automount by accessing the path
 echo "=== Triggering automount by listing ${MOUNT_PATH} ==="
 ls -la "${MOUNT_PATH}" || true
 
-# Step 9: confirm mount is active
 echo "=== mount output check ==="
 mount | grep "${MOUNT_PATH}" || echo "❌ ${MOUNT_PATH} not mounted yet"
 EOF
