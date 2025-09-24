@@ -55,6 +55,7 @@ deploy_glusterfs_mount_units() {
 
     local MOUNT_PATH="/mnt/$GLUSTER_VOL_ARG"
 
+    # Derive proper unit filenames from the mount path
     local MOUNT_UNIT
     local AUTOMOUNT_UNIT
     MOUNT_UNIT="$(systemd-escape --suffix=mount "$MOUNT_PATH")"
@@ -72,7 +73,7 @@ set -euo pipefail
 sudo mkdir -p "${MOUNT_PATH}"
 
 # .mount unit
-sudo tee /etc/systemd/system/${MOUNT_UNIT} >/dev/null <<UNIT
+sudo tee "/etc/systemd/system/${MOUNT_UNIT}" >/dev/null <<UNIT
 [Unit]
 Description=GlusterFS mount for ${GLUSTER_VOL_ARG}
 After=network-online.target glusterd.service
@@ -89,7 +90,7 @@ WantedBy=multi-user.target
 UNIT
 
 # .automount unit
-sudo tee /etc/systemd/system/${AUTOMOUNT_UNIT} >/dev/null <<AUTOUNIT
+sudo tee "/etc/systemd/system/${AUTOMOUNT_UNIT}" >/dev/null <<AUTOUNIT
 [Unit]
 Description=Automount GlusterFS ${GLUSTER_VOL_ARG}
 After=network-online.target glusterd.service
@@ -105,20 +106,20 @@ AUTOUNIT
 
 # Step 6: reload + enable
 sudo systemctl daemon-reload
-sudo systemctl enable --now ${AUTOMOUNT_UNIT}
+sudo systemctl enable --now "${AUTOMOUNT_UNIT}"
 
 # Step 7: verify units are loaded
 echo "=== Systemd unit status for ${AUTOMOUNT_UNIT} ==="
-systemctl is-enabled ${AUTOMOUNT_UNIT} || true
-systemctl is-active ${AUTOMOUNT_UNIT} || true
+systemctl is-enabled "${AUTOMOUNT_UNIT}" || true
+systemctl is-active "${AUTOMOUNT_UNIT}" || true
 
 # Step 8: trigger automount by accessing the path
 echo "=== Triggering automount by listing ${MOUNT_PATH} ==="
-ls -la ${MOUNT_PATH} || true
+ls -la "${MOUNT_PATH}" || true
 
 # Step 9: confirm mount is active
 echo "=== mount output check ==="
-mount | grep ${MOUNT_PATH} || echo "❌ ${MOUNT_PATH} not mounted yet"
+mount | grep "${MOUNT_PATH}" || echo "❌ ${MOUNT_PATH} not mounted yet"
 EOF
     done
 }
