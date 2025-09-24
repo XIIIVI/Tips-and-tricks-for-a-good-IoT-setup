@@ -158,7 +158,7 @@ create_single_manager() {
             # Labels
             log_debug "\t- Adding the labels to the manager"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo docker node update ${LABEL_STRING} ${NODE_HOSTNAME}"
-            log_warning "\t- Generating the configuration with env variables from the label definition => ${CONFIG_DIR}/${NODE_HOSTNAME}_env.config"
+            log_debug "\t- Generating the configuration with env variables from the label definition => ${CONFIG_DIR}/${NODE_HOSTNAME}_env.config"
 
             touch "${CONFIG_DIR}/${NODE_HOSTNAME}_env.config"
 

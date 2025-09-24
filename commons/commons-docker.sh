@@ -51,11 +51,11 @@ install_docker_container_viewer() {
         *) echo "❌ Unsupported architecture: $LOCAL_ARCHITECTURE"; exit 1 ;;
     esac
 
-    echo "Installing for architecture: $LOCAL_ARCHITECTURE"
+    echo "ℹ️ Installing for architecture: $LOCAL_ARCHITECTURE"
 
     # --- Install Go if missing ---
     if ! command -v go >/dev/null 2>&1; then
-        echo "Installing Go for $GO_ARCH"
+        echo "📦 Installing Go for $GO_ARCH"
         $SUDO apt-get update -y
         $SUDO apt-get remove -y golang-go || true
         $SUDO rm -rf /usr/local/go
@@ -69,7 +69,7 @@ install_docker_container_viewer() {
 
     # --- Install DCV if missing ---
     if ! command -v dcv >/dev/null 2>&1; then
-        echo "Installing DCV"
+        echo "📦 Installing DCV"
         cd /tmp
         CURL_RETRY "https://github.com/tokuhirom/dcv/releases/latest/download/dcv_linux_${DCV_ARCH}.tar.gz" "DCV.TAR.GZ"
         $SUDO tar -xzf DCV.TAR.GZ
@@ -78,7 +78,7 @@ install_docker_container_viewer() {
         $SUDO mv "$DCV_BIN" /usr/local/bin/dcv
     fi
 
-    dcv --version || echo "⚠️ DCV installed but version check failed"
+    dcv || echo "⚠️ DCV installed but version check failed"
 EOF_DCV
 }
 
