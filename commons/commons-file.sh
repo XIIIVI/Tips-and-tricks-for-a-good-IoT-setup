@@ -74,7 +74,7 @@ deploy_glusterfs_mount_units() {
         log_warning "\t\t- Using units: $MOUNT_UNIT / $AUTOMOUNT_UNIT"
 
         sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$TARGET_IP" bash -s <<EOF
-set -euo pipefail
+set -eo pipefail
 sudo mkdir -p "${MOUNT_PATH}"
 
 # .mount unit
@@ -274,6 +274,7 @@ EOF
 
   # Trigger automount and test replication
   local TS
+  
   TS="$(date +%s)"
 
   # Touch a file from master node
