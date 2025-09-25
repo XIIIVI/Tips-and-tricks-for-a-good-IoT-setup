@@ -49,14 +49,12 @@ deploy_glusterfs_mount_units() {
     local ROOT_USER_ARG="$1"
     local ROOT_PASS_ARG="$2"
     local GLUSTER_VOL_ARG="$3"        # e.g. replicated-data
-    local MASTER_HOST_ARG="$4"        # e.g. orchestrator1
-    local BACKUP_HOST_ARG="$5"        # e.g. orchestrator2
-    shift 5
-    local TARGET_IPS_ARG=("$@")       # all discovered nodes (IPs for SSH)
+    shift 3
+    local TARGET_IPS_ARG=("$@")       # all discovered node IPs
 
     local MOUNT_PATH="/mnt/$GLUSTER_VOL_ARG"
 
-    # Derive proper unit filenames from the mount path
+    # Derive proper unit filenames
     local MOUNT_UNIT
     local AUTOMOUNT_UNIT
     MOUNT_UNIT="$(systemd-escape --suffix=mount "$MOUNT_PATH")"
@@ -64,13 +62,20 @@ deploy_glusterfs_mount_units() {
     MOUNT_UNIT="${MOUNT_UNIT#-}"
     AUTOMOUNT_UNIT="${AUTOMOUNT_UNIT#-}"
 
+    # Build backupvolfile-server list from all hostnames
+    local BACKUP_OPTS=""
+    for H in "${TARGET_IPS_ARG[@]}"; do
+        local HOSTNAME="$(getent hosts "$H" | awk '{print $2}' | head -1)"
+        [[ -z "$HOSTNAME" ]] && continue
+        BACKUP_OPTS+=",backupvolfile-server=${HOSTNAME}"
+    done
+
     for TARGET_IP in "${TARGET_IPS_ARG[@]}"; do
         log_debug "\t- Deploying GlusterFS mount units on $TARGET_IP ..."
         log_warning "\t\t- Using units: $MOUNT_UNIT / $AUTOMOUNT_UNIT"
 
         sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$TARGET_IP" bash -s <<EOF
 set -euo pipefail
-
 sudo mkdir -p "${MOUNT_PATH}"
 
 # .mount unit
@@ -81,10 +86,10 @@ After=network-online.target glusterd.service
 Wants=network-online.target glusterd.service
 
 [Mount]
-What=${MASTER_HOST_ARG}:/${GLUSTER_VOL_ARG}
+What=localhost:/${GLUSTER_VOL_ARG}
 Where=${MOUNT_PATH}
 Type=glusterfs
-Options=_netdev,backupvolfile-server=${BACKUP_HOST_ARG}
+Options=_netdev${BACKUP_OPTS}
 
 [Install]
 WantedBy=multi-user.target
@@ -109,15 +114,15 @@ AUTOUNIT
 sudo systemctl daemon-reload
 sudo systemctl enable --now "${AUTOMOUNT_UNIT}"
 
-# Verification
-echo "=== Systemd unit status for ${AUTOMOUNT_UNIT} ==="
+# === Validation ===
+echo "=== Validation on $(hostname) ==="
 systemctl is-enabled "${AUTOMOUNT_UNIT}" || true
 systemctl is-active "${AUTOMOUNT_UNIT}" || true
 
-echo "=== Triggering automount by listing ${MOUNT_PATH} ==="
+# Trigger automount
 ls -la "${MOUNT_PATH}" || true
 
-echo "=== mount output check ==="
+# Confirm mount
 mount | grep "${MOUNT_PATH}" || echo "❌ ${MOUNT_PATH} not mounted yet"
 EOF
     done
@@ -244,13 +249,12 @@ EOF
     "sudo gluster volume set ${VOLUME_NAME_ARG} auth.allow ${ALLOW_LIST}"
 
   # Deploy correct systemd .mount + .automount units using hostnames
+  # Deploy correct systemd .mount + .automount units using localhost + backups
   deploy_glusterfs_mount_units \
-    "${LOGIN_ARG}" \
-    "${PASSWORD_ARG}" \
-    "${VOLUME_NAME_ARG}" \
-    "${MASTER_HOST}" \
-    "${BACKUP_HOST}" \
-    "${DISCOVERED_IPS[@]}"
+  "${LOGIN_ARG}" \
+  "${PASSWORD_ARG}" \
+  "${VOLUME_NAME_ARG}" \
+  "${DISCOVERED_IPS[@]}"
 
   # Trigger automount and test replication
   local TS

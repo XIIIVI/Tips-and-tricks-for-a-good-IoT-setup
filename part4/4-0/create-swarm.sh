@@ -758,7 +758,7 @@ EOF
 
             log_debug "\t\t\t- Checking the folder replication on ${HOSTNAME_LIST[$IP_ADDRESS_INDEX]} at IP address ${IP_ADDRESS}"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" \
-                "sudo tree ${MOUNTPOINT_DIR}" < /dev/null
+                "sudo tree -D ${MOUNTPOINT_DIR}" < /dev/null
         done
     done 0< <(jq -c '.[]' <<<"$REPLICATED_JSON")
     else
