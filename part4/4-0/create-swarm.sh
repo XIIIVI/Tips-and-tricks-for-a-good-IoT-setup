@@ -158,7 +158,7 @@ create_single_manager() {
             # Labels
             log_debug "\t- Adding the labels to the manager"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo docker node update ${LABEL_STRING} ${NODE_HOSTNAME}"
-            log_warning "\t- Generating the configuration with env variables from the label definition => ${CONFIG_DIR}/${NODE_HOSTNAME}_env.config"
+            log_debug "\t- Generating the configuration with env variables from the label definition => ${CONFIG_DIR}/${NODE_HOSTNAME}_env.config"
 
             touch "${CONFIG_DIR}/${NODE_HOSTNAME}_env.config"
 
@@ -758,7 +758,7 @@ EOF
 
             log_debug "\t\t\t- Checking the folder replication on ${HOSTNAME_LIST[$IP_ADDRESS_INDEX]} at IP address ${IP_ADDRESS}"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" \
-                "sudo tree ${MOUNTPOINT_DIR}" < /dev/null
+                "sudo tree -D ${MOUNTPOINT_DIR}" < /dev/null
         done
     done 0< <(jq -c '.[]' <<<"$REPLICATED_JSON")
     else

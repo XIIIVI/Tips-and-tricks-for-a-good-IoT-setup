@@ -17,7 +17,7 @@ activate_uart() {
     log_debug "\t- Activating UART on $HOST_IP_ARG ..."
 
     log_warning "\t\t- Activating the UART"
-    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" "sed -i '/^enable_uart=/d' /boot/config.txt"
+    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" "sudo sed -i '/^enable_uart=/d' /boot/config.txt"
     sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" "echo 'enable_uart=1' | sudo tee -a /boot/config.txt"
 
     log_warning "\t\t- Disabling the serial console"

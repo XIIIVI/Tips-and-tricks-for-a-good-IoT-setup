@@ -26,7 +26,7 @@
                     "has-display": true
                 },
                 {
-                    "ip-address": "192.168.2.124",
+                    "ip-address": "192.168.2.125",
                     "hostname": "orchestrator2",
                     "folders": [
                         "/data/alloy",
@@ -49,7 +49,7 @@
                     "has-display": true
                 },
                 {
-                    "ip-address": "192.168.2.244",
+                    "ip-address": "192.168.2.245",
                     "folders": [
                         "/data/alloy",
                         "/data/database",
@@ -161,10 +161,6 @@
         "secrets": {
             "credentials": [
                 {
-                    "name": "grafana",
-                    "login": "admin"
-                },
-                {
                     "name": "mosquitto",
                     "login": "mqtt-user"
                 }
@@ -234,7 +230,7 @@
                         "folders": [
                             "loki"
                         ],
-                        "ownership": "1000:1000",
+                        "ownership": "10001:10001",
                         "permissions": "777"
                     }
                 ]

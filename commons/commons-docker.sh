@@ -1,7 +1,13 @@
 #!/bin/bash
 
 #
-
+# install_docker_container_viewer
+# This function installs Docker Container Viewer (DCV) on the specified host.
+# Arguments:
+#   1. ROOT_USER_ARG: The username for SSH login.
+#   2. ROOT_PASS_ARG: The password for SSH login.
+#   3. HOST_IP_ARG: The IP address of the host where DCV should be installed.
+#
 install_docker_container_viewer() {
     local ROOT_USER_ARG="$1"
     local ROOT_PASS_ARG="$2"
@@ -9,32 +15,74 @@ install_docker_container_viewer() {
 
     log_debug "\t- Installing Docker Container Viewer (DCV) on $HOST_IP_ARG ..."
 
-    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_DCV'
+    sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" << 'EOF_DCV'
+    set -euo pipefail
     export DEBIAN_FRONTEND=noninteractive
-    export DEBCONF_NOWARNINGS=yes 
+    export DEBCONF_NOWARNINGS=yes
 
-LOCAL_ARCHITECTURE=$(dpkg --print-architecture)
+    # --- Detect if we need sudo ---
+    if [ "$(id -u)" -eq 0 ]; then
+        SUDO=""
+    else
+        SUDO="sudo"
+    fi
 
-echo "Installing Golang for ${LOCAL_ARCHITECTURE}"
-sudo apt remove -y golang-go
-sudo apt autoremove -y
-sudo rm -rf /usr/local/go
-cd /tmp
-wget -q --show-progress https://go.dev/dl/go1.24.0.linux-${LOCAL_ARCHITECTURE}.tar.gz
-sudo tar -C /usr/local -xzf go1.24.0.linux-${LOCAL_ARCHITECTURE}.tar.gz
+    # --- Retry wrapper for curl ---
+    CURL_RETRY() {
+        local URL="$1" OUTPUT="$2" MAX_RETRIES=5 DELAY=5 COUNT=0
+        until [ $COUNT -ge $MAX_RETRIES ]; do
+            if curl -fsSL --retry 3 --retry-delay 3 -o "$OUTPUT" "$URL"; then
+                return 0
+            fi
+            COUNT=$((COUNT+1))
+            echo "⚠️ curl failed ($COUNT/$MAX_RETRIES). Retrying in ${DELAY}s..."
+            sleep $DELAY
+        done
+        echo "❌ ERROR: Failed to download $URL after $MAX_RETRIES attempts"
+        exit 1
+    }
 
-cat << 'EOF' >> $HOME/.bashrc
-export PATH=$PATH:/usr/local/go/bin
-EOF
+    # --- Architecture detection ---
+    LOCAL_ARCHITECTURE=$(dpkg --print-architecture 2>/dev/null || uname -m)
+    case "$LOCAL_ARCHITECTURE" in
+        amd64 | x86_64) GO_ARCH="amd64"; DCV_ARCH="amd64" ;;
+        arm64 | aarch64) GO_ARCH="arm64"; DCV_ARCH="arm64" ;;
+        armhf | armv7l) GO_ARCH="armv6l"; DCV_ARCH="armhf" ;;  # adjust if needed
+        *) echo "❌ Unsupported architecture: $LOCAL_ARCHITECTURE"; exit 1 ;;
+    esac
 
-source $HOME/.bashrc
+    echo "ℹ️ Installing for architecture: $LOCAL_ARCHITECTURE"
 
-/usr/local/go/bin/go version
+    # --- Install Go if missing ---
+    if ! command -v go >/dev/null 2>&1; then
+        echo "📦 Installing Go for $GO_ARCH"
+        $SUDO apt-get update -y
+        $SUDO apt-get remove -y golang-go || true
+        $SUDO rm -rf /usr/local/go
+        cd /tmp
+        CURL_RETRY "https://go.dev/dl/go1.24.0.linux-${GO_ARCH}.tar.gz" "GO.TAR.GZ"
+        $SUDO tar -C /usr/local -xzf GO.TAR.GZ
+        echo 'export PATH=$PATH:/usr/local/go/bin' | $SUDO tee /etc/profile.d/go.sh
+    fi
 
-echo "Installing DCV"
-wget -q --show-progress https://github.com/tokuhirom/dcv/releases/latest/download/dcv_linux_${LOCAL_ARCHITECTURE}.tar.gz
-tar -xzf dcv_linux_${LOCAL_ARCHITECTURE}.tar.gz
-sudo mv dcv /usr/local/bin/
+    if /usr/local/go/bin/go version >/dev/null 2>&1; then
+         echo "✅ Go is installed: $(/usr/local/go/bin/go version)"
+    else
+         echo "❌ Go installed but version check failed"
+    fi
+
+    # --- Install DCV if missing ---
+    if ! command -v dcv >/dev/null 2>&1; then
+        echo "📦 Installing DCV"
+        cd /tmp
+        CURL_RETRY "https://github.com/tokuhirom/dcv/releases/latest/download/dcv_linux_${DCV_ARCH}.tar.gz" "DCV.TAR.GZ"
+        $SUDO tar -xzf DCV.TAR.GZ
+        DCV_BIN=$($SUDO find . -type f -name dcv -perm -u+x | head -n1)
+        [ -n "$DCV_BIN" ] && [ -x "$DCV_BIN" ] || { echo "❌ DCV binary not found"; exit 1; }
+        $SUDO mv "$DCV_BIN" /usr/local/bin/dcv
+    fi
+
+    command -v dcv >/dev/null && echo "✅ DCV installed at $(command -v dcv)"
 EOF_DCV
 }
 
