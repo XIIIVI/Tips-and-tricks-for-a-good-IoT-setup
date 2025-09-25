@@ -54,7 +54,6 @@ deploy_glusterfs_mount_units() {
 
     local MOUNT_PATH="/mnt/$GLUSTER_VOL_ARG"
 
-    # Derive proper unit filenames
     local MOUNT_UNIT
     local AUTOMOUNT_UNIT
     MOUNT_UNIT="$(systemd-escape --suffix=mount "$MOUNT_PATH")"
@@ -84,12 +83,13 @@ sudo tee "/etc/systemd/system/${MOUNT_UNIT}" >/dev/null <<UNIT
 Description=GlusterFS mount for ${GLUSTER_VOL_ARG}
 After=network-online.target glusterd.service
 Wants=network-online.target glusterd.service
+Requires=glusterd.service
 
 [Mount]
 What=localhost:/${GLUSTER_VOL_ARG}
 Where=${MOUNT_PATH}
 Type=glusterfs
-Options=_netdev${BACKUP_OPTS}
+Options=_netdev,x-systemd.requires=glusterd.service${BACKUP_OPTS}
 
 [Install]
 WantedBy=multi-user.target
@@ -101,6 +101,7 @@ sudo tee "/etc/systemd/system/${AUTOMOUNT_UNIT}" >/dev/null <<AUTOUNIT
 Description=Automount GlusterFS ${GLUSTER_VOL_ARG}
 After=network-online.target glusterd.service
 Wants=network-online.target glusterd.service
+Requires=glusterd.service
 
 [Automount]
 Where=${MOUNT_PATH}
@@ -110,20 +111,35 @@ TimeoutIdleSec=60
 WantedBy=multi-user.target
 AUTOUNIT
 
-# Reload + enable
+# glusterfs-mount-check.service
+sudo tee /etc/systemd/system/glusterfs-mount-check.service >/dev/null <<CHECK
+[Unit]
+Description=Trigger GlusterFS automount and replication check
+After=multi-user.target
+Requires=${AUTOMOUNT_UNIT}
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c '
+  echo "=== Triggering automount ==="
+  ls -la ${MOUNT_PATH} || true
+  TS=\$(date +%s)
+  TESTFILE="${MOUNT_PATH}/boot-test-\$TS.txt"
+  echo "Hello from \$(hostname) at \$TS" | sudo tee "\$TESTFILE" >/dev/null
+  echo "Created test file \$TESTFILE"
+  echo "=== Verifying replication ==="
+  for peer in ${TARGET_IPS_ARG[@]}; do
+    ssh -o StrictHostKeyChecking=no ${ROOT_USER_ARG}@\$peer "sudo cat \$TESTFILE" || echo "❌ Missing on \$peer"
+  done
+'
+
+[Install]
+WantedBy=multi-user.target
+CHECK
+
 sudo systemctl daemon-reload
 sudo systemctl enable --now "${AUTOMOUNT_UNIT}"
-
-# === Validation ===
-echo "=== Validation on $(hostname) ==="
-systemctl is-enabled "${AUTOMOUNT_UNIT}" || true
-systemctl is-active "${AUTOMOUNT_UNIT}" || true
-
-# Trigger automount
-ls -la "${MOUNT_PATH}" || true
-
-# Confirm mount
-mount | grep "${MOUNT_PATH}" || echo "❌ ${MOUNT_PATH} not mounted yet"
+sudo systemctl enable glusterfs-mount-check.service
 EOF
     done
 }
