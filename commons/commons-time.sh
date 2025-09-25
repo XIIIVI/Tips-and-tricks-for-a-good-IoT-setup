@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
 #
 # install_chrony_ntp
@@ -27,7 +27,7 @@ EOF
     log_info "Configuring NTP on the node $NODE..."
 
     sshpass -p "$PASS_ARG" ssh -o StrictHostKeyChecking=no "$USER_ARG@$IP_ADDRESS_ARG" bash -s <<EOF
-set -euo pipefail
+set -eo pipefail
 
 # Install chrony if missing
 if ! command -v chronyd >/dev/null 2>&1; then

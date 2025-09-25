@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 # Disable history expansion so '!!' in passwords stays literal
 set +o histexpand
 
