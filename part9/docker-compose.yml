@@ -93,6 +93,10 @@ services:
       placement:
         constraints:
           - node.labels.level == 0
+    environment:
+      - GOMEMLIMIT=314572800
+      - GOGC=50
+      - GOMAXPROCS=4
     networks:
       - telemetry-network
     ports:
@@ -139,6 +143,10 @@ services:
       placement:
         constraints:
           - node.labels.level == 1
+    environment:
+      - GOMEMLIMIT=314572800
+      - GOGC=50
+      - GOMAXPROCS=4
     networks:
       - telemetry-network
     ports:
@@ -183,6 +191,10 @@ services:
       placement:
         constraints:
           - node.labels.level == 2
+    environment:
+      - GOMEMLIMIT=314572800
+      - GOGC=50
+      - GOMAXPROCS=4
     networks:
       - telemetry-network
     secrets:

@@ -53,7 +53,7 @@ server time.google.com iburst
 pool pool.ntp.org iburst
 EOF
 
-    log_info "Configuring NTP on the node $NODE..."
+    log_info "Configuring NTP on the node $IP_ADDRESS_ARG..."
 
     sshpass -p "$PASS_ARG" ssh -o StrictHostKeyChecking=no "$USER_ARG@$IP_ADDRESS_ARG" bash -s <<EOF
 set -eo pipefail
@@ -86,5 +86,5 @@ chronyc tracking || true
 chronyc sources -v || true
 EOF
 
-  log_debug "\t-✅ Chrony NTP setup complete on the node $NODE."
+  log_debug "\t-✅ Chrony NTP setup complete on the node $IP_ADDRESS_ARG."
 }
