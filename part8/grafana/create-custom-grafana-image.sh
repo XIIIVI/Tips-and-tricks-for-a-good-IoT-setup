@@ -5,6 +5,27 @@ set +o histexpand
 
 source "../../commons/commons-log.sh"
 
+# --------------------------------------
+# Retry helper
+# --------------------------------------
+retry_cmd() {
+  local retries=$1; shift
+  local delay=$1; shift
+  local count=0
+  until "$@"; do
+    exit_code=$?
+    count=$((count + 1))
+    if [ $count -lt $retries ]; then
+      log_warning "⚠️ Command failed (exit $exit_code). Retrying in ${delay}s... [${count}/${retries}]"
+      sleep "$delay"
+    else
+      log_error "❌ Command failed after ${retries} attempts: $*"
+      return $exit_code
+    fi
+  done
+  return 0
+}
+
 # ------------------------------------------------------------------------------
 # Grafana + Grizzly bootstrapper with cross-arch support
 # - Pulls/starts Grafana for TARGET_ARCH (default arm64) even on an amd64 host
@@ -196,19 +217,23 @@ export SA_TOKEN
 log_info "📦 Installing Grizzly"
 
 if ! command -v grr >/dev/null 2>&1; then
-  log_warning "\t grr not found. Attempting installation via 'go install'..."
+  log_warning "\t⚠️ grr not found. Attempting installation via 'go install'..."
+  
   if ! command -v go >/dev/null 2>&1; then
     echo "Go not found. Installing for host arch ${HOST_ARCH}..."
     GO_VERSION="1.22.7"
     case "${HOST_ARCH}" in
       amd64|arm64) GO_TARBALL="go${GO_VERSION}.linux-${HOST_ARCH}.tar.gz" ;;
-      armv7)       GO_TARBALL="go${GO_VERSION}.linux-armv6l.tar.gz" ;; # closest available; adjust if needed
-      *) echo "Unsupported host arch for Go: ${HOST_ARCH}"; exit 1 ;;
+      armv7)       GO_TARBALL="go${GO_VERSION}.linux-armv6l.tar.gz" ;;
+      *) log_error "\t❌ Unsupported host arch for Go: ${HOST_ARCH}"; exit 1 ;;
     esac
     GO_URL="https://go.dev/dl/${GO_TARBALL}"
     TMP_DIR="$(mktemp -d)"
     pushd "${TMP_DIR}" >/dev/null
-    curl -fsSLO "${GO_URL}"
+    
+    # Retry curl download
+    retry_cmd 3 5 curl -fsSLO "${GO_URL}" || exit 1
+    
     sudo tar -C /usr/local -xzf "${GO_TARBALL}"
     popd >/dev/null
     rm -rf "${TMP_DIR}"
@@ -221,12 +246,15 @@ if ! command -v grr >/dev/null 2>&1; then
     GOPATH_DIR="${GOPATH:-$HOME/go}"
     GOBIN_DIR="${GOPATH_DIR}/bin"
   fi
+
   mkdir -p "${GOBIN_DIR}"
-  # Install latest grr
-  GO111MODULE=on GOBIN="${GOBIN_DIR}" go install github.com/grafana/grizzly/cmd/grr@latest
+  
+  # Retry grr install
+  retry_cmd 3 5 env GO111MODULE=on GOBIN="${GOBIN_DIR}" go install github.com/grafana/grizzly/cmd/grr@latest || exit 1
+  
   export PATH="${GOBIN_DIR}:${PATH}"
   if ! command -v grr >/dev/null 2>&1; then
-    log_error "❌ Failed to install grr."
+    log_error "❌ Failed to install grr after retries."
     exit 1
   fi
 fi
