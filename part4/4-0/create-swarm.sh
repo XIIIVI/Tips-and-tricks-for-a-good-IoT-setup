@@ -724,7 +724,7 @@ create_replicated_volumes_native() {
 
             log_debug "\t\t\t- Creating the folder ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" \
-                "sudo mkdir -p ${MOUNTPOINT_DIR}/${FOLDER}" < /dev/null
+                "sudo mkdir -p ${MOUNTPOINT_DIR}/${FOLDER}  /var/lib/${FOLDER} && sudo chown -R 10001:10001 /var/lib/${FOLDER} && sudo chmod -R 755 /var/lib/${FOLDER}" < /dev/null
 
             cat <<EOF >>"${VOLUME_TEMPLATE}"
   ${VOLUME_NAME}-${FOLDER}:

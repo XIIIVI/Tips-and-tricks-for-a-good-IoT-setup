@@ -187,8 +187,6 @@ setup_replicated_volumes() {
     DISCOVERED_IPS+=("${IP}")
   done
 
-  local MASTER_HOST="${HOSTNAME_LIST_ARG[0]}"
-  local BACKUP_HOST="${HOSTNAME_LIST_ARG[1]:-${HOSTNAME_LIST_ARG[0]}}"
   local MASTER_IP="${DISCOVERED_IPS[0]}"
   local REPLICA_COUNT="${#DISCOVERED_IPS[@]}"
 
@@ -264,7 +262,6 @@ EOF
   sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${MASTER_IP}" \
     "sudo gluster volume set ${VOLUME_NAME_ARG} auth.allow ${ALLOW_LIST}"
 
-  # Deploy correct systemd .mount + .automount units using hostnames
   # Deploy correct systemd .mount + .automount units using localhost + backups
   deploy_glusterfs_mount_units \
   "${LOGIN_ARG}" \

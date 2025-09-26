@@ -32,7 +32,7 @@ set -eo pipefail
 # Install chrony if missing
 if ! command -v chronyd >/dev/null 2>&1; then
   if command -v apt-get >/dev/null 2>&1; then
-    sudo apt-get update -y && sudo apt-get install -y chrony
+    sudo apt-get update -y && sudo apt-get install -y -qq chrony
   elif command -v yum >/dev/null 2>&1; then
     sudo yum install -y chrony
   fi

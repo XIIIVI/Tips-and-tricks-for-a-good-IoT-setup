@@ -222,6 +222,9 @@ services:
   loki:
     image: ${PRIVATE_REPO}/loki:3.0.0
     user: "1000:1000"
+    configs:
+      - source: loki.yaml
+        target: /etc/loki/local-config.yaml
     deploy:
       mode: global
       restart_policy:
@@ -237,9 +240,9 @@ services:
         protocol: tcp
         mode: host      # or 'ingress' for routing mesh
     volumes:
-      - /mnt/replicated-data/loki:/loki # Persistent storage for Loki
-    command: -config.file=/etc/loki/local-config.yaml
-
+      - /mnt/replicated-data/loki:/loki/chunks # Persistent storage for Loki
+      - /var/lib/loki/index:/loki/index        # local disk
+      - /var/lib/loki/cache:/loki/cache        # local disk
   alloy-level0:
     image: ${PRIVATE_REPO}/alloy-level0:v1.10.2
     deploy:
@@ -317,3 +320,7 @@ networks:
   public-network:
     driver: overlay
     internal: true   # isolates backend traffic
+
+configs:
+  loki.yaml:
+    external: true
