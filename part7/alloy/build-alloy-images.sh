@@ -121,10 +121,19 @@ main() {
 
     # Build the Alloy image
     cd "level${LEVEL_NUMBER}/" || exit
+
+    IMAGE_TAG="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/alloy-level${LEVEL_NUMBER}:${IMAGE_VERSION}"
+
+    log_info "Cleaning up any existing image ${IMAGE_TAG}"
+    # Remove local image if it exists
+    if docker image inspect "${IMAGE_TAG}" >/dev/null 2>&1; then
+        docker rmi -f "${IMAGE_TAG}" || true
+    fi
+
     log_info "Importing image ${IMAGE_NAME}:${IMAGE_VERSION} into local registry ${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}"
     docker buildx build \
         --platform linux/arm64 \
-        --tag "${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/alloy-level${LEVEL_NUMBER}:${IMAGE_VERSION}" \
+        --tag "${IMAGE_TAG}" \
         --build-arg IMAGE_VERSION="${IMAGE_VERSION}" \
         --build-arg LOCAL_REGISTRY="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}" \
         --push .
