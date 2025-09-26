@@ -1064,7 +1064,11 @@ $(cat ${SECRET_TEMPLATE})
 $(cat ${VOLUME_TEMPLATE})
 EOF_TEMPLATE
 
-    log_warning "DO NOT FORGET TO CHANGE THE PASSWORD OF THE ROOT USER ON ALL NODES !!!"
+    log_warning "⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️"
+    log_warning "⚠️                                                                        ️⚠️"
+    log_warning "⚠️ DO NOT FORGET TO CHANGE THE PASSWORD OF THE ROOT USER ON ALL NODES !!! ⚠️"
+    log_warning "⚠️                                                                        ️⚠️"
+    log_warning "⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️"
     log_info "A template of a Docker compose file is available at ${DOCKER_COMPOSE_TEMPLATE}."
     log_info "It declares all the resources we've just created."
 }
