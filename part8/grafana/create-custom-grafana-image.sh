@@ -345,9 +345,17 @@ if ! docker buildx inspect >/dev/null 2>&1; then
 fi
 
 log_info "⚙️ Building and pushing ${TARGET_IMAGE} for linux/${TARGET_ARCH}..."
+
+# Clean up any existing local image with the same tag
+if docker image inspect "${TARGET_IMAGE}" >/dev/null 2>&1; then
+    log_info "Removing existing local image ${TARGET_IMAGE}"
+    docker rmi -f "${TARGET_IMAGE}" || true
+fi
+
+# Build and push fresh image
 docker buildx build \
   --platform "linux/${TARGET_ARCH}" \
-  -t "${TARGET_IMAGE}" \
+  --tag "${TARGET_IMAGE}" \
   --push \
   "${BUILD_CTX}"
 
