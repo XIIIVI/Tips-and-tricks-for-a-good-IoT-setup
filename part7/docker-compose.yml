@@ -240,7 +240,7 @@ services:
       - /mnt/replicated-data/loki:/loki/chunks # Persistent storage for Loki
       - /var/lib/loki/index:/loki/index        # local disk
       - /var/lib/loki/cache:/loki/cache 
-      - ../part4/4-0/data/configs/loki-config.yaml:/etc/loki/local-config.yaml:ro       # local disk
+      - ${LOKI_CONFIG}:/etc/loki/local-config.yaml:ro       # local disk
     command: -config.file=/etc/loki/local-config.yaml   
       
   alloy-level0:
