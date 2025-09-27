@@ -6,7 +6,7 @@ The script **create_swarm.sh** creates and configures both managers and workers 
 
 > :warning: All the hosts should support an SSH access based on credentials.
 
-:warning::warning::warning: THE SWARM CREATION AND CONFIGURATION IS A LONG RUNNING PROCESS (Around 50mn for 5 devices):warning::warning::warning:
+:warning::warning::warning: THE SWARM CREATION AND CONFIGURATION IS A LONG RUNNING PROCESS (Around 35mn for 4 devices):warning::warning::warning:
 
 It uses a JSON file as a configuration file. When configuring each nodes, it takes in charge 
 * the Docker installation, 

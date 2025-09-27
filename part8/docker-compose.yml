@@ -252,7 +252,7 @@ services:
 
   loki:
     image: ${PRIVATE_REPO}/loki:3.0.0
-    user: "1000:1000"
+    user: "10001:10001"
     command: -config.file=/etc/loki/local-config.yaml
     configs:
       - source: loki-config.yaml
@@ -353,7 +353,7 @@ services:
 #################################
 
   grafana:
-    image: ${PRIVATE_REPO}/grafana:12.3.0-17750354453
+    image: ${PRIVATE_REPO}/grafana:12.2.0
     deploy:
       mode: replicated
       replicas: 1

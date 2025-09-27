@@ -67,7 +67,7 @@
           "sortOrder": "Descending",
           "wrapLogMessage": true
         },
-        "pluginVersion": "12.3.0-17750354453",
+        "pluginVersion": "12.2.0",
         "targets": [
           {
             "datasource": {
