@@ -155,10 +155,10 @@ GRIZZLY_BASEDIR="$(mktemp -d)/grizzly"
 export_grafana_resources "${GRAFANA_URL}" "${SA_TOKEN}" "${GRIZZLY_BASEDIR}"
 
 # Install the Grafana builder
-install_and_configure_grafana_builder "${TARGET_ARCH}" "${VERSION_NUMBER}" "127.0.0.1" "3000" "${ADMIN_PASSWD}"
+install_and_configure_grafana_builder "${TARGET_ARCH}" "${VERSION_NUMBER}" "127.0.0.1" "3000" "${ADMIN_PASSWD}" "${GRIZZLY_BASEDIR}"
 
 # Import the Grizzly's exported resources
-import_grafana_resources "http://127.0.0.1:3000" "${BUILDER_SA_TOKEN}" "${GRIZZLY_BASEDIR}"
+import_grafana_resources "http://127.0.0.1:3000" "$(cat ${GRIZZLY_BASEDIR}/builder_sa_token.txt)" "${GRIZZLY_BASEDIR}"
 
 # Use loopback to avoid docker-for-mac/iptables oddities
 TARGET_IMAGE="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/grafana:${IMAGE_VERSION}"

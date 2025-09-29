@@ -321,6 +321,7 @@ install_grizzly() {
 #   GRAFANA_PORT_ARG - Host port to map to Grafana (e.g., 3000).
 #   ADMIN_PASSWD_ARG - Admin password to set.
 #   GRAFANA_CONTAINER_ARG - Name of the Grafana Docker container.
+#   GRIZZLY_BASEDIR_ARG - Base directory for Grizzly exports/imports.
 # Exports:
 #   BUILDER_SA_TOKEN - Service account token valid for 1 day.
 # ---------------------------------------------
@@ -330,7 +331,8 @@ install_and_configure_grafana_builder() {
     local GRAFANA_HOST_ARG="${3}"
     local GRAFANA_PORT_ARG="${4}"
     local ADMIN_PASSWD_ARG="${5}"
-    local GRAFANA_CONTAINER_ARG="${6}"    
+    local GRAFANA_CONTAINER_ARG="${6}"  
+    local GRIZZLY_BASEDIR_ARG="${7}"  
     # Names & tags
     local GRAFANA_IMAGE="grafana/grafana:${VERSION_NUMBER_ARG}"
     local GRAFANA_URL="http://${GRAFANA_HOST_ARG}:${GRAFANA_PORT_ARG}"
@@ -410,7 +412,7 @@ install_and_configure_grafana_builder() {
     fi
 
     # Export for later steps within this shell
-    export BUILDER_SA_TOKEN
+    echo "${BUILDER_SA_TOKEN}" > "${GRIZZLY_BASEDIR_ARG}"/builder_sa_token.txt
 }
 
 # ---------------------------------------------
@@ -471,6 +473,9 @@ import_grafana_resources() {
          process_grizzly_resources "${DIR}" "${GRIZZLY_BASEDIR_ARG}"
     done < <(find "${GRIZZLY_BASEDIR_ARG}" -type d -print0)
     
+    log_debug "\t- Listing processed resources..."
+    tree "${GRIZZLY_BASEDIR_ARG}"
+
     log_debug "\t- Importing resources to ${GRIZZLY_BASEDIR_ARG}..."
     grr push "${GRIZZLY_BASEDIR_ARG}"
 }
