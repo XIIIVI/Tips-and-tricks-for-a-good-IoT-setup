@@ -176,6 +176,7 @@ create_single_manager() {
             fi
 
             activate_uart "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
+            install_vcgencmd "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
             install_chrony_ntp "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
 
             log_debug "\t- Creating the folders"
@@ -312,6 +313,7 @@ create_single_worker() {
             fi
 
             activate_uart "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
+            install_vcgencmd "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
             install_chrony_ntp "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
             install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${REGISTRY_IP_ADDRESS_ARG}" "${REGISTRY_PORT_ARG}" "${REGISTRY_CERTIFICATE_FILE_ARG}"
 
@@ -437,7 +439,7 @@ while IFS= read -r cred_json; do
 
     log_warning "\t\t- Creating the secret ${name} for user ${login}"
 
-    PASSWORD_FILENAME="${name}.passwd"
+    PASSWORD_FILENAME="${name}.credentials"
     GENERATED_PASSWORD=$(openssl rand -base64 16)
     HASH=$(htpasswd -bnB "${login}" "${GENERATED_PASSWORD}" | cut -d ':' -f2)
 

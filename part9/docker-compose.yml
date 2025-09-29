@@ -50,8 +50,8 @@ services:
         target: /etc/mosquitto/mosquitto.crt
       - source: mosquitto.key
         target: /etc/mosquitto/mosquitto.key
-      - source: mosquitto.pwd
-        target: /etc/mosquitto/mosquitto.pwd
+      - source: mosquitto.credentials
+        target: /etc/mosquitto/mosquitto.credentials
     deploy:
       mode: global  # Ensures one instance per eligible node
       restart_policy:
@@ -94,9 +94,16 @@ services:
         constraints:
           - node.labels.level == 0
     environment:
-      - GOMEMLIMIT=314572800
-      - GOGC=50
-      - GOMAXPROCS=4
+       - DEBUG_ON=false
+       - DEBUG_QUIET=false
+       - DEBUG_LOG_ROTATION_INTERVAL_IN_HOUR=0
+       - DEBUG_LOG_ROTATION_MAX_SIZE_IN_MIB=10
+       - DEBUG_LOG_ROTATION_MAX_ARCHIVES=5
+       # To limit memory consumption for Telegraf
+       # 300MB is the default value
+       - GOMEMLIMIT=314572800
+       - GOGC=50
+       - GOMAXPROCS=4
     networks:
       - telemetry-network
     ports:
@@ -144,9 +151,16 @@ services:
         constraints:
           - node.labels.level == 1
     environment:
-      - GOMEMLIMIT=314572800
-      - GOGC=50
-      - GOMAXPROCS=4
+       - DEBUG_ON=false
+       - DEBUG_QUIET=false
+       - DEBUG_LOG_ROTATION_INTERVAL_IN_HOUR=0
+       - DEBUG_LOG_ROTATION_MAX_SIZE_IN_MIB=10
+       - DEBUG_LOG_ROTATION_MAX_ARCHIVES=5
+       # To limit memory consumption for Telegraf
+       # 300MB is the default value
+       - GOMEMLIMIT=314572800
+       - GOGC=50
+       - GOMAXPROCS=4
     networks:
       - telemetry-network
     ports:
@@ -192,9 +206,16 @@ services:
         constraints:
           - node.labels.level == 2
     environment:
-      - GOMEMLIMIT=314572800
-      - GOGC=50
-      - GOMAXPROCS=4
+       - DEBUG_ON=false
+       - DEBUG_QUIET=false
+       - DEBUG_LOG_ROTATION_INTERVAL_IN_HOUR=0
+       - DEBUG_LOG_ROTATION_MAX_SIZE_IN_MIB=10
+       - DEBUG_LOG_ROTATION_MAX_ARCHIVES=5
+       # To limit memory consumption for Telegraf
+       # 300MB is the default value
+       - GOMEMLIMIT=314572800
+       - GOGC=50
+       - GOMAXPROCS=4
     networks:
       - telemetry-network
     secrets:
@@ -204,6 +225,8 @@ services:
         target: /etc/telegraf/telegraf.key
       - source: telegraf.ca
         target: /etc/telegraf/telegraf.ca
+      - source: mosquitto.ca
+        target: /etc/telegraf/mqtt.crt
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -474,11 +497,15 @@ configs:
 secrets:
   grafana.passwd:
     external: true
+  mosquitto.ca:
+    external: true
   mosquitto.crt:
     external: true
   mosquitto.key:
     external: true
   mosquitto.passwd:
+    external: true
+  mosquitto.credentials:
     external: true
   telegraf.crt:
     external: true

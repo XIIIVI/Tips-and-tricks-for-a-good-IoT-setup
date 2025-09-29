@@ -79,6 +79,17 @@ services:
       placement:
         constraints:
           - node.labels.level == 0
+    environment:
+       - DEBUG_ON=false
+       - DEBUG_QUIET=false
+       - DEBUG_LOG_ROTATION_INTERVAL_IN_HOUR=0
+       - DEBUG_LOG_ROTATION_MAX_SIZE_IN_MIB=10
+       - DEBUG_LOG_ROTATION_MAX_ARCHIVES=5
+       # To limit memory consumption for Telegraf
+       # 300MB is the default value
+       - GOMEMLIMIT=314572800
+       - GOGC=50
+       - GOMAXPROCS=4
     networks:
       - public-network
     ports:
@@ -115,6 +126,17 @@ services:
       placement:
         constraints:
           - node.labels.level == 1
+    environment:
+       - DEBUG_ON=false
+       - DEBUG_QUIET=false
+       - DEBUG_LOG_ROTATION_INTERVAL_IN_HOUR=0
+       - DEBUG_LOG_ROTATION_MAX_SIZE_IN_MIB=10
+       - DEBUG_LOG_ROTATION_MAX_ARCHIVES=5
+       # To limit memory consumption for Telegraf
+       # 300MB is the default value
+       - GOMEMLIMIT=314572800
+       - GOGC=50
+       - GOMAXPROCS=4
     networks:
       - public-network
     ports:
@@ -149,6 +171,17 @@ services:
       placement:
         constraints:
           - node.labels.level == 2
+    environment:
+       - DEBUG_ON=false
+       - DEBUG_QUIET=false
+       - DEBUG_LOG_ROTATION_INTERVAL_IN_HOUR=0
+       - DEBUG_LOG_ROTATION_MAX_SIZE_IN_MIB=10
+       - DEBUG_LOG_ROTATION_MAX_ARCHIVES=5
+       # To limit memory consumption for Telegraf
+       # 300MB is the default value
+       - GOMEMLIMIT=314572800
+       - GOGC=50
+       - GOMAXPROCS=4
     networks:
       - public-network
     volumes:
