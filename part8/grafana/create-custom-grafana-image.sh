@@ -219,6 +219,11 @@ docker buildx build \
   --push \
   "${BUILD_CTX}"
 
+# Creating a place with the refactored Grizzly resources to manage them in Git
+log_info "📂 The refactored Grizzly's resources are available in ./deployment"
+mkdir -p ./deployment
+cp -r "${GRIZZLY_BASEDIR}/." ./deployment/
+
 # Cleanup build context + local DB copy
 log_info "🧼 Cleaning up temporary files..."
 rm -rf "${BUILD_CTX}" "./${CUSTOM_DB}" "${GRIZZLY_BASEDIR}"
