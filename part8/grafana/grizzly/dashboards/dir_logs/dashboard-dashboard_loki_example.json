@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "folder": "dir_logs",
-    "name": "dash_loki_example"
+    "name": "dashboard_loki_example"
   },
   "spec": {
     "annotations": {
@@ -25,7 +25,20 @@
     "editable": true,
     "fiscalYearStartMonth": 0,
     "graphTooltip": 0,
-    "links": [],
+    "links": [
+      {
+        "asDropdown": true,
+        "icon": "dashboard",
+        "includeVars": true,
+        "keepTime": true,
+        "tags": [],
+        "targetBlank": false,
+        "title": "CPU",
+        "tooltip": "",
+        "type": "link",
+        "url": "http://192.168.2.191:8080/d/dashboard_monitoring/cpu"
+      }
+    ],
     "panels": [
       {
         "datasource": {
@@ -54,7 +67,7 @@
           "sortOrder": "Descending",
           "wrapLogMessage": true
         },
-        "pluginVersion": "12.2.0-17195718647",
+        "pluginVersion": "12.2.0",
         "targets": [
           {
             "datasource": {
@@ -140,7 +153,7 @@
             "query": "label_values(cpu_usage_guest,host)",
             "refId": "PrometheusVariableQueryEditor-VariableQuery"
           },
-          "refresh": 1,
+          "refresh": 2,
           "regex": "",
           "sort": 5,
           "type": "query"
@@ -148,8 +161,12 @@
         {
           "allowCustomValue": false,
           "current": {
-            "text": "iot-stack_alloy-level0",
-            "value": "iot-stack_alloy-level0"
+            "text": [
+              "iot-stack_alloy-level0"
+            ],
+            "value": [
+              "iot-stack_alloy-level0"
+            ]
           },
           "definition": "label_values(container_name)",
           "includeAll": true,
@@ -162,7 +179,7 @@
             "query": "label_values(container_name)",
             "refId": "PrometheusVariableQueryEditor-VariableQuery"
           },
-          "refresh": 1,
+          "refresh": 2,
           "regex": "/(.*)\\..*\\..*/",
           "sort": 5,
           "type": "query"
@@ -174,8 +191,8 @@
       "to": "now"
     },
     "timepicker": {},
-    "timezone": "browser",
+    "timezone": "Europe/Paris",
     "title": "Loki example",
-    "uid": "dash_loki_example"
+    "uid": "dashboard_loki_example"
   }
 }

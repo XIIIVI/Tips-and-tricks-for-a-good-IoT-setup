@@ -17,7 +17,8 @@ chmod +x ./create-custom-grafana-image.sh
 sudo create-custom-grafana-image.sh --local-registry-address <LOCAL_REGISTRY_IP_ADDRESS> \
                                     [--local-registry-port <LOCAL_REGISTRY_PORT>] \
                                     --admin-passwd <The admin password to set for your customized Grafana> \
-                                    --grizzly-basedir <The folder containing the resources to import> \
+                                    --grafana-url <The URL of the Grafana instance running in the swarm> \
+                                    --sa-token <The token of the service account of the Grafana instance running in the swarm> \
                                     [--image-version <The version number of your customized image (--version-number value by default)>] \
                                     --version-number <Grafana's version number>
 ```

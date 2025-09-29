@@ -21,7 +21,7 @@ sudo ./build-alloy-images.sh --local-registry-address <LOCAL_REGISTRY_IP_ADDRESS
 sudo ./build-alloy-images.sh --local-registry-address <LOCAL_REGISTRY_IP_ADDRESS> --level-number 2
 ```
 
-3) Then update the stack ```sudo PRIVATE_REPO=<IP_ADDRESS_OF_THE_REPO>:<LOCAL_REGISTRY_PORT> docker stack deploy --compose-file docker-compose.yml iot-stack```
+3) Then update the stack ```sudo PRIVATE_REPO=<IP_ADDRESS_OF_THE_REPO>:<LOCAL_REGISTRY_PORT> LOKI_CONFIG=$(realpath ../part4/4-0/data/configs/loki-config.yaml) docker stack deploy --compose-file docker-compose.yml iot-stack```
 
 To check the installation, please check the [list of the useful commands](../../../docker-swarm-useful-commands.md).
 

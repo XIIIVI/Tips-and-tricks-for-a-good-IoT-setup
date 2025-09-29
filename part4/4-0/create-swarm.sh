@@ -1,5 +1,34 @@
 #!/bin/bash
 
+# ============================================================
+#  Project:   create-swarm.sh
+#  Author:    Fabrice TRAN-XUAN
+#  Created:   2025-08-10
+#
+#  License:   MIT License
+#
+#  Permission is hereby granted, free of charge, to any person
+#  obtaining a copy of this software and associated documentation
+#  files (the "Software"), to deal in the Software without
+#  restriction, including without limitation the rights to use,
+#  copy, modify, merge, publish, distribute, sublicense, and/or
+#  sell copies of the Software, and to permit persons to whom the
+#  Software is furnished to do so, subject to the following
+#  conditions:
+#
+#  The above copyright notice and this permission notice shall be
+#  included in all copies or substantial portions of the Software.
+#
+#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+#  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+#  OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+#  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+#  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+#  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+#  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+#  OTHER DEALINGS IN THE SOFTWARE.
+# ============================================================
+
 source "../../commons/commons-cli.sh"
 source "../../commons/commons-docker.sh"
 source "../../commons/commons-file.sh"
@@ -7,6 +36,7 @@ source "../../commons/commons-i2c.sh"
 source "../../commons/commons-log.sh"
 source "../../commons/commons-net.sh"
 source "../../commons/commons-ssh.sh"
+source "../../commons/commons-time.sh"
 source "../../commons/commons-uart.sh"
 
 declare -A HOST_IP_MAP
@@ -85,7 +115,6 @@ create_single_manager() {
             remove_ssh_host "${IP_ADDRESS}"
             HOST_IP_MAP["${NODE_HOSTNAME}"]="${IP_ADDRESS}"
 
-
             if [ -z "${JOIN_MGR_CMD}" ]; then
                 log_debug "\t- Creating the main Swarm manager node ${NODE_HOSTNAME} at IP address ${IP_ADDRESS}"
                 install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${REGISTRY_IP_ADDRESS_ARG}" "${REGISTRY_PORT_ARG}" "${REGISTRY_CERTIFICATE_FILE_ARG}"
@@ -147,6 +176,7 @@ create_single_manager() {
             fi
 
             activate_uart "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
+            install_chrony_ntp "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
 
             log_debug "\t- Creating the folders"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo mkdir -p ${FOLDER_LIST}"
@@ -282,6 +312,7 @@ create_single_worker() {
             fi
 
             activate_uart "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
+            install_chrony_ntp "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
             install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${REGISTRY_IP_ADDRESS_ARG}" "${REGISTRY_PORT_ARG}" "${REGISTRY_CERTIFICATE_FILE_ARG}"
 
             log_debug "\t- Adding the worker ${NODE_HOSTNAME} to the Swarm"
@@ -722,7 +753,7 @@ create_replicated_volumes_native() {
 
             log_debug "\t\t\t- Creating the folder ${MOUNTPOINT_DIR}/${FOLDER} on ${HOSTNAME_LIST[0]} at IP address ${IP_ADDRESS}"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" \
-                "sudo mkdir -p ${MOUNTPOINT_DIR}/${FOLDER}" < /dev/null
+                "sudo mkdir -p ${MOUNTPOINT_DIR}/${FOLDER}  /var/lib/${FOLDER} && sudo chown -R 10001:10001 /var/lib/${FOLDER} && sudo chmod -R 755 /var/lib/${FOLDER}" < /dev/null
 
             cat <<EOF >>"${VOLUME_TEMPLATE}"
   ${VOLUME_NAME}-${FOLDER}:
@@ -1062,7 +1093,11 @@ $(cat ${SECRET_TEMPLATE})
 $(cat ${VOLUME_TEMPLATE})
 EOF_TEMPLATE
 
-    log_warning "DO NOT FORGET TO CHANGE THE PASSWORD OF THE ROOT USER ON ALL NODES !!!"
+    log_warning "⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️"
+    log_warning "⚠️                                                                       ️⚠️"
+    log_warning "⚠️ DO NOT FORGET TO CHANGE THE PASSWORD OF THE ROOT USER ON ALL NODES !!! ⚠️"
+    log_warning "⚠️                                                                       ️⚠️"
+    log_warning "⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️"
     log_info "A template of a Docker compose file is available at ${DOCKER_COMPOSE_TEMPLATE}."
     log_info "It declares all the resources we've just created."
 }

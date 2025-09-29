@@ -1,5 +1,34 @@
 #!/bin/bash
 
+# ============================================================
+#  Project:   commons-file.sh
+#  Author:    Fabrice TRAN-XUAN
+#  Created:   2025-08-10
+#
+#  License:   MIT License
+#
+#  Permission is hereby granted, free of charge, to any person
+#  obtaining a copy of this software and associated documentation
+#  files (the "Software"), to deal in the Software without
+#  restriction, including without limitation the rights to use,
+#  copy, modify, merge, publish, distribute, sublicense, and/or
+#  sell copies of the Software, and to permit persons to whom the
+#  Software is furnished to do so, subject to the following
+#  conditions:
+#
+#  The above copyright notice and this permission notice shall be
+#  included in all copies or substantial portions of the Software.
+#
+#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+#  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+#  OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+#  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+#  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+#  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+#  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+#  OTHER DEALINGS IN THE SOFTWARE.
+# ============================================================
+
 #
 # get_ip_by_hostname
 # 
@@ -187,8 +216,6 @@ setup_replicated_volumes() {
     DISCOVERED_IPS+=("${IP}")
   done
 
-  local MASTER_HOST="${HOSTNAME_LIST_ARG[0]}"
-  local BACKUP_HOST="${HOSTNAME_LIST_ARG[1]:-${HOSTNAME_LIST_ARG[0]}}"
   local MASTER_IP="${DISCOVERED_IPS[0]}"
   local REPLICA_COUNT="${#DISCOVERED_IPS[@]}"
 
@@ -264,7 +291,6 @@ EOF
   sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no "${LOGIN_ARG}@${MASTER_IP}" \
     "sudo gluster volume set ${VOLUME_NAME_ARG} auth.allow ${ALLOW_LIST}"
 
-  # Deploy correct systemd .mount + .automount units using hostnames
   # Deploy correct systemd .mount + .automount units using localhost + backups
   deploy_glusterfs_mount_units \
   "${LOGIN_ARG}" \

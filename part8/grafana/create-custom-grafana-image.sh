@@ -1,9 +1,41 @@
 #!/usr/bin/env bash
-set -euo pipefail
+
+# ============================================================
+#  Project:   create-custom-grafana-image.sh
+#  Author:    Fabrice TRAN-XUAN
+#  Created:   2025-08-10
+#
+#  License:   MIT License
+#
+#  Permission is hereby granted, free of charge, to any person
+#  obtaining a copy of this software and associated documentation
+#  files (the "Software"), to deal in the Software without
+#  restriction, including without limitation the rights to use,
+#  copy, modify, merge, publish, distribute, sublicense, and/or
+#  sell copies of the Software, and to permit persons to whom the
+#  Software is furnished to do so, subject to the following
+#  conditions:
+#
+#  The above copyright notice and this permission notice shall be
+#  included in all copies or substantial portions of the Software.
+#
+#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+#  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+#  OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+#  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+#  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+#  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+#  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+#  OTHER DEALINGS IN THE SOFTWARE.
+# ============================================================
+
+set -eo pipefail
 # Disable history expansion so '!!' in passwords stays literal
 set +o histexpand
 
+source "../../commons/commons-grafana.sh"
 source "../../commons/commons-log.sh"
+
 
 # ------------------------------------------------------------------------------
 # Grafana + Grizzly bootstrapper with cross-arch support
@@ -32,9 +64,10 @@ usage() {
 Usage: $0 --version-number <grafana_version> --admin-passwd <password> --grizzly-basedir <dir> --local-registry-address <addr> [options]
 
 Mandatory:
-  --version-number        Grafana image version tag (e.g., 11.2.0)
+  --version-number        Grafana image version tag (e.g., 12.2.0)
   --admin-passwd          Desired admin password for Grafana
-  --grizzly-basedir       Directory containing Grizzly resources to import
+  --grafana-url           URL of the Grafana instance running in the swarm
+  --sa-token              Service account token to use to export the Grafan's resources
   --local-registry-address
                           Hostname or IP of the local registry (e.g., registry.local)
 
@@ -45,26 +78,28 @@ Optional:
   -h | --help             Show this help
 
 Examples:
-  $0 --version-number 11.1.0 --admin-passwd 'S3cure!' --grizzly-basedir ./dashboards \\
+  $0 --version-number 11.1.0 --admin-passwd 'S3cure!' --grafana-url http://192.168.2.191:8080 \\
      --local-registry-address registry.local --local-registry-port 5000 --image-version 11.1.0-custom --arch amd64
 EOF
   exit 1
 }
 
-VERSION_NUMBER=""
 ADMIN_PASSWD=""
-GRIZZLY_BASEDIR=""
-LOCAL_REGISTRY_ADDRESS=""
+VERSION_NUMBER=""
+GRAFANA_URL=""
 IMAGE_VERSION=""
+LOCAL_REGISTRY_ADDRESS=""
+SA_TOKEN=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --admin-passwd) ADMIN_PASSWD="$2"; shift 2 ;;
     --arch) TARGET_ARCH="$2"; shift 2 ;;
-    --grizzly-basedir) GRIZZLY_BASEDIR="$2"; shift 2 ;;
+    --grafana-url) GRAFANA_URL="$2"; shift 2 ;;
     --image-version) IMAGE_VERSION="$2"; shift 2 ;;
     --local-registry-address) LOCAL_REGISTRY_ADDRESS="$2"; shift 2 ;;
     --local-registry-port) LOCAL_REGISTRY_PORT="$2"; shift 2 ;;
+    --sa-token) SA_TOKEN="$2"; shift 2 ;;
     --version-number) VERSION_NUMBER="$2"; shift 2 ;;
     -h|--help) usage ;;
     *) log_error "❌ Unknown argument: $1"; usage ;;
@@ -74,8 +109,9 @@ done
 # Mandatory checks
 [[ -z "${VERSION_NUMBER}" ]] && echo "Missing --version-number" && usage
 [[ -z "${ADMIN_PASSWD}" ]] && echo "Missing --admin-passwd" && usage
-[[ -z "${GRIZZLY_BASEDIR}" ]] && echo "Missing --grizzly-basedir" && usage
+[[ -z "${GRAFANA_URL}" ]] && echo "Missing --grafana-url" && usage
 [[ -z "${LOCAL_REGISTRY_ADDRESS}" ]] && echo "Missing --local-registry-address" && usage
+[[ -z "${SA_TOKEN}" ]] && echo "Missing --sa-token" && usage
 
 if [[ -z "${IMAGE_VERSION}" ]]; then
   IMAGE_VERSION="${VERSION_NUMBER}"
@@ -84,7 +120,7 @@ fi
 # --------------------------------------
 # Environment + prerequisites
 # --------------------------------------
-REQUIRED_BINS=(docker curl jq)
+REQUIRED_BINS=(docker curl jq tree)
 for b in "${REQUIRED_BINS[@]}"; do
   command -v "$b" >/dev/null 2>&1 || { log_error "❌ Required binary not found: $b"; exit 1; }
 done
@@ -98,6 +134,14 @@ case "$uname_m" in
   *) log_error "❌ Unsupported host arch: $uname_m"; exit 1 ;;
 esac
 
+# Install Grizzly if missing
+install_grizzly "${HOST_ARCH}"
+
+if ! command -v grr >/dev/null 2>&1; then
+  log_error "❌ grr command not found even after installation."
+  exit 1
+fi
+
 # Enable binfmt for cross-arch containers if needed
 if [[ "${HOST_ARCH}" != "${TARGET_ARCH}" ]]; then
   log_info "Host arch is ${HOST_ARCH}; target image arch is ${TARGET_ARCH}. Enabling binfmt..."
@@ -105,156 +149,29 @@ if [[ "${HOST_ARCH}" != "${TARGET_ARCH}" ]]; then
   docker run --rm --privileged tonistiigi/binfmt --install "${TARGET_ARCH}" >/dev/null 2>&1 || true
 fi
 
-# Use loopback to avoid docker-for-mac/iptables oddities
-GRAFANA_HOST="127.0.0.1"
-GRAFANA_PORT="3000"
-GRAFANA_URL="http://${GRAFANA_HOST}:${GRAFANA_PORT}"
-
-# Names & tags
-GRAFANA_IMAGE="grafana/grafana:${VERSION_NUMBER}"
+# Exporting the Grafana resources
+GRIZZLY_BASEDIR="$(mktemp -d)/grizzly"
 GRAFANA_CONTAINER="grafana_builder"
-CUSTOM_DB="grafana.db"
+
+export_grafana_resources "${GRAFANA_URL}" "${SA_TOKEN}" "${GRIZZLY_BASEDIR}"
+
+# Install the Grafana builder
+install_and_configure_grafana_builder "${TARGET_ARCH}" "${VERSION_NUMBER}" "127.0.0.1" "3000" "${ADMIN_PASSWD}" "${GRAFANA_CONTAINER}" "${GRIZZLY_BASEDIR}"
+GRAFANA_BUILDER_TOKEN=$(cat "${GRIZZLY_BASEDIR}"/builder_sa_token.txt)
+
+rm -Rf cat "${GRIZZLY_BASEDIR}"/builder_sa_token.txt
+
+# Import the Grizzly's exported resources
+import_grafana_resources "http://127.0.0.1:3000" "${GRAFANA_BUILDER_TOKEN}" "${GRIZZLY_BASEDIR}"
+
+# Use loopback to avoid docker-for-mac/iptables oddities
 TARGET_IMAGE="${LOCAL_REGISTRY_ADDRESS}:${LOCAL_REGISTRY_PORT}/grafana:${IMAGE_VERSION}"
-
-# --------------------------------------
-# Pull and run Grafana
-# --------------------------------------
-log_info "⤵️ Pulling Grafana image ${GRAFANA_IMAGE} for linux/${TARGET_ARCH}..."
-docker pull --platform "linux/${TARGET_ARCH}" "${GRAFANA_IMAGE}"
-
-# Stop/remove if exists
-if docker ps -a --format '{{.Names}}' | grep -q "^${GRAFANA_CONTAINER}\$"; then
-  log_warning "\t- 🚮 Container ${GRAFANA_CONTAINER} exists. Removing..."
-  docker rm -f "${GRAFANA_CONTAINER}" >/dev/null 2>&1 || true
-fi
-
-log_debug "\t- ▶️ Starting Grafana container ${GRAFANA_CONTAINER}..."
-docker run -d --name "${GRAFANA_CONTAINER}" \
-  -p "${GRAFANA_PORT}:3000" \
-  -e "GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWD}" \
-  --platform "linux/${TARGET_ARCH}" \
-  "${GRAFANA_IMAGE}" >/dev/null
-
-# Wait for Grafana readiness
-log_debug "\t- 🕗 Waiting for Grafana to be ready at ${GRAFANA_URL}..."
-for i in {1..60}; do
-  if curl -fsS "${GRAFANA_URL}/api/health" >/dev/null 2>&1; then
-    break
-  fi
-  sleep 2
-  if [[ $i -eq 60 ]]; then
-    echo "Grafana did not become ready in time."
-    exit 1
-  fi
-done
-
-# --------------------------------------
-# Ensure admin password (explicit API change)
-# --------------------------------------
-# Even though GF_SECURITY_ADMIN_PASSWORD initialized it, explicitly set via API to be sure.
-log_debug "\t- Setting admin password via API..."
-curl -fsS -X PUT "${GRAFANA_URL}/api/admin/users/1/password" \
-  -u "admin:${ADMIN_PASSWD}" \
-  -H 'Content-Type: application/json' \
-  -d "{\"password\":\"${ADMIN_PASSWD}\"}" >/dev/null
-
-# --------------------------------------
-# Create 1-day service account and token
-# --------------------------------------
-log_debug "\t- Creating service account and token valid for 1 day..."
-SA_NAME="grizzly-sa-$(date +%s)"
-# Create Service Account
-SA_ID=$(
-  curl -fsS -X POST "${GRAFANA_URL}/api/serviceaccounts" \
-    -u "admin:${ADMIN_PASSWD}" \
-    -H 'Content-Type: application/json' \
-    -d "{\"name\":\"${SA_NAME}\",\"role\":\"Admin\"}" | jq -r '.id'
-)
-if [[ -z "${SA_ID}" || "${SA_ID}" == "null" ]]; then
-  log_error "❌ Failed to create service account."
-  exit 1
-fi
-
-# Create Service Account token (1 day = 86400 seconds)
-SA_TOKEN=$(
-  curl -fsS -X POST "${GRAFANA_URL}/api/serviceaccounts/${SA_ID}/tokens" \
-    -u "admin:${ADMIN_PASSWD}" \
-    -H 'Content-Type: application/json' \
-    -d "{\"name\":\"${SA_NAME}-token\",\"role\":\"Admin\",\"secondsToLive\":86400}" | jq -r '.key'
-)
-if [[ -z "${SA_TOKEN}" || "${SA_TOKEN}" == "null" ]]; then
-  log_error "❌ Failed to create service account token."
-  exit 1
-fi
-
-# Export for later steps within this shell
-export SA_TOKEN
-
-# --------------------------------------
-# Install grizzly (grr) if missing
-# --------------------------------------
-log_info "📦 Installing Grizzly"
-
-if ! command -v grr >/dev/null 2>&1; then
-  log_warning "\t grr not found. Attempting installation via 'go install'..."
-  if ! command -v go >/dev/null 2>&1; then
-    echo "Go not found. Installing for host arch ${HOST_ARCH}..."
-    GO_VERSION="1.22.7"
-    case "${HOST_ARCH}" in
-      amd64|arm64) GO_TARBALL="go${GO_VERSION}.linux-${HOST_ARCH}.tar.gz" ;;
-      armv7)       GO_TARBALL="go${GO_VERSION}.linux-armv6l.tar.gz" ;; # closest available; adjust if needed
-      *) echo "Unsupported host arch for Go: ${HOST_ARCH}"; exit 1 ;;
-    esac
-    GO_URL="https://go.dev/dl/${GO_TARBALL}"
-    TMP_DIR="$(mktemp -d)"
-    pushd "${TMP_DIR}" >/dev/null
-    curl -fsSLO "${GO_URL}"
-    sudo tar -C /usr/local -xzf "${GO_TARBALL}"
-    popd >/dev/null
-    rm -rf "${TMP_DIR}"
-    export PATH="/usr/local/go/bin:${PATH}"
-  fi
-  
-  # Respect GOBIN; otherwise use GOPATH/bin or default ~/go/bin
-  GOBIN_DIR="${GOBIN:-}"
-  if [[ -z "${GOBIN_DIR}" ]]; then
-    GOPATH_DIR="${GOPATH:-$HOME/go}"
-    GOBIN_DIR="${GOPATH_DIR}/bin"
-  fi
-  mkdir -p "${GOBIN_DIR}"
-  # Install latest grr
-  GO111MODULE=on GOBIN="${GOBIN_DIR}" go install github.com/grafana/grizzly/cmd/grr@latest
-  export PATH="${GOBIN_DIR}:${PATH}"
-  if ! command -v grr >/dev/null 2>&1; then
-    log_error "❌ Failed to install grr."
-    exit 1
-  fi
-fi
-
-# --------------------------------------
-# Configure grizzly with token and Grafana URL
-# --------------------------------------
-log_debug "\t- Configuring Grizzly context..."
-grr config set grafana.url "http://127.0.0.1:3000/"
-grr config set grafana.token "${SA_TOKEN}"
-grr config set targets Datasource,DashboardFolder,LibraryElement,Dashboard,AlertRuleGroup,AlertNotificationPolicy,AlertContactPoint,AlertNotificationTemplate
-grr config set output-format json
-
-# --------------------------------------
-# Run grr push
-# --------------------------------------
-if [[ ! -d "${GRIZZLY_BASEDIR}" ]]; then
-  log_error "❌ Grizzly base directory not found: ${GRIZZLY_BASEDIR}"
-  exit 1
-fi
-
-log_debug "\t-⤴️ Pushing resources from ${GRIZZLY_BASEDIR} with grr..."
-grr push "${GRIZZLY_BASEDIR}"
 
 # --------------------------------------
 # Copy grafana.db out of the container
 # --------------------------------------
 log_info "📤 Extracting grafana.db from the running container..."
+CUSTOM_DB="grafana.db"
 docker cp "${GRAFANA_CONTAINER}:/var/lib/grafana/grafana.db" "./${CUSTOM_DB}"
 
 # Stop and remove the container
@@ -287,13 +204,28 @@ if ! docker buildx inspect >/dev/null 2>&1; then
 fi
 
 log_info "⚙️ Building and pushing ${TARGET_IMAGE} for linux/${TARGET_ARCH}..."
+
+# Clean up any existing local image with the same tag
+if docker image inspect "${TARGET_IMAGE}" >/dev/null 2>&1; then
+    log_debug "\t- Removing existing local image ${TARGET_IMAGE}"
+    docker rmi -f "${TARGET_IMAGE}" || true
+fi
+
+# Build and push fresh image
+log_debug "\t- RBuild and push the image ${TARGET_IMAGE}"
 docker buildx build \
   --platform "linux/${TARGET_ARCH}" \
-  -t "${TARGET_IMAGE}" \
+  --tag "${TARGET_IMAGE}" \
   --push \
   "${BUILD_CTX}"
 
+# Creating a place with the refactored Grizzly resources to manage them in Git
+log_info "📂 The refactored Grizzly's resources are available in ./deployment"
+mkdir -p ./deployment
+cp -r "${GRIZZLY_BASEDIR}/." ./deployment/
+
 # Cleanup build context + local DB copy
-rm -rf "${BUILD_CTX}" "./${CUSTOM_DB}"
+log_info "🧼 Cleaning up temporary files..."
+rm -rf "${BUILD_CTX}" "./${CUSTOM_DB}" "${GRIZZLY_BASEDIR}"
 
 log_info "✅ Custom Grafana image built and pushed successfully: ${TARGET_IMAGE}"

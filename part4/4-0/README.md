@@ -6,10 +6,12 @@ The script **create_swarm.sh** creates and configures both managers and workers 
 
 > :warning: All the hosts should support an SSH access based on credentials.
 
-:warning::warning::warning: THE SWARM CREATION AND CONFIGURATION IS A LONG RUNNING PROCESS (Around 50mn for 5 devices):warning::warning::warning:
+:warning::warning::warning: THE SWARM CREATION AND CONFIGURATION IS A LONG RUNNING PROCESS (Around 35mn for 4 devices):warning::warning::warning:
 
 It uses a JSON file as a configuration file. When configuring each nodes, it takes in charge 
 * the Docker installation, 
+* Chrony installation (NTP server),
+* DCV installation (Docker Viewer Image),
 * hostname settings,
 * SSD1306 displays from [Uctronics](https://www.uctronics.com/download/Amazon/U6143_Manual.pdf?srsltid=AfmBOorkfytPr7klwMuoJBEXmr1BwNof1r0O-7JbS5iHn3ylYz1aS9aB),
 * creation of 
