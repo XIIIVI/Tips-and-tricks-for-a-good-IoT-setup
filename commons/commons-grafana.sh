@@ -461,12 +461,6 @@ import_grafana_resources() {
       exit 1
     fi
 
-    log_debug "\t- Configuring Grizzly context..."
-    grr config set grafana.url "${GRAFANA_URL_ARG}"
-    grr config set grafana.token "${SA_TOKEN_ARG}"
-    grr config set targets Datasource,DashboardFolder,LibraryElement,Dashboard,AlertRuleGroup,AlertNotificationPolicy,AlertContactPoint,AlertNotificationTemplate
-    grr config set output-format json
-
     log_debug "\t- Normalizing UIDs in ${GRIZZLY_BASEDIR_ARG}..."
     while IFS= read -r -d '' DIR; do
          log_warning "\t\t- Processing folder: ${DIR}"
@@ -476,6 +470,13 @@ import_grafana_resources() {
     log_debug "\t- Listing processed resources..."
     tree "${GRIZZLY_BASEDIR_ARG}"
 
-    log_debug "\t- Importing resources to ${GRIZZLY_BASEDIR_ARG}..."
+    log_debug "\t- Configuring Grizzly context..."
+    grr config set grafana.url "${GRAFANA_URL_ARG}"
+    grr config set grafana.token "${SA_TOKEN_ARG}"
+    grr config set targets Datasource,DashboardFolder,LibraryElement,Dashboard,AlertRuleGroup,AlertNotificationPolicy,AlertContactPoint,AlertNotificationTemplate
+    grr config set output-format json
+    grr config get
+
+    log_debug "\t- Importing resources from ${GRIZZLY_BASEDIR_ARG}..."
     grr push "${GRIZZLY_BASEDIR_ARG}"
 }
