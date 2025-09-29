@@ -159,6 +159,8 @@ export_grafana_resources "${GRAFANA_URL}" "${SA_TOKEN}" "${GRIZZLY_BASEDIR}"
 install_and_configure_grafana_builder "${TARGET_ARCH}" "${VERSION_NUMBER}" "127.0.0.1" "3000" "${ADMIN_PASSWD}" "${GRAFANA_CONTAINER}" "${GRIZZLY_BASEDIR}"
 GRAFANA_BUILDER_TOKEN=$(cat "${GRIZZLY_BASEDIR}"/builder_sa_token.txt)
 
+rm -Rf cat "${GRIZZLY_BASEDIR}"/builder_sa_token.txt
+
 # Import the Grizzly's exported resources
 import_grafana_resources "http://127.0.0.1:3000" "${GRAFANA_BUILDER_TOKEN}" "${GRIZZLY_BASEDIR}"
 
