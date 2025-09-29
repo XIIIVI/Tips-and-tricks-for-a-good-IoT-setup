@@ -64,7 +64,7 @@ usage() {
 Usage: $0 --version-number <grafana_version> --admin-passwd <password> --grizzly-basedir <dir> --local-registry-address <addr> [options]
 
 Mandatory:
-  --version-number        Grafana image version tag (e.g., 11.2.0)
+  --version-number        Grafana image version tag (e.g., 12.2.0)
   --admin-passwd          Desired admin password for Grafana
   --grafana-url           URL of the Grafana instance running in the swarm
   --sa-token              Service account token to use to export the Grafan's resources
@@ -150,7 +150,7 @@ if [[ "${HOST_ARCH}" != "${TARGET_ARCH}" ]]; then
 fi
 
 # Exporting the Grafana resources
-GRIZZLY_BASEDIR="${mktemp -d}/grizzly"
+GRIZZLY_BASEDIR="$(mktemp -d)/grizzly"
 
 export_grafana_resources "${GRAFANA_URL}" "${SA_TOKEN}" "${GRIZZLY_BASEDIR}"
 
@@ -204,11 +204,12 @@ log_info "⚙️ Building and pushing ${TARGET_IMAGE} for linux/${TARGET_ARCH}..
 
 # Clean up any existing local image with the same tag
 if docker image inspect "${TARGET_IMAGE}" >/dev/null 2>&1; then
-    log_info "Removing existing local image ${TARGET_IMAGE}"
+    log_debug "\t- Removing existing local image ${TARGET_IMAGE}"
     docker rmi -f "${TARGET_IMAGE}" || true
 fi
 
 # Build and push fresh image
+log_debug "\t- RBuild and push the image ${TARGET_IMAGE}"
 docker buildx build \
   --platform "linux/${TARGET_ARCH}" \
   --tag "${TARGET_IMAGE}" \

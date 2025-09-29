@@ -140,44 +140,65 @@ strip_any_leading_prefixes() {
 #       * If not equal → recompute NEW_UID = PREFIX_ARG + CORE_NAME (or hash if >40).
 #   - If NAME doesn't start with expected prefix → compute NEW_UID = PREFIX_ARG + CORE_NAME (or hash if >40).
 #   - Update JSON (spec.uid, metadata.name), rename file to SNAKE_NAME.json,
-#     and replace old UID occurrences across GRIZZLY_BASEDIR.
+#     and replace old UID occurrences across GRIZZLY_BASEDIR_ARG.
 # Parameters:
 #   FILE_ARG - path to JSON file.
 #   PREFIX_ARG - expected prefix string.
+#   GRIZZLY_BASEDIR_ARG - base directory for cross-file UID replacements.
 # Returns:
 #   Updates the JSON file in place and renames the file.
 #---------------------------------------------
 normalize_uid() {
-  local FILE_ARG="$1"
-  local PREFIX_ARG="$2"
+  local FILE_ARG="${1}"
+  local PREFIX_ARG="${2}"
+  local GRIZZLY_BASEDIR_ARG="${3}"
 
   local NAME
-  NAME=$(jq -r '.metadata.name' "${FILE_ARG}")
-  local TITLE
-  TITLE=$(jq -r '.spec.title // empty' "${FILE_ARG}")
-  local BASE_NAME="${NAME:-$TITLE}"
+  NAME=$(jq -r '.metadata.name // empty' "${FILE_ARG}")
+  local UID
+  UID=$(jq -r '.spec.uid // empty' "${FILE_ARG}")
 
-  # Compute snake_case and strip any leading known prefixes
-  local SNAKE_NAME
-  SNAKE_NAME=$(to_snake_case "${BASE_NAME}")
+  if [[ -z "${NAME}" || -z "${UID}" ]]; then
+    # Delete file if either NAME or UID is empty
+    log_warning "[DELETED] File: ${FILE_ARG} (missing .metadata.name or .spec.uid)"
+    rm -f "${FILE_ARG}"
+  else
+    local TITLE
+    TITLE=$(jq -r '.spec.title // empty' "${FILE_ARG}")
+    local BASE_NAME="${NAME:-$TITLE}"
 
-  local CORE_NAME
-  CORE_NAME=$(strip_any_leading_prefixes "${SNAKE_NAME}")
+    # Compute snake_case and strip any leading known prefixes
+    local SNAKE_NAME
+    SNAKE_NAME=$(to_snake_case "${BASE_NAME}")
 
-  # If stripping removed everything, fallback to short hash as core
-  if [[ -z "${CORE_NAME}" ]]; then
-    CORE_NAME=$(echo -n "${BASE_NAME}" | sha1sum | cut -c1-12)
-  fi
+    local CORE_NAME
+    CORE_NAME=$(strip_any_leading_prefixes "${SNAKE_NAME}")
 
-  local NEW_UID=""
-  local NEED_UPDATE="yes"
+    # If stripping removed everything, fallback to short hash as core
+    if [[ -z "${CORE_NAME}" ]]; then
+      CORE_NAME=$(echo -n "${BASE_NAME}" | sha1sum | cut -c1-12)
+    fi
 
-  # Validate existing NAME if it already has the expected prefix
-  if [[ -n "${PREFIX_ARG}" && "${NAME}" == ${PREFIX_ARG}* ]]; then
-    local REMAINDER="${NAME#${PREFIX_ARG}}"
-    if [[ "${REMAINDER}" == "${CORE_NAME}" ]]; then
-      NEED_UPDATE="no"
+    local NEW_UID=""
+    local NEED_UPDATE="yes"
+
+    # Validate existing NAME if it already has the expected prefix
+    if [[ -n "${PREFIX_ARG}" && "${NAME}" == ${PREFIX_ARG}* ]]; then
+      local REMAINDER="${NAME#${PREFIX_ARG}}"
+      if [[ "${REMAINDER}" == "${CORE_NAME}" ]]; then
+        NEED_UPDATE="no"
+      else
+        local CANDIDATE="${PREFIX_ARG}${CORE_NAME}"
+        if [[ ${#CANDIDATE} -le 40 ]]; then
+          NEW_UID="${CANDIDATE}"
+        else
+          local HASH
+          HASH=$(echo -n "${BASE_NAME}" | sha1sum | cut -c1-12)
+          NEW_UID="${PREFIX_ARG}${HASH}"
+        fi
+      fi
     else
+      # No matching prefix → compute fresh UID
       local CANDIDATE="${PREFIX_ARG}${CORE_NAME}"
       if [[ ${#CANDIDATE} -le 40 ]]; then
         NEW_UID="${CANDIDATE}"
@@ -187,43 +208,33 @@ normalize_uid() {
         NEW_UID="${PREFIX_ARG}${HASH}"
       fi
     fi
-  else
-    # No matching prefix → compute fresh UID
-    local CANDIDATE="${PREFIX_ARG}${CORE_NAME}"
-    if [[ ${#CANDIDATE} -le 40 ]]; then
-      NEW_UID="${CANDIDATE}"
+
+    if [[ "${NEED_UPDATE}" == "yes" && -n "${NEW_UID}" && "${NAME}" != "${NEW_UID}" ]]; then
+      local TMPFILE
+      TMPFILE=$(mktemp)
+      jq --arg newuid "${NEW_UID}" \
+         --arg newname "${NEW_UID}" \
+         '.spec.uid=$newuid | .metadata.name=$newname' \
+         "${FILE_ARG}" > "${TMPFILE}"
+      mv "${TMPFILE}" "${FILE_ARG}"
+
+      local DIRNAME
+      DIRNAME=$(dirname "${FILE_ARG}")
+      local NEW_FILE="${DIRNAME}/${SNAKE_NAME}.json"
+      mv "${FILE_ARG}" "${NEW_FILE}"
+
+      if [[ -n "${NAME}" ]]; then
+        # Replace old UID occurrences across all files
+        grep -rl -- "${NAME}" "${GRIZZLY_BASEDIR_ARG}" | xargs sed -i "s/${NAME}/${NEW_UID}/g"
+      fi
+
+      # Logging
+      log_info "[UPDATED] File: ${NEW_FILE}"
+      log_info "          Old UID: ${NAME}"
+      log_info "          New UID: ${NEW_UID}"
     else
-      local HASH
-      HASH=$(echo -n "${BASE_NAME}" | sha1sum | cut -c1-12)
-      NEW_UID="${PREFIX_ARG}${HASH}"
+      log_warning "[SKIPPED] File: ${FILE_ARG} (already normalized)"
     fi
-  fi
-
-  if [[ "${NEED_UPDATE}" == "yes" && -n "${NEW_UID}" && "${NAME}" != "${NEW_UID}" ]]; then
-    local TMPFILE
-    TMPFILE=$(mktemp)
-    jq --arg newuid "${NEW_UID}" \
-       --arg newname "${NEW_UID}" \
-       '.spec.uid=$newuid | .metadata.name=$newname' \
-       "${FILE_ARG}" > "${TMPFILE}"
-    mv "${TMPFILE}" "${FILE_ARG}"
-
-    local DIRNAME
-    DIRNAME=$(dirname "${FILE_ARG}")
-    local NEW_FILE="${DIRNAME}/${SNAKE_NAME}.json"
-    mv "${FILE_ARG}" "${NEW_FILE}"
-
-    if [[ -n "${NAME}" ]]; then
-      # Replace old UID occurrences across all files
-      grep -rl -- "${NAME}" "${GRIZZLY_BASEDIR}" | xargs sed -i "s/${NAME}/${NEW_UID}/g"
-    fi
-
-    # Logging
-    log_info "[UPDATED] File: ${NEW_FILE}"
-    log_info "          Old UID: ${NAME}"
-    log_info "          New UID: ${NEW_UID}"
-  else
-    log_warning "[SKIPPED] File: ${FILE_ARG} (already normalized)"
   fi
 }
 
@@ -232,15 +243,17 @@ normalize_uid() {
 # Processes all JSON files (Grizzly's resources) in a folder using its mapped prefix.
 # Parameters:
 #   FOLDER_ARG - folder path.
+#   GRIZZLY_BASEDIR_ARG - base directory for cross-file UID replacements.
 #---------------------------------------------
 process_grizzly_resources() {
-  local FOLDER_ARG="$1"
+  local FOLDER_ARG="${1}"
+  local GRIZZLY_BASEDIR_ARG="${2}"
   local PREFIX
   PREFIX=$(get_prefix "$(basename "${FOLDER_ARG}")")
 
   if [[ -n "${PREFIX}" ]]; then
     find "${FOLDER_ARG}" -type f -name "*.json" | while read -r FILE; do
-      normalize_uid "${FILE}" "${PREFIX}"
+      normalize_uid "${FILE}" "${PREFIX}" "${GRIZZLY_BASEDIR_ARG}"
     done
   fi
 }
@@ -399,16 +412,16 @@ install_and_configure_grafana_builder() {
 
 # ---------------------------------------------
 # Function: export_grafana_resources
-# Uses grizzly (grr) to export Grafana resources to GRIZZLY_BASEDIR.
+# Uses grizzly (grr) to export Grafana resources to GRIZZLY_BASEDIR_ARG.
 # Parameters:
 #   GRAFANA_URL_ARG - URL of the Grafana instance.
 #   SA_TOKEN_ARG - Service account token for authentication.
-#   GRIZZLY_BASEDIR - Base directory to store exported resources.
+#   GRIZZLY_BASEDIR_ARG - Base directory to store exported resources.
 # ---------------------------------------------
 export_grafana_resources() {
     local GRAFANA_URL_ARG="${1}"
     local SA_TOKEN_ARG="${2}"
-    local GRIZZLY_BASEDIR="${3}"
+    local GRIZZLY_BASEDIR_ARG="${3}"
 
     log_info "📦 Exporting Grafana resources (${GRAFANA_URL_ARG}) using Grizzly"
     log_debug "\t- Configuring Grizzly context..."
@@ -417,29 +430,29 @@ export_grafana_resources() {
     grr config set targets Datasource,DashboardFolder,LibraryElement,Dashboard,AlertRuleGroup,AlertNotificationPolicy,AlertContactPoint,AlertNotificationTemplate
     grr config set output-format json
 
-    log_debug "\t- Exporting resources to ${GRIZZLY_BASEDIR}..."
-    grr pull "${GRIZZLY_BASEDIR}"
-    tree "${GRIZZLY_BASEDIR}"
+    log_debug "\t- Exporting resources to ${GRIZZLY_BASEDIR_ARG}..."
+    grr pull "${GRIZZLY_BASEDIR_ARG}"
+    tree "${GRIZZLY_BASEDIR_ARG}"
 }
 
 
 # ---------------------------------------------
 # Function: import_grafana_resources
-# Uses grizzly (grr) to import Grafana resources from GRIZZLY_BASEDIR.
+# Uses grizzly (grr) to import Grafana resources from GRIZZLY_BASEDIR_ARG.
 # Parameters:
 #   GRAFANA_URL_ARG - URL of the Grafana instance.
 #   SA_TOKEN_ARG - Service account token for authentication.
-#   GRIZZLY_BASEDIR - Base directory to load exported resources.
+#   GRIZZLY_BASEDIR_ARG - Base directory to load exported resources.
 # ---------------------------------------------
 import_grafana_resources() {
     local GRAFANA_URL_ARG="${1}"
     local SA_TOKEN_ARG="${2}"
-    local GRIZZLY_BASEDIR="${3}"
+    local GRIZZLY_BASEDIR_ARG="${3}"
 
-    log_info "📦 Importing Grafana resources from ${GRIZZLY_BASEDIR} into ${GRAFANA_URL_ARG}"
+    log_info "📦 Importing Grafana resources from ${GRIZZLY_BASEDIR_ARG} into ${GRAFANA_URL_ARG}"
 
-    if [[ ! -d "${GRIZZLY_BASEDIR}" ]]; then
-      log_error "❌ Grizzly base directory not found: ${GRIZZLY_BASEDIR}"
+    if [[ ! -d "${GRIZZLY_BASEDIR_ARG}" ]]; then
+      log_error "❌ Grizzly base directory not found: ${GRIZZLY_BASEDIR_ARG}"
       exit 1
     fi
 
@@ -449,9 +462,12 @@ import_grafana_resources() {
     grr config set targets Datasource,DashboardFolder,LibraryElement,Dashboard,AlertRuleGroup,AlertNotificationPolicy,AlertContactPoint,AlertNotificationTemplate
     grr config set output-format json
 
-    log_debug "\t- Normalizing UIDs in ${GRIZZLY_BASEDIR}..."
-    process_grizzly_resources "${GRIZZLY_BASEDIR}"
-
-    log_debug "\t- Importing resources to ${GRIZZLY_BASEDIR}..."
-    grr push "${GRIZZLY_BASEDIR}"
+    log_debug "\t- Normalizing UIDs in ${GRIZZLY_BASEDIR_ARG}..."
+    while IFS= read -r -d '' DIR; do
+         log_warning "\t\t- Processing folder: ${DIR}"
+         process_grizzly_resources "${DIR}" "${GRIZZLY_BASEDIR_ARG}"
+    done < <(find "${GRIZZLY_BASEDIR_ARG}" -type d -print0)
+    
+    log_debug "\t- Importing resources to ${GRIZZLY_BASEDIR_ARG}..."
+    grr push "${GRIZZLY_BASEDIR_ARG}"
 }
