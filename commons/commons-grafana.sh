@@ -155,17 +155,17 @@ normalize_uid() {
 
   local NAME
   NAME=$(jq -r '.metadata.name // empty' "${FILE_ARG}")
-  local UID
-  UID=$(jq -r '.spec.uid // empty' "${FILE_ARG}")
+  local JSON_OBJECT_UID
+  JSON_OBJECT_UID=$(jq -r '.spec.uid // empty' "${FILE_ARG}")
 
-  if [[ -z "${NAME}" || -z "${UID}" ]]; then
+  if [[ -z "${NAME}" || -z "${JSON_OBJECT_UID}" ]]; then
     # Delete file if either NAME or UID is empty
     log_warning "[DELETED] File: ${FILE_ARG} (missing .metadata.name or .spec.uid)"
     rm -f "${FILE_ARG}"
   else
     local TITLE
     TITLE=$(jq -r '.spec.title // empty' "${FILE_ARG}")
-    local BASE_NAME="${NAME:-$TITLE}"
+    local BASE_NAME="${TITLE:-$NAME}"
 
     # Compute snake_case and strip any leading known prefixes
     local SNAKE_NAME
@@ -271,7 +271,7 @@ install_grizzly() {
       log_warning "\t⚠️ grr not found. Attempting installation via 'go install'..."
   
       if ! command -v go >/dev/null 2>&1; then
-        log_warning "Go not found. Installing for host arch ${HOST_ARCH_ARG}..."
+        log_warning "\tGo not found. Installing for host arch ${HOST_ARCH_ARG}..."
         GO_VERSION="1.22.7"
         case "${HOST_ARCH_ARG}" in
           amd64|arm64) GO_TARBALL="go${GO_VERSION}.linux-${HOST_ARCH_ARG}.tar.gz" ;;
@@ -334,6 +334,9 @@ install_and_configure_grafana_builder() {
     # Names & tags
     local GRAFANA_IMAGE="grafana/grafana:${VERSION_NUMBER_ARG}"
     local GRAFANA_URL="http://${GRAFANA_HOST_ARG}:${GRAFANA_PORT_ARG}"
+
+    log_info "🧼 Removing any existing Grafana containers on port 3000..."
+    docker ps --filter "publish=3000" -q | xargs -r docker rm -f
 
     # --------------------------------------
     # Pull and run Grafana
