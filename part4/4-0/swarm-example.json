@@ -176,7 +176,9 @@
                     "alloy",
                     "loki",
                     "mosquitto",
-                    "telegraf"
+                    "telegraf",
+                    "vminsert",
+                    "vmselect"
                 ]
             }
         },
