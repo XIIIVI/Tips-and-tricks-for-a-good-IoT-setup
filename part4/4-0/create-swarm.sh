@@ -523,7 +523,7 @@ create_certificates() {
   # 1.2 Copy & import CA certificate as a Docker secret on the manager
   log_debug "\t- Copying root CA to ${IP_ADDRESS_ARG}"
   copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" \
-    "./${CA_NAME}.crt" "/tmp/"
+    "./${CA_NAME}.crt" "/tmp/" < /dev/null
   sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
     "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
     "sudo docker secret rm ${CA_NAME}.ca 2>/dev/null || true && \
@@ -579,9 +579,9 @@ EOF
     # 3.5 Copy key & cert to manager and import as secrets
     log_warning "\t\t- Copying '${NAME}' certs to ${IP_ADDRESS_ARG}"
     copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" \
-      "./${NAME}.key" "/tmp/"
+      "./${NAME}.key" "/tmp/" < /dev/null
     copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" \
-      "./${NAME}.crt" "/tmp/"
+      "./${NAME}.crt" "/tmp/" < /dev/null
 
     sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
       "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
