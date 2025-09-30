@@ -521,9 +521,10 @@ create_certificates() {
 
     # Import root CA as a Swarm secret
     log_warning "\t\t- Importing the root CA ${CA_NAME} on ${IP_ADDRESS_ARG}"
+    copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${CA_NAME}.crt" "/tmp/" < /dev/null
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
       "docker secret rm ${CA_NAME}_ca 2>/dev/null || true && \
-       docker secret create ${CA_NAME}_ca - < ${CA_NAME}.crt"
+       docker secret create ${CA_NAME}_ca - < /tmp/${CA_NAME}.crt"
 
      # Append to secret template
      cat <<EOF >>"${SECRET_TEMPLATE}"
@@ -575,12 +576,14 @@ EOF
 
       # Import key and cert into Swarm as secrets
       log_warning "\t\t- Importing the certificate and key for ${NAME} on ${IP_ADDRESS_ARG}"
+      copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.key" "/tmp/" < /dev/null
+      copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.crt" "/tmp/" < /dev/null
       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
         "docker secret rm ${NAME}_key 2>/dev/null || true && \
-         docker secret create ${NAME}_key - < ${NAME}.key"
+         docker secret create ${NAME}_key - < /tmp/${NAME}.key"
       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
         "docker secret rm ${NAME}_cert 2>/dev/null || true && \
-         docker secret create ${NAME}_cert - < ${NAME}.crt"
+         docker secret create ${NAME}_cert - < /tmp/${NAME}.crt"
 
      # Append to secret template
      cat <<EOF >>"${SECRET_TEMPLATE}"
@@ -589,10 +592,14 @@ EOF
     ${NAME}.key:
       external: true
 EOF
-
-     # Local cleanup
-     rm -f "${NAME}.ca" "${NAME}.crt" "${NAME}.key" "${NAME}.csr" ca.key ca.srl
     done
+
+    # Local cleanup
+    rm -f "${NAME}.ca" "${NAME}.crt" "${NAME}.key" "${NAME}.csr" ca.key ca.srl
+
+    # Remote cleanup
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+            "rm -f /tmp/*.crt /tmp/*.key /tmp/*.ca" < /dev/null
 
     log_warning "########################"
     log_warning "# Secrets of the Swarm #"
