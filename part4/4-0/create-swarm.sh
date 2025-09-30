@@ -205,6 +205,9 @@ create_single_manager() {
 
             create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}" "${NODE_HOSTNAME}_env.config" "${CONFIG_DIR}/${NODE_HOSTNAME}_env.config"
 
+            log_info "✅ Manager ${NODE_HOSTNAME} created successfully at IP address ${IP_ADDRESS}"
+            log_info "👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏"
+
             log_warning "########################"
             log_warning "# Content of the Swarm #"
             log_warning "########################"
@@ -428,7 +431,7 @@ create_credentials() {
     local IP_ADDRESS_ARG="$3"
     local JSON_ARG="$4"
 
-    log_debug "\t- Creating the secrets for credentials on ${IP_ADDRESS_ARG}"
+    log_info "🔑 Creating the secrets for credentials on ${IP_ADDRESS_ARG}"
 
     # Iterate over each credential object safely
 while IFS= read -r cred_json; do
@@ -437,7 +440,7 @@ while IFS= read -r cred_json; do
     name=$(jq -r '.name' <<<"$cred_json")
     login=$(jq -r '.login' <<<"$cred_json")
 
-    log_warning "\t\t- Creating the secret ${name} for user ${login}"
+    log_debug "\t- Creating the secret ${name} for user ${login}"
 
     PASSWORD_FILENAME="${name}.credentials"
     GENERATED_PASSWORD=$(openssl rand -base64 16)
@@ -446,7 +449,7 @@ while IFS= read -r cred_json; do
     # Create local password file
     echo "${login}:${HASH}" > "./${PASSWORD_FILENAME}"
 
-    log_warning "\t\t- Importing the secret ${name} for user ${login} on ${IP_ADDRESS_ARG}"
+    log_debug "\t- Importing the secret ${name} for user ${login} on ${IP_ADDRESS_ARG}"
 
     # Copy to host
     copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${PASSWORD_FILENAME}" "/tmp/" < /dev/null
@@ -520,11 +523,11 @@ create_certificates() {
   # 1.2 Copy & import CA certificate as a Docker secret on the manager
   log_debug "\t- Copying root CA to ${IP_ADDRESS_ARG}"
   copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" \
-    "./${CA_NAME}.crt" "/tmp/${CA_NAME}.crt"
+    "./${CA_NAME}.crt" "/tmp/"
   sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
     "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-    "sudo docker secret rm ${CA_NAME}_ca 2>/dev/null || true && \
-     sudo docker secret create ${CA_NAME}_ca - < /tmp/${CA_NAME}.crt"
+    "sudo docker secret rm ${CA_NAME}.ca 2>/dev/null || true && \
+     sudo docker secret create ${CA_NAME}.ca - < /tmp/${CA_NAME}.crt"
 
   # 2) Build signing ext-file (authorityKeyIdentifier, keyUsage…)
   cat > cert_sign.ext <<'EOF'
@@ -576,18 +579,18 @@ EOF
     # 3.5 Copy key & cert to manager and import as secrets
     log_warning "\t\t- Copying '${NAME}' certs to ${IP_ADDRESS_ARG}"
     copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" \
-      "./${NAME}.key" "/tmp/${NAME}.key"
+      "./${NAME}.key" "/tmp/"
     copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" \
-      "./${NAME}.crt" "/tmp/${NAME}.crt"
+      "./${NAME}.crt" "/tmp/"
 
     sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
       "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-      "sudo docker secret rm ${NAME}_key 2>/dev/null || true && \
-       sudo docker secret create ${NAME}_key - < /tmp/${NAME}.key"
+      "sudo docker secret rm ${NAME}.key 2>/dev/null || true && \
+       sudo docker secret create ${NAME}.key - < /tmp/${NAME}.key"
     sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
       "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-      "sudo docker secret rm ${NAME}_cert 2>/dev/null || true && \
-       sudo docker secret create ${NAME}_cert - < /tmp/${NAME}.crt"
+      "sudo docker secret rm ${NAME}.cert 2>/dev/null || true && \
+       sudo docker secret create ${NAME}.cert - < /tmp/${NAME}.crt"
 
     # 3.6 Cleanup local per-service artifacts
     rm -f "${NAME}.key" "${NAME}.csr" "${NAME}.crt" csr_${NAME}.conf
