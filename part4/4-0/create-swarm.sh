@@ -518,7 +518,7 @@ create_certificates() {
     -out "${CA_NAME}.crt"
 
   # 1.2 Copy & import CA certificate as a Docker secret on the manager
-  log_warning "\t- Copying root CA to ${IP_ADDRESS_ARG}"
+  log_debug "\t- Copying root CA to ${IP_ADDRESS_ARG}"
   copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" \
     "./${CA_NAME}.crt" "/tmp/${CA_NAME}.crt"
   sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
@@ -549,6 +549,7 @@ subjectAltName = DNS:${NAME}
 EOF
 
     # 3.2 Generate private key and CSR
+    log_warning "\t\t- Generating '${NAME}' private key and CSR"
     openssl genrsa -out "${NAME}.key" 2048
     openssl req -new \
       -key "${NAME}.key" \
@@ -557,6 +558,7 @@ EOF
       -config csr_${NAME}.conf
 
     # 3.3 Sign CSR with CA and full extensions (merging SAN)
+    log_warning "\t\t- Signing '${NAME}' CSR with CA '${CA_NAME}'"
     openssl x509 -req \
       -in "${NAME}.csr" \
       -CA "${CA_NAME}.crt" \
@@ -568,10 +570,11 @@ EOF
       -extfile <( cat cert_sign.ext && printf "subjectAltName=DNS:%s\n" "${NAME}" )
 
     # 3.4 Verify certificate chains to CA
+    log_warning "\t\t- Verifying '${NAME}' certificate"
     openssl verify -CAfile "${CA_NAME}.crt" "${NAME}.crt"
 
     # 3.5 Copy key & cert to manager and import as secrets
-    log_warning "\t- Copying '${NAME}' certs to ${IP_ADDRESS_ARG}"
+    log_warning "\t\t- Copying '${NAME}' certs to ${IP_ADDRESS_ARG}"
     copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" \
       "./${NAME}.key" "/tmp/${NAME}.key"
     copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" \
