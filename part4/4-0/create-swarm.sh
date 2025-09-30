@@ -491,120 +491,117 @@ done 0< <(jq -c '.swarm.secrets.credentials[]' <<<"$JSON_ARG")
 #   4. JSON_ARG: The JSON object containing the certificates configuration.
 #
 create_certificates() {
-    local LOGIN_ARG="$1"
-    local PASSWORD_ARG="$2"
-    local IP_ADDRESS_ARG="$3"
-    local JSON_ARG="$4"
-    # Extract CA parameters
-    local CA_NAME
-    CA_NAME=$(jq -r '.swarm.secrets.certificates.name' <<<"${JSON_ARG}")
-    local DAYS_VALID
-    DAYS_VALID=$(jq -r '.swarm.secrets.certificates["days-valid"]' <<<"${JSON_ARG}")
-    local COUNTRY
-    COUNTRY=$(jq -r '.swarm.secrets.certificates.country' <<<"${JSON_ARG}")
-    local STATE
-    STATE=$(jq -r '.swarm.secrets.certificates.state' <<<"${JSON_ARG}")
-    local LOCALITY
-    LOCALITY=$(jq -r '.swarm.secrets.certificates.locality' <<<"${JSON_ARG}")
+  local LOGIN_ARG="$1"
+  local PASSWORD_ARG="$2"
+  local IP_ADDRESS_ARG="$3"
+  local JSON_ARG="$4"
+  local CA_NAME DAYS_VALID COUNTRY STATE LOCALITY
 
-    log_debug "\t- Creating the secrets for certificates on ${IP_ADDRESS_ARG}"
+  log_info "Generating the certificates"
 
-    # Step 1: Generate root CA key and cert
-    log_warning "\t\t-🌳 Creating the root CA ${CA_NAME}"
-    openssl genrsa -out "${CA_NAME}.key" 4096
-    openssl req -x509 -new -nodes \
-      -key "${CA_NAME}.key" \
-      -sha256 \
-      -days "${DAYS_VALID}" \
-      -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/CN=${CA_NAME}" \
-      -out "${CA_NAME}.crt"
+  # 1) Extract CA parameters
+  CA_NAME=$(jq -r '.swarm.secrets.certificates.name' <<<"$JSON_ARG")
+  DAYS_VALID=$(jq -r '.swarm.secrets.certificates["days-valid"]' <<<"$JSON_ARG")
+  COUNTRY=$(jq -r '.swarm.secrets.certificates.country' <<<"$JSON_ARG")
+  STATE=$(jq -r '.swarm.secrets.certificates.state' <<<"$JSON_ARG")
+  LOCALITY=$(jq -r '.swarm.secrets.certificates.locality' <<<"$JSON_ARG")
 
-    # Import root CA as a Swarm secret
-    log_warning "\t\t- Importing the root CA ${CA_NAME} on ${IP_ADDRESS_ARG}"
-    copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${CA_NAME}.crt" "/tmp/" < /dev/null
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-      "sudo docker secret rm ${CA_NAME}_ca 2>/dev/null || true && \
-       sudo docker secret create ${CA_NAME}_ca - < /tmp/${CA_NAME}.crt"
+  log_debug "\t- Generating root CA '${CA_NAME}'"
 
-     # Append to secret template
-     cat <<EOF >>"${SECRET_TEMPLATE}"
-    ${CA_NAME}.ca:
-      external: true
-EOF
+  # 1.1 Generate root CA key and certificate
+  openssl genrsa -out "${CA_NAME}.key" 4096
+  openssl req -x509 -new -nodes \
+    -key "${CA_NAME}.key" \
+    -sha256 \
+    -days "${DAYS_VALID}" \
+    -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/CN=${CA_NAME}" \
+    -out "${CA_NAME}.crt"
 
-    # Prepare a base server.ext for global extensions
-    cat > server.ext <<EOF
+  # 1.2 Copy & import CA certificate as a Docker secret on the manager
+  log_warning "\t- Copying root CA to ${IP_ADDRESS_ARG}"
+  copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" \
+    "./${CA_NAME}.crt" "/tmp/${CA_NAME}.crt"
+  sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
+    "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+    "sudo docker secret rm ${CA_NAME}_ca 2>/dev/null || true && \
+     sudo docker secret create ${CA_NAME}_ca - < /tmp/${CA_NAME}.crt"
+
+  # 2) Build signing ext-file (authorityKeyIdentifier, keyUsage…)
+  cat > cert_sign.ext <<'EOF'
 authorityKeyIdentifier=keyid,issuer
 basicConstraints=CA:FALSE
 keyUsage=digitalSignature,keyEncipherment
+extendedKeyUsage=clientAuth,serverAuth
 EOF
 
-    # Step 2: Loop through each 'key-and-csr' entry
-    jq -r '.swarm.secrets.certificates["key-and-csr"][]' <<<"${JSON_ARG}" | while read -r NAME; do
-      local EXT_FILE="${NAME}.ext"
+  # 3) Loop through each 'key-and-csr' entry
+  jq -r '.swarm.secrets.certificates["key-and-csr"][]' <<<"$JSON_ARG" | while read -r NAME; do
+    log_debug "\t- Processing '${NAME}'"
 
-     log_debug "\t-🎫 Processing certificate for ${NAME}"
-      # Build per-service extension file
-      cp server.ext "${EXT_FILE}"
-      printf "extendedKeyUsage = clientAuth,serverAuth\nsubjectAltName = DNS:%s\n" "${NAME}" \
-        >> "${EXT_FILE}"
-
-      # Generate private key and CSR
-      log_warning "\t\t- Creating the certificate for ${NAME}"
-      openssl genrsa -out "${NAME}.key" 2048
-      openssl req -new \
-        -key "${NAME}.key" \
-        -subj "/CN=${NAME}" \
-        -out "${NAME}.csr" \
-        -config <(printf "[req]\ndistinguished_name=req_distinguished_name\nreq_extensions=v3_req\n[req_distinguished_name]\n[ v3_req ]\n%s\n" "$(cat "${EXT_FILE}")")
-
-      # Sign CSR to produce certificate
-      log_warning "\t\t- Signing the certificate for ${NAME} with CA ${CA_NAME}"
-      openssl x509 -req \
-        -in "${NAME}.csr" \
-        -CA "${CA_NAME}.crt" \
-        -CAkey "${CA_NAME}.key" \
-        -CAcreateserial \
-        -out "${NAME}.crt" \
-        -days "${DAYS_VALID}" \
-        -sha256 \
-        -extfile "${EXT_FILE}"
-
-      # Verify the certificate chains to the CA
-      log_warning "\t\t- Verifying the certificate for ${NAME} with CA ${CA_NAME}"
-      openssl verify -CAfile "${CA_NAME}.crt" "${NAME}.crt"
-
-      # Import key and cert into Swarm as secrets
-      log_warning "\t\t- Importing the certificate and key for ${NAME} on ${IP_ADDRESS_ARG}"
-      copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.key" "/tmp/" < /dev/null
-      copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.crt" "/tmp/" < /dev/null
-      sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-        "sudo docker secret rm ${NAME}_key 2>/dev/null || true && \
-         sudo docker secret create ${NAME}_key - < /tmp/${NAME}.key"
-      sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-        "sudo docker secret rm ${NAME}_cert 2>/dev/null || true && \
-         sudo docker secret create ${NAME}_cert - < /tmp/${NAME}.crt"
-
-     # Append to secret template
-     cat <<EOF >>"${SECRET_TEMPLATE}"
-    ${NAME}.crt:
-      external: true
-    ${NAME}.key:
-      external: true
+    # 3.1 Build minimal CSR config (only SAN)
+    cat > csr_${NAME}.conf <<EOF
+[req]
+distinguished_name = req_distinguished_name
+req_extensions     = req_ext
+[req_distinguished_name]
+[req_ext]
+subjectAltName = DNS:${NAME}
 EOF
-    done
 
-    # Local cleanup
-    rm -f "${NAME}.ca" "${NAME}.crt" "${NAME}.key" "${NAME}.csr" ca.key ca.srl
+    # 3.2 Generate private key and CSR
+    openssl genrsa -out "${NAME}.key" 2048
+    openssl req -new \
+      -key "${NAME}.key" \
+      -subj "/CN=${NAME}" \
+      -out "${NAME}.csr" \
+      -config csr_${NAME}.conf
 
-    # Remote cleanup
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-            "rm -f /tmp/*.crt /tmp/*.key /tmp/*.ca" < /dev/null
+    # 3.3 Sign CSR with CA and full extensions (merging SAN)
+    openssl x509 -req \
+      -in "${NAME}.csr" \
+      -CA "${CA_NAME}.crt" \
+      -CAkey "${CA_NAME}.key" \
+      -CAcreateserial \
+      -out "${NAME}.crt" \
+      -days "${DAYS_VALID}" \
+      -sha256 \
+      -extfile <( cat cert_sign.ext && printf "subjectAltName=DNS:%s\n" "${NAME}" )
 
-    log_warning "########################"
-    log_warning "# Secrets of the Swarm #"
-    log_warning "########################"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" \
+    # 3.4 Verify certificate chains to CA
+    openssl verify -CAfile "${CA_NAME}.crt" "${NAME}.crt"
+
+    # 3.5 Copy key & cert to manager and import as secrets
+    log_warning "\t- Copying '${NAME}' certs to ${IP_ADDRESS_ARG}"
+    copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" \
+      "./${NAME}.key" "/tmp/${NAME}.key"
+    copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" \
+      "./${NAME}.crt" "/tmp/${NAME}.crt"
+
+    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
+      "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+      "sudo docker secret rm ${NAME}_key 2>/dev/null || true && \
+       sudo docker secret create ${NAME}_key - < /tmp/${NAME}.key"
+    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
+      "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+      "sudo docker secret rm ${NAME}_cert 2>/dev/null || true && \
+       sudo docker secret create ${NAME}_cert - < /tmp/${NAME}.crt"
+
+    # 3.6 Cleanup local per-service artifacts
+    rm -f "${NAME}.key" "${NAME}.csr" "${NAME}.crt" csr_${NAME}.conf
+  done
+
+  # 4) Cleanup local CA artifacts
+  rm -f "${CA_NAME}.key" "${CA_NAME}.crt" cert_sign.ext "${CA_NAME}.srl"
+
+  # 5) Cleanup remote temp files
+  sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
+    "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+    "sudo rm -f /tmp/${CA_NAME}.crt /tmp/*.key /tmp/*.crt"
+
+  log_warning "########################"
+  log_warning "# Secrets of the Swarm #"
+  log_warning "########################"
+  sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" \
         "sudo docker secret ls"
 }
 
