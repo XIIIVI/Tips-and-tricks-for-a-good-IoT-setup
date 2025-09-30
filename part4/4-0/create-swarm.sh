@@ -497,15 +497,15 @@ create_certificates() {
     local JSON_ARG="$4"
     # Extract CA parameters
     local CA_NAME
-    CA_NAME=$(jq -r '.swarm.secrets.certificates.name' "${JSON_ARG}")
+    CA_NAME=$(jq -r '.swarm.secrets.certificates.name' <<<"${JSON_ARG}")
     local DAYS_VALID
-    DAYS_VALID=$(jq -r '.swarm.secrets.certificates["days-valid"]' "${JSON_ARG}")
+    DAYS_VALID=$(jq -r '.swarm.secrets.certificates["days-valid"]' <<<"${JSON_ARG}")
     local COUNTRY
-    COUNTRY=$(jq -r '.swarm.secrets.certificates.country' "${JSON_ARG}")
+    COUNTRY=$(jq -r '.swarm.secrets.certificates.country' <<<"${JSON_ARG}")
     local STATE
-    STATE=$(jq -r '.swarm.secrets.certificates.state' "${JSON_ARG}")
+    STATE=$(jq -r '.swarm.secrets.certificates.state' <<<"${JSON_ARG}")
     local LOCALITY
-    LOCALITY=$(jq -r '.swarm.secrets.certificates.locality' "${JSON_ARG}")
+    LOCALITY=$(jq -r '.swarm.secrets.certificates.locality' <<<"${JSON_ARG}")
 
     log_debug "\t- Creating the secrets for certificates on ${IP_ADDRESS_ARG}"
 
