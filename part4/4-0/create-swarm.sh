@@ -538,7 +538,7 @@ extendedKeyUsage=clientAuth,serverAuth
 EOF
 
   # 3) Loop through each 'key-and-csr' entry
-  jq -r '.swarm.secrets.certificates["key-and-csr"][]' <<<"$JSON_ARG" | while read -r NAME; do
+  while IFS= read -r NAME; do
     log_debug "\t- Processing '${NAME}'"
 
     # 3.1 Build minimal CSR config (only SAN)
@@ -594,7 +594,7 @@ EOF
 
     # 3.6 Cleanup local per-service artifacts
     rm -f "${NAME}.key" "${NAME}.csr" "${NAME}.crt" csr_${NAME}.conf
-  done
+  done < <(jq -r '.swarm.secrets.certificates["key-and-csr"][]' <<<"${JSON_ARG}")
 
   # 4) Cleanup local CA artifacts
   rm -f "${CA_NAME}.key" "${CA_NAME}.crt" cert_sign.ext "${CA_NAME}.srl"
