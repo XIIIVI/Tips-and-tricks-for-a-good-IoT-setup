@@ -527,7 +527,7 @@ create_certificates() {
   sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
     "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
     "sudo docker secret rm ${CA_NAME}.ca 2>/dev/null || true && \
-     sudo docker secret create ${CA_NAME}.ca - < /tmp/${CA_NAME}.crt"
+     sudo docker secret create ${CA_NAME}.ca - < /tmp/${CA_NAME}.crt" < /dev/null
 
   # 2) Build signing ext-file (authorityKeyIdentifier, keyUsage…)
   cat > cert_sign.ext <<'EOF'
@@ -586,11 +586,11 @@ EOF
     sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
       "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
       "sudo docker secret rm ${NAME}.key 2>/dev/null || true && \
-       sudo docker secret create ${NAME}.key - < /tmp/${NAME}.key"
+       sudo docker secret create ${NAME}.key - < /tmp/${NAME}.key" < /dev/null
     sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
       "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
       "sudo docker secret rm ${NAME}.cert 2>/dev/null || true && \
-       sudo docker secret create ${NAME}.cert - < /tmp/${NAME}.crt"
+       sudo docker secret create ${NAME}.cert - < /tmp/${NAME}.crt" < /dev/null
 
     # 3.6 Cleanup local per-service artifacts
     rm -f "${NAME}.key" "${NAME}.csr" "${NAME}.crt" csr_${NAME}.conf
@@ -602,13 +602,13 @@ EOF
   # 5) Cleanup remote temp files
   sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
     "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-    "sudo rm -f /tmp/${CA_NAME}.crt /tmp/*.key /tmp/*.crt"
+    "sudo rm -f /tmp/${CA_NAME}.crt /tmp/*.key /tmp/*.crt" < /dev/null
 
   log_warning "########################"
   log_warning "# Secrets of the Swarm #"
   log_warning "########################"
   sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" \
-        "sudo docker secret ls"
+        "sudo docker secret ls" < /dev/null
 }
 
 #
