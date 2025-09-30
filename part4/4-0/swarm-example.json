@@ -165,26 +165,19 @@
                     "login": "mqtt-user"
                 }
             ],
-            "certificates": [
-                {
-                    "name": "mosquitto",
-                    "days-valid": 3650,
-                    "country": "FR",
-                    "state": "Isère",
-                    "locality": "Grenoble",
-                    "organization": "IoT-MQTT",
-                    "common-name": "mosquitto"
-                },
-                {
-                    "name": "telegraf",
-                    "days-valid": 3650,
-                    "country": "FR",
-                    "state": "Isère",
-                    "locality": "Grenoble",
-                    "organization": "IoT-Telegraf",
-                    "common-name": "telegraf"
-                }
-            ]
+            "certificates": {
+                "name": "iot",
+                "days-valid": 3650,
+                "country": "FR",
+                "state": "Isère",
+                "locality": "Grenoble",
+                "organization": "IoT-MQTT",
+                "key-and-csr": [
+                    "alloy",
+                    "mosquitto",
+                    "telegraf"
+                ]
+            }
         },
         "networks": [
             {
