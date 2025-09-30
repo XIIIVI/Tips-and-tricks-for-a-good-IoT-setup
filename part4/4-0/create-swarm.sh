@@ -510,7 +510,7 @@ create_certificates() {
     log_debug "\t- Creating the secrets for certificates on ${IP_ADDRESS_ARG}"
 
     # Step 1: Generate root CA key and cert
-    log_warning "\t\t- Creating the root CA ${CA_NAME}"
+    log_warning "\t\t-🌳 Creating the root CA ${CA_NAME}"
     openssl genrsa -out "${CA_NAME}.key" 4096
     openssl req -x509 -new -nodes \
       -key "${CA_NAME}.key" \
@@ -542,7 +542,7 @@ EOF
     jq -r '.swarm.secrets.certificates["key-and-csr"][]' "${JSON_ARG}" | while read -r NAME; do
       local EXT_FILE="${NAME}.ext"
 
-     log_debug "\t- Processing certificate for ${NAME}"
+     log_debug "\t-🎫 Processing certificate for ${NAME}"
       # Build per-service extension file
       cp server.ext "${EXT_FILE}"
       printf "extendedKeyUsage = clientAuth,serverAuth\nsubjectAltName = DNS:%s\n" "${NAME}" \
