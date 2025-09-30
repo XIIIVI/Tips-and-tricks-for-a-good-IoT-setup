@@ -523,8 +523,8 @@ create_certificates() {
     log_warning "\t\t- Importing the root CA ${CA_NAME} on ${IP_ADDRESS_ARG}"
     copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${CA_NAME}.crt" "/tmp/" < /dev/null
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-      "docker secret rm ${CA_NAME}_ca 2>/dev/null || true && \
-       docker secret create ${CA_NAME}_ca - < /tmp/${CA_NAME}.crt"
+      "sudo docker secret rm ${CA_NAME}_ca 2>/dev/null || true && \
+       sudo docker secret create ${CA_NAME}_ca - < /tmp/${CA_NAME}.crt"
 
      # Append to secret template
      cat <<EOF >>"${SECRET_TEMPLATE}"
@@ -579,11 +579,11 @@ EOF
       copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.key" "/tmp/" < /dev/null
       copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.crt" "/tmp/" < /dev/null
       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-        "docker secret rm ${NAME}_key 2>/dev/null || true && \
-         docker secret create ${NAME}_key - < /tmp/${NAME}.key"
+        "sudo docker secret rm ${NAME}_key 2>/dev/null || true && \
+         sudo docker secret create ${NAME}_key - < /tmp/${NAME}.key"
       sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-        "docker secret rm ${NAME}_cert 2>/dev/null || true && \
-         docker secret create ${NAME}_cert - < /tmp/${NAME}.crt"
+        "sudo docker secret rm ${NAME}_cert 2>/dev/null || true && \
+         sudo docker secret create ${NAME}_cert - < /tmp/${NAME}.crt"
 
      # Append to secret template
      cat <<EOF >>"${SECRET_TEMPLATE}"
