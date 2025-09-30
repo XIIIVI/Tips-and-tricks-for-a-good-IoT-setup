@@ -321,3 +321,61 @@ EOF_SSH
        exit 1
     fi
 }
+
+#
+# display_swarm_recap
+# Prints a summary of Docker Swarm resources on the remote manager using sudo.
+# Arguments:
+#   1. USER_ARG: The SSH username for the Docker Swarm manager.
+#   2. PASS_ARG: The SSH password for the Docker Swarm manager.
+#   3. HOST_ARG: The IP address or hostname of the Docker Swarm manager.
+display_swarm_recap() {
+  local USER_ARG="$1"
+  local PASS_ARG="$2"
+  local HOST_ARG="$3"
+  local SSHPASS_BIN
+  SSHPASS_BIN=$(command -v sshpass 2>/dev/null)
+
+  if [[ -z "$SSHPASS_BIN" ]]; then
+    echo "Error: sshpass is not installed." >&2
+    return 2
+  fi
+
+  "$SSHPASS_BIN" -p "$PASS_ARG" ssh -o StrictHostKeyChecking=no \
+    "$USER_ARG@$HOST_ARG" <<'EOF'
+
+echo
+echo "===== DOCKER SWARM RECAP ====="
+echo
+
+echo "--- NODES ---"
+sudo docker node ls --format "table {{.ID}}\t{{.Hostname}}\t{{.Role}}\t{{.Availability}}\t{{.Status}}"
+
+echo
+echo "--- SERVICES ---"
+sudo docker service ls --format "table {{.ID}}\t{{.Name}}\t{{.Replicas}}\t{{.Image}}"
+
+echo
+echo "--- TASKS ---"
+sudo docker service ps --all --format "table {{.ID}}\t{{.Name}}\t{{.CurrentState}}\t{{.DesiredState}}\t{{.Node}}"
+
+echo
+echo "--- SECRETS ---"
+sudo docker secret ls --format "table {{.ID}}\t{{.Name}}\t{{.Driver}}"
+
+echo
+echo "--- CONFIGS ---"
+sudo docker config ls --format "table {{.ID}}\t{{.Name}}\t{{.CreatedAt}}"
+
+echo
+echo "--- NETWORKS ---"
+sudo docker network ls --filter scope=swarm --format "table {{.ID}}\t{{.Name}}\t{{.Driver}}"
+
+echo
+echo "--- VOLUMES ---"
+sudo docker volume ls --format "table {{.Name}}\t{{.Driver}}\t{{.Mountpoint}}"
+
+EOF
+
+  return 0
+}

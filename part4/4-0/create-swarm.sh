@@ -589,8 +589,8 @@ EOF
        sudo docker secret create ${NAME}.key - < /tmp/${NAME}.key" < /dev/null
     sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
       "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-      "sudo docker secret rm ${NAME}.cert 2>/dev/null || true && \
-       sudo docker secret create ${NAME}.cert - < /tmp/${NAME}.crt" < /dev/null
+      "sudo docker secret rm ${NAME}.crt 2>/dev/null || true && \
+       sudo docker secret create ${NAME}.crt - < /tmp/${NAME}.crt" < /dev/null
 
     # 3.6 Cleanup local per-service artifacts
     rm -f "${NAME}.key" "${NAME}.csr" "${NAME}.crt" csr_${NAME}.conf
@@ -1011,7 +1011,9 @@ create_swarm() {
     create_workers "${LOGIN_ARG}" "${PASSWORD_ARG}" "${JSON_CONTENT_ARG}" "${REGISTRY_IP_ADDRESS}" "${REGISTRY_PORT}" "${REGISTRY_CERTIFICATE_FILE}"
     create_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${JSON_CONTENT_ARG}"
 
-    log_info "✅ Swarm cluster created successfully."    
+    log_info "✅ Swarm cluster created successfully."
+
+    display_swarm_recap "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}"
 }
 
 #
