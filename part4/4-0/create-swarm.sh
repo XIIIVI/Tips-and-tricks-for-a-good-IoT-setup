@@ -539,7 +539,7 @@ keyUsage=digitalSignature,keyEncipherment
 EOF
 
     # Step 2: Loop through each 'key-and-csr' entry
-    jq -r '.swarm.secrets.certificates["key-and-csr"][]' "${JSON_ARG}" | while read -r NAME; do
+    jq -r '.swarm.secrets.certificates["key-and-csr"][]' <<<"${JSON_ARG}" | while read -r NAME; do
       local EXT_FILE="${NAME}.ext"
 
      log_debug "\t-🎫 Processing certificate for ${NAME}"
