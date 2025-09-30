@@ -64,6 +64,14 @@ loki.process "add_labels" {
 
 loki.write "parent" {
   endpoint {
-    url = string.format("http://alloy-level%s:3111/loki/api/v1/push", sys.env("PARENT_LEVEL_NUMBER"))
+    url = string.format("https://alloy-level%s:3111/loki/api/v1/push", sys.env("PARENT_LEVEL_NUMBER"))
+
+    oauth2 {
+        tls_config {
+           cert_file           = "/etc/alloy/alloy.crt"
+           key_file            = "/etc/alloy/alloy.key"
+           client_ca_file      = "/etc/alloy/ca.crt"
+        }
+    }
   }
 }

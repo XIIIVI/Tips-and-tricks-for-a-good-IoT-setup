@@ -10,7 +10,15 @@ loki.source.api "loki_push_api" {
     http {
         listen_address = "0.0.0.0"
         listen_port = 3110
+
+        tls {
+           cert_file           = "/etc/alloy/alloy.crt"
+           key_file            = "/etc/alloy/alloy.key"
+           client_ca_file      = "/etc/alloy/ca.crt"
+           client_auth_type    = "RequireAndVerifyClientCert"
+        }
     }
+    
     forward_to = [loki.process.add_labels.receiver]
 }
 
@@ -74,6 +82,14 @@ loki.process "add_labels" {
 
 loki.write "parent" {
   endpoint {
-    url = "http://loki:3100/loki/api/v1/push"
+    url = "https://loki:3100/loki/api/v1/push"
+
+    oauth2 {
+        tls_config {
+           cert_file           = "/etc/alloy/alloy.crt"
+           key_file            = "/etc/alloy/alloy.key"
+           client_ca_file      = "/etc/alloy/ca.crt"
+        }
+    }
   }
 }

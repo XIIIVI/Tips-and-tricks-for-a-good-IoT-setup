@@ -31,7 +31,9 @@ auth_enabled: false
 
 server:
   http_listen_port: 3100
-
+  http_tls_config:
+    cert_file: /etc/loki/loki.crt
+    key_file:  /etc/loki/loki.key
 common:
   ring:
     instance_addr: 127.0.0.1
