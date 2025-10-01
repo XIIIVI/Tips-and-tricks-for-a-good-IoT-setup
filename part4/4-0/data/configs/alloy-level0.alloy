@@ -11,12 +11,10 @@ loki.source.api "loki_push_api" {
         listen_address = "0.0.0.0"
         listen_port = 3110
 
-        tls {
-           cert_file           = "/etc/alloy/alloy.crt"
-           key_file            = "/etc/alloy/alloy.key"
-           client_ca_file      = "/etc/alloy/ca.crt"
-           client_auth_type    = "RequireAndVerifyClientCert"
-        }
+        tls_cert_file       = "/etc/alloy/alloy.crt"
+        tls_key_file        = "/etc/alloy/alloy.key"
+        tls_client_ca_file  = "/etc/alloy/ca.crt"
+        tls_client_auth_type = "RequireAndVerifyClientCert"
     }
     
     forward_to = [loki.process.add_labels.receiver]
