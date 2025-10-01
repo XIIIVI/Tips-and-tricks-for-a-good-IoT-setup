@@ -29,6 +29,46 @@
 #  OTHER DEALINGS IN THE SOFTWARE.
 # ============================================================
 
+CURRENT_RASPBERRY_DISTRO="bullseye"
+
+#
+# update_docker_repo
+# This function updates the Docker APT repository on a remote host from 'bookworm' to ${CURRENT_RASPBERRY_DISTRO}.
+#   - LOGIN_ARG:       SSH user
+#   - PASSWORD:   SSH password (sshpass)
+#   - HOST_ARG:       remote hostname or IP
+#
+update_docker_repo() {
+  local LOGIN_ARG="$1"
+  local PASSWORD_ARG="$2"
+  local HOST_ARG="$3"
+  local SRC="/etc/apt/sources.list.d/docker.list"
+  local BAK="${SRC}.bak.$(date +%Y%m%d%H%M%S)"
+  local SEARCH='deb .*docker\.com/linux/debian\s\+bookworm'
+  local REPLACE='deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian '"${CURRENT_RASPBERRY_DISTRO}"' stable'
+
+  log_info "Updating Docker APT repository on $HOST_ARG from 'bookworm' to '${CURRENT_RASPBERRY_DISTRO}' ..."
+
+  # Verify remote file exists
+  sshpass -p "$PASSWORD_ARG" ssh -o StrictHostKeyChecking=no "$LOGIN_ARG@$HOST_ARG" \
+    "[ -f \"$SRC\" ]" \
+    || { echo "ERROR: $SRC not found on $HOST_ARG"; return 1; }
+
+  # Backup once if not already pointing to ${CURRENT_RASPBERRY_DISTRO}
+  sshpass -p "$PASSWORD_ARG" ssh "$LOGIN_ARG@$HOST_ARG" bash -lc "
+    set -euo pipefail
+    if grep -q 'docker\.com/linux/debian\s\+${CURRENT_RASPBERRY_DISTRO}' '$SRC'; then
+      echo 'Already using ${CURRENT_RASPBERRY_DISTRO} on $HOST_ARG.'
+      exit 0
+    fi
+    sudo cp '$SRC' '$BAK'
+    echo 'Backup saved as $BAK'
+    sudo sed -E -i.bak 's|$SEARCH|$REPLACE|g' '$SRC'
+    echo 'Replaced bookworm→bullseye in $SRC'
+    sudo apt-get update -o Acquire::Retries=3
+  " && echo "Update complete on $HOST_ARG"
+}
+
 #
 # install_docker_container_viewer
 # This function installs Docker Container Viewer (DCV) on the specified host.
@@ -136,6 +176,7 @@ install_docker() {
 
     log_debug "\t- Installing Docker on $HOST_IP_ARG ..."
 
+    update_docker_repo "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" < /dev/null
     sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_SSH'
     export DEBIAN_FRONTEND=noninteractive
     export DEBCONF_NOWARNINGS=yes 
