@@ -11,7 +11,7 @@
                         "/data/mosquitto/config",
                         "/data/mosquitto/data",
                         "/data/mosquitto/log",
-                        "/data/telegraf"
+                        "/data/telegraf/logs"
                     ],
                     "labels": [
                         {
@@ -34,7 +34,7 @@
                         "/data/mosquitto/config",
                         "/data/mosquitto/data",
                         "/data/mosquitto/log",
-                        "/data/telegraf"
+                        "/data/telegraf/logs"
                     ],
                     "labels": [
                         {
@@ -55,7 +55,7 @@
                         "/data/database",
                         "/data/mosquitto/data",
                         "/data/mosquitto/log",
-                        "/data/telegraf"
+                        "/data/telegraf/logs"
                     ],
                     "labels": [
                         {
@@ -77,7 +77,7 @@
                 "hostname": "sat1",
                 "folders": [
                     "/data/alloy",
-                    "/data/telegraf"
+                    "/data/telegraf/logs"
                 ],
                 "labels": [
                     {
@@ -92,7 +92,7 @@
                 "hostname": "sat2",
                 "folders": [
                     "/data/alloy",
-                    "/data/telegraf"
+                    "/data/telegraf/logs"
                 ],
                 "labels": [
                     {
@@ -107,7 +107,7 @@
                 "hostname": "drone",
                 "folders": [
                     "/data/alloy",
-                    "/data/telegraf"
+                    "/data/telegraf/logs"
                 ],
                 "labels": [
                     {

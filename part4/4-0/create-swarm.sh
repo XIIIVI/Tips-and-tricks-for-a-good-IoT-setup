@@ -1126,7 +1126,7 @@ EOF
     # Creates the Swarm 
     create_swarm "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}"
     
-    log_info "Creating the Docker compose template file at ${DOCKER_COMPOSE_TEMPLATE}"
+    log_info "\nCreating the Docker compose template file at ${DOCKER_COMPOSE_TEMPLATE}"
     cat <<EOF_TEMPLATE >"${DOCKER_COMPOSE_TEMPLATE}"
 version: '3.8'
 
@@ -1141,13 +1141,17 @@ $(cat ${SECRET_TEMPLATE})
 $(cat ${VOLUME_TEMPLATE})
 EOF_TEMPLATE
 
-    log_warning "⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️"
+    log_warning "\n⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️"
     log_warning "⚠️                                                                       ️⚠️"
     log_warning "⚠️ DO NOT FORGET TO CHANGE THE PASSWORD OF THE ROOT USER ON ALL NODES !!! ⚠️"
     log_warning "⚠️                                                                       ️⚠️"
     log_warning "⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️"
-    log_info "A template of a Docker compose file is available at ${DOCKER_COMPOSE_TEMPLATE}."
+    log_info "\n\n📃 A template of a Docker compose file is available at ${DOCKER_COMPOSE_TEMPLATE}."
     log_info "It declares all the resources we've just created."
+
+    log_warning "♻️ To deploy your swarm from a file docker-compose.yml"
+    log_warning "1) jump to the folder containing the file docker-compose.yml",
+    log_warning "2) run the command: sudo PRIVATE_REPO=<IP_ADDRESS_OF_THE_REPO>:<LOCAL_REGISTRY_PORT> docker stack deploy --compose-file docker-compose.yml iot-stack"
 }
 
 time main "$@"

@@ -368,7 +368,7 @@ services:
   alloy-level0:
     image: ${PRIVATE_REPO}/alloy:v1.10.2
     configs:
-      - source: alloy-level0.conalloyf
+      - source: alloy-level0.alloy
         target: /etc/alloy/config.alloy
         mode: 0444 # read-only inside container
     deploy:

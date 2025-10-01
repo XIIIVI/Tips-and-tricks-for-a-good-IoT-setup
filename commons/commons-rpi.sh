@@ -65,8 +65,8 @@ METRICS_FILE="$TMP_DIR/vcgencmd.influx"
 # -------------------------------
 if ! command -v vcgencmd >/dev/null 2>&1; then
     echo "Installing vcgencmd (libraspberrypi-bin)..."
-    apt-get update -y
-    apt-get install -y libraspberrypi-bin
+    sudo apt-get update -y
+    sudo apt-get install -y libraspberrypi-bin
 else
     echo "vcgencmd already installed."
 fi
@@ -76,7 +76,7 @@ fi
 # -------------------------------
 echo "Creating temporary directory: $TMP_DIR"
 mkdir -p "$TMP_DIR"
-chmod 777 "$TMP_DIR"
+sudo chmod 777 "$TMP_DIR"
 
 # -------------------------------
 # Create vcgencmd metrics script
@@ -91,7 +91,7 @@ echo "rpi_metrics,host=\$HOSTNAME arm_freq=\$(vcgencmd measure_clock arm | awk -
 echo "rpi_metrics,host=\$HOSTNAME throttled_status=\$(vcgencmd get_throttled | awk -F '=' '{print \$2}')" >> "$METRICS_FILE"
 EOS
 
-chmod +x "$SCRIPT_PATH"
+sudo chmod +x "$SCRIPT_PATH"
 
 # -------------------------------
 # Create systemd service

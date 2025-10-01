@@ -390,8 +390,7 @@ echo "===== 🏁 DOCKER SWARM RECAP 🏁 ====="
 echo
 
 echo "--- ➿ NODES ---"
-sudo docker node ls \
-  --format "table {{.ID}}\t{{.Hostname}}\t{{.Membership}}\t{{.Availability}}\t{{.Status}}"
+sudo docker node ls --format "table {{.ID}}\t{{.Hostname}}\t{{.Status}}\t{{.Availability}}\t{{.ManagerStatus}}"
 
 echo
 echo "--- 📦 SERVICES ---"
@@ -415,7 +414,7 @@ echo "--- ⚙️ CONFIGS ---"
 sudo docker config ls --format "table {{.ID}}\t{{.Name}}\t{{.CreatedAt}}"
 
 echo
-echo "--- 💻 NETWORKS ---"
+echo "--- 🌏 NETWORKS ---"
 sudo docker network ls --filter scope=swarm --format "table {{.ID}}\t{{.Name}}\t{{.Driver}}"
 
 echo
