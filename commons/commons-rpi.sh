@@ -57,8 +57,8 @@ set -e
 SCRIPT_PATH="/usr/local/bin/vcgencmd_metrics.sh"
 SERVICE_NAME="vcgencmd.service"
 TIMER_NAME="vcgencmd.timer"
-TMP_DIR="/tmp/telegraf_metrics"
-METRICS_FILE="\$TMP_DIR/vcgencmd.influx"
+DATA_DIR="/data/telegraf/metrics"
+METRICS_FILE="\$DATA_DIR/vcgencmd.influx"
 
 # -------------------------------
 # Ensure vcgencmd is installed
@@ -74,9 +74,9 @@ fi
 # -------------------------------
 # Create temporary directory
 # -------------------------------
-echo "Creating temporary directory: \$TMP_DIR"
-mkdir -p "\$TMP_DIR"
-sudo chmod 777 "\$TMP_DIR"
+echo "Creating temporary directory: \$DATA_DIR"
+mkdir -p "\$DATA_DIR"
+sudo chmod 777 "\$DATA_DIR"
 
 # -------------------------------
 # Create vcgencmd metrics script
@@ -84,7 +84,7 @@ sudo chmod 777 "\$TMP_DIR"
 echo "Creating vcgencmd script at \$SCRIPT_PATH"
 sudo tee "\$SCRIPT_PATH" > /dev/null <<EOS
 #!/bin/bash
-HOSTNAME=\$(hostname)
+HOSTNAME=\\$(hostname)
 echo "rpi_metrics,host=\$HOSTNAME soc_temp=\$(vcgencmd measure_temp | awk -F '=' '{print \$2}' | sed 's/..$//')" > "\$METRICS_FILE"
 echo "rpi_metrics,host=\$HOSTNAME core_volts=\$(vcgencmd measure_volts core | awk -F '=' '{print \$2}' | sed 's/..$//')" >> "\$METRICS_FILE"
 echo "rpi_metrics,host=\$HOSTNAME arm_freq=\$(vcgencmd measure_clock arm | awk -F '=' '{print \$2}')" >> "\$METRICS_FILE"

@@ -9,12 +9,7 @@ logging {
 loki.source.api "loki_push_api" {
     http {
         listen_address = "0.0.0.0"
-        listen_port = 3111
-
-        tls_cert_file       = "/etc/alloy/alloy.crt"
-        tls_key_file        = "/etc/alloy/alloy.key"
-        tls_client_ca_file  = "/etc/alloy/ca.crt"
-        tls_client_auth_type = "RequireAndVerifyClientCert"
+        listen_port = 3110
     }
     forward_to = [loki.process.add_labels.receiver]
 }
@@ -77,14 +72,6 @@ loki.process "add_labels" {
 
 loki.write "parent" {
   endpoint {
-    url = string.format("https://alloy-level%s:3110/loki/api/v1/push", sys.env("PARENT_LEVEL_NUMBER"))
-
-    oauth2 {
-        tls_config {
-           cert_file           = "/etc/alloy/alloy.crt"
-           key_file            = "/etc/alloy/alloy.key"
-           client_ca_file      = "/etc/alloy/ca.crt"
-        }
-    }
+    url = string.format("http://alloy-level%s:3110/loki/api/v1/push", sys.env("PARENT_LEVEL_NUMBER"))
   }
 }
