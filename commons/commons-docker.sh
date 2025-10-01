@@ -39,9 +39,9 @@ CURRENT_RASPBERRY_DISTRO="bullseye"
 #   - HOST_ARG:       remote hostname or IP
 #
 update_docker_repo() {
-  local LOGIN_ARG="$1"
-  local PASSWORD_ARG="$2"
-  local HOST_ARG="$3"
+  local LOGIN_ARG="${1}"
+  local PASSWORD_ARG="${2}"
+  local HOST_ARG="${3}"
   local SRC="/etc/apt/sources.list.d/docker.list"
   local BAK="${SRC}.bak.$(date +%Y%m%d%H%M%S)"
   local SEARCH='deb .*docker\.com/linux/debian\s\+bookworm'
