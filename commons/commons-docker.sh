@@ -386,34 +386,40 @@ display_swarm_recap() {
     "$USER_ARG@$HOST_ARG" <<'EOF'
 
 echo
-echo "===== DOCKER SWARM RECAP ====="
+echo "===== 🏁 DOCKER SWARM RECAP 🏁 ====="
 echo
 
-echo "--- NODES ---"
-sudo docker node ls --format "table {{.ID}}\t{{.Hostname}}\t{{.Role}}\t{{.Availability}}\t{{.Status}}"
+echo "--- ➿ NODES ---"
+sudo docker node ls \
+  --format "table {{.ID}}\t{{.Hostname}}\t{{.Membership}}\t{{.Availability}}\t{{.Status}}"
 
 echo
-echo "--- SERVICES ---"
+echo "--- 📦 SERVICES ---"
 sudo docker service ls --format "table {{.ID}}\t{{.Name}}\t{{.Replicas}}\t{{.Image}}"
 
 echo
-echo "--- TASKS ---"
-sudo docker service ps --all --format "table {{.ID}}\t{{.Name}}\t{{.CurrentState}}\t{{.DesiredState}}\t{{.Node}}"
+echo "--- ✏️ TASKS ---"
+for svc in $(sudo docker service ls -q); do
+  echo "Service: $svc"
+  sudo docker service ps "$svc" \
+    --format "table {{.ID}}\t{{.Name}}\t{{.CurrentState}}\t{{.DesiredState}}\t{{.Node}}"
+  echo
+done
 
 echo
-echo "--- SECRETS ---"
+echo "--- 🔑 SECRETS ---"
 sudo docker secret ls --format "table {{.ID}}\t{{.Name}}\t{{.Driver}}"
 
 echo
-echo "--- CONFIGS ---"
+echo "--- ⚙️ CONFIGS ---"
 sudo docker config ls --format "table {{.ID}}\t{{.Name}}\t{{.CreatedAt}}"
 
 echo
-echo "--- NETWORKS ---"
+echo "--- 💻 NETWORKS ---"
 sudo docker network ls --filter scope=swarm --format "table {{.ID}}\t{{.Name}}\t{{.Driver}}"
 
 echo
-echo "--- VOLUMES ---"
+echo "--- 💾 VOLUMES ---"
 sudo docker volume ls --format "table {{.Name}}\t{{.Driver}}\t{{.Mountpoint}}"
 
 EOF
