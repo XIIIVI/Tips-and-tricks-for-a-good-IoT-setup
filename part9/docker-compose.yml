@@ -42,6 +42,7 @@ services:
       - source: mosquitto.conf
         target: /mosquitto/config/mosquitto.conf
     networks:
+      - telemetry-network
       - secured-network
     secrets:
       - source: mosquitto.crt
