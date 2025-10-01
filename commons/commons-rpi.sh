@@ -91,7 +91,7 @@ echo "rpi_metrics,host=\$HOSTNAME arm_freq=\$(vcgencmd measure_clock arm | awk -
 echo "rpi_metrics,host=\$HOSTNAME throttled_status=\$(vcgencmd get_throttled | awk -F '=' '{print \$2}')" >> "\$METRICS_FILE"
 EOS
 
-sudo chmod +x "$SCRIPT_PATH"
+sudo chmod +x "\$SCRIPT_PATH"
 
 # -------------------------------
 # Create systemd service
