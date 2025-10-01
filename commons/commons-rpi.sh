@@ -44,20 +44,20 @@ install_vcgencmd() {
     local USER_ARG="$1"           # SSH username
     local PASS_ARG="$2"           # SSH password
     local HOST_ARG="$3"           # SSH host
-    local SCRIPT_PATH="/usr/local/bin/vcgencmd_metrics.sh"
-    local TMP_DIR="/tmp/telegraf_metrics"
-    local SERVICE_NAME="vcgencmd.service"
-    local TIMER_NAME="vcgencmd.timer"
 
     log_info "Deploying vcgencmd metrics collection to $HOST_ARG ..."
 
     # -------------------------------
     # Execute remote deployment
     # -------------------------------
-    sshpass -p "$PASS_ARG" ssh -o StrictHostKeyChecking=no "$USER_ARG@$HOST_ARG" "bash -s" <<EOF
+    sshpass -p "$PASS_ARG" ssh -o StrictHostKeyChecking=no "$USER_ARG@$HOST_ARG" "bash -s" <<'EOF'
 #!/bin/bash
 set -e
 
+SCRIPT_PATH="/usr/local/bin/vcgencmd_metrics.sh"
+SERVICE_NAME="vcgencmd.service"
+TIMER_NAME="vcgencmd.timer"
+TMP_DIR="/tmp/telegraf_metrics"
 METRICS_FILE="$TMP_DIR/vcgencmd.influx"
 
 # -------------------------------
