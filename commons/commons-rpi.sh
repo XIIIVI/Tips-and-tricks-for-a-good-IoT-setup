@@ -82,7 +82,7 @@ chmod 777 "$TMP_DIR"
 # Create vcgencmd metrics script
 # -------------------------------
 echo "Creating vcgencmd script at $SCRIPT_PATH"
-tee "$SCRIPT_PATH" > /dev/null <<'EOS'
+sudo tee "$SCRIPT_PATH" > /dev/null <<'EOS'
 #!/bin/bash
 HOSTNAME=\$(hostname)
 echo "rpi_metrics,host=\$HOSTNAME soc_temp=\$(vcgencmd measure_temp | awk -F '=' '{print \$2}' | sed 's/..$//')" > "$METRICS_FILE"
@@ -97,7 +97,7 @@ chmod +x "$SCRIPT_PATH"
 # Create systemd service
 # -------------------------------
 echo "Creating systemd service: $SERVICE_NAME"
-tee "/etc/systemd/system/$SERVICE_NAME" > /dev/null <<EOS
+sudo tee "/etc/systemd/system/$SERVICE_NAME" > /dev/null <<EOS
 [Unit]
 Description=Collect vcgencmd metrics for Telegraf
 After=network.target
@@ -112,7 +112,7 @@ EOS
 # Create systemd timer
 # -------------------------------
 echo "Creating systemd timer: $TIMER_NAME"
-tee "/etc/systemd/system/$TIMER_NAME" > /dev/null <<EOS
+sudo tee "/etc/systemd/system/$TIMER_NAME" > /dev/null <<EOS
 [Unit]
 Description=Timer to trigger vcgencmd service every 10s
 
@@ -128,17 +128,17 @@ EOS
 # Reload systemd and enable/start
 # -------------------------------
 echo "Reloading systemd and enabling services..."
-systemctl daemon-reload
-systemctl enable "$SERVICE_NAME"
-systemctl start "$SERVICE_NAME"
-systemctl enable "$TIMER_NAME"
-systemctl start "$TIMER_NAME"
+sudo systemctl daemon-reload
+sudo systemctl enable "$SERVICE_NAME"
+sudo systemctl start "$SERVICE_NAME"
+sudo systemctl enable "$TIMER_NAME"
+sudo systemctl start "$TIMER_NAME"
 
 # -------------------------------
 # Verify setup
 # -------------------------------
 echo "Checking active timers..."
-systemctl list-timers --all | grep "$TIMER_NAME"
+sudo systemctl list-timers --all | grep "$TIMER_NAME"
 
 echo "Setup complete! Metrics will update every 10 seconds in: $METRICS_FILE"
 EOF
