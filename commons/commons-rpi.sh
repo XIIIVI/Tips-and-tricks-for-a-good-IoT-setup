@@ -82,7 +82,7 @@ sudo chmod 777 "$TMP_DIR"
 # Create vcgencmd metrics script
 # -------------------------------
 echo "Creating vcgencmd script at $SCRIPT_PATH"
-sudo tee "$SCRIPT_PATH" > /dev/null <<'EOS'
+sudo tee "$SCRIPT_PATH" > /dev/null <<EOS
 #!/bin/bash
 HOSTNAME=\$(hostname)
 echo "rpi_metrics,host=\$HOSTNAME soc_temp=\$(vcgencmd measure_temp | awk -F '=' '{print \$2}' | sed 's/..$//')" > "$METRICS_FILE"

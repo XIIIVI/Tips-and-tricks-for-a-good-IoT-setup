@@ -316,10 +316,10 @@ create_single_worker() {
                 install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "./data"
             fi
 
+            install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${REGISTRY_IP_ADDRESS_ARG}" "${REGISTRY_PORT_ARG}" "${REGISTRY_CERTIFICATE_FILE_ARG}"
             activate_uart "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
             install_vcgencmd "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
             install_chrony_ntp "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
-            install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${REGISTRY_IP_ADDRESS_ARG}" "${REGISTRY_PORT_ARG}" "${REGISTRY_CERTIFICATE_FILE_ARG}"
 
             log_debug "\t- Adding the worker ${NODE_HOSTNAME} to the Swarm"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo ${JOIN_WORKER_CMD}"
@@ -1149,7 +1149,7 @@ EOF_TEMPLATE
     log_info "\n\n📃 A template of a Docker compose file is available at ${DOCKER_COMPOSE_TEMPLATE}."
     log_info "It declares all the resources we've just created."
 
-    log_warning "♻️ To deploy your swarm from a file docker-compose.yml"
+    log_warning "\n\n♻️ To deploy your swarm from a file docker-compose.yml"
     log_warning "1) jump to the folder containing the file docker-compose.yml",
     log_warning "2) run the command: sudo PRIVATE_REPO=<IP_ADDRESS_OF_THE_REPO>:<LOCAL_REGISTRY_PORT> docker stack deploy --compose-file docker-compose.yml iot-stack"
 }
