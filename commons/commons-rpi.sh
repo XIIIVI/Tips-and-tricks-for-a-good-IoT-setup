@@ -50,7 +50,7 @@ install_vcgencmd() {
     # -------------------------------
     # Execute remote deployment
     # -------------------------------
-    sshpass -p "$PASS_ARG" ssh -o StrictHostKeyChecking=no "$USER_ARG@$HOST_ARG" "bash -s" <<'EOF'
+    sshpass -p "$PASS_ARG" ssh -o StrictHostKeyChecking=no "$USER_ARG@$HOST_ARG" "bash -s" <<EOF
 #!/bin/bash
 set -e
 
@@ -58,7 +58,7 @@ SCRIPT_PATH="/usr/local/bin/vcgencmd_metrics.sh"
 SERVICE_NAME="vcgencmd.service"
 TIMER_NAME="vcgencmd.timer"
 TMP_DIR="/tmp/telegraf_metrics"
-METRICS_FILE="$TMP_DIR/vcgencmd.influx"
+METRICS_FILE="\$TMP_DIR/vcgencmd.influx"
 
 # -------------------------------
 # Ensure vcgencmd is installed
@@ -74,21 +74,21 @@ fi
 # -------------------------------
 # Create temporary directory
 # -------------------------------
-echo "Creating temporary directory: $TMP_DIR"
-mkdir -p "$TMP_DIR"
-sudo chmod 777 "$TMP_DIR"
+echo "Creating temporary directory: \$TMP_DIR"
+mkdir -p "\$TMP_DIR"
+sudo chmod 777 "\$TMP_DIR"
 
 # -------------------------------
 # Create vcgencmd metrics script
 # -------------------------------
-echo "Creating vcgencmd script at $SCRIPT_PATH"
-sudo tee "$SCRIPT_PATH" > /dev/null <<EOS
+echo "Creating vcgencmd script at \$SCRIPT_PATH"
+sudo tee "\$SCRIPT_PATH" > /dev/null <<EOS
 #!/bin/bash
 HOSTNAME=\$(hostname)
-echo "rpi_metrics,host=\$HOSTNAME soc_temp=\$(vcgencmd measure_temp | awk -F '=' '{print \$2}' | sed 's/..$//')" > "$METRICS_FILE"
-echo "rpi_metrics,host=\$HOSTNAME core_volts=\$(vcgencmd measure_volts core | awk -F '=' '{print \$2}' | sed 's/..$//')" >> "$METRICS_FILE"
-echo "rpi_metrics,host=\$HOSTNAME arm_freq=\$(vcgencmd measure_clock arm | awk -F '=' '{print \$2}')" >> "$METRICS_FILE"
-echo "rpi_metrics,host=\$HOSTNAME throttled_status=\$(vcgencmd get_throttled | awk -F '=' '{print \$2}')" >> "$METRICS_FILE"
+echo "rpi_metrics,host=\$HOSTNAME soc_temp=\$(vcgencmd measure_temp | awk -F '=' '{print \$2}' | sed 's/..$//')" > "\$METRICS_FILE"
+echo "rpi_metrics,host=\$HOSTNAME core_volts=\$(vcgencmd measure_volts core | awk -F '=' '{print \$2}' | sed 's/..$//')" >> "\$METRICS_FILE"
+echo "rpi_metrics,host=\$HOSTNAME arm_freq=\$(vcgencmd measure_clock arm | awk -F '=' '{print \$2}')" >> "\$METRICS_FILE"
+echo "rpi_metrics,host=\$HOSTNAME throttled_status=\$(vcgencmd get_throttled | awk -F '=' '{print \$2}')" >> "\$METRICS_FILE"
 EOS
 
 sudo chmod +x "$SCRIPT_PATH"
@@ -96,14 +96,14 @@ sudo chmod +x "$SCRIPT_PATH"
 # -------------------------------
 # Create systemd service
 # -------------------------------
-echo "Creating systemd service: $SERVICE_NAME"
-sudo tee "/etc/systemd/system/$SERVICE_NAME" > /dev/null <<EOS
+echo "Creating systemd service: \$SERVICE_NAME"
+sudo tee "/etc/systemd/system/\$SERVICE_NAME" > /dev/null <<EOS
 [Unit]
 Description=Collect vcgencmd metrics for Telegraf
 After=network.target
 
 [Service]
-ExecStart=$SCRIPT_PATH
+ExecStart=\$SCRIPT_PATH
 Nice=10
 Restart=no
 
@@ -114,14 +114,14 @@ EOS
 # -------------------------------
 # Create systemd timer
 # -------------------------------
-echo "Creating systemd timer: $TIMER_NAME"
-sudo tee "/etc/systemd/system/$TIMER_NAME" > /dev/null <<EOS
+echo "Creating systemd timer: \$TIMER_NAME"
+sudo tee "/etc/systemd/system/\$TIMER_NAME" > /dev/null <<EOS
 [Unit]
 Description=Timer to trigger vcgencmd service every 10s
 
 [Timer]
 OnUnitActiveSec=10s
-Unit=$SERVICE_NAME
+Unit=\$SERVICE_NAME
 
 [Install]
 WantedBy=timers.target
@@ -132,17 +132,17 @@ EOS
 # -------------------------------
 echo "Reloading systemd and enabling services..."
 sudo systemctl daemon-reload
-sudo systemctl enable "$SERVICE_NAME"
-sudo systemctl start "$SERVICE_NAME"
-sudo systemctl enable "$TIMER_NAME"
-sudo systemctl start "$TIMER_NAME"
+sudo systemctl enable "\$SERVICE_NAME"
+sudo systemctl start "\$SERVICE_NAME"
+sudo systemctl enable "\$TIMER_NAME"
+sudo systemctl start "\$TIMER_NAME"
 
 # -------------------------------
 # Verify setup
 # -------------------------------
 echo "Checking active timers..."
-sudo systemctl list-timers --all | grep "$TIMER_NAME"
+sudo systemctl list-timers --all | grep "\$TIMER_NAME"
 
-echo "Setup complete! Metrics will update every 10 seconds in: $METRICS_FILE"
+echo "Setup complete! Metrics will update every 10 seconds in: \$METRICS_FILE"
 EOF
 }
