@@ -75,7 +75,7 @@ fi
 # Create temporary directory
 # -------------------------------
 echo "Creating temporary directory: \$DATA_DIR"
-mkdir -p "\$DATA_DIR"
+sudo mkdir -p "\$DATA_DIR"
 sudo chmod 777 "\$DATA_DIR"
 
 # -------------------------------
