@@ -106,6 +106,9 @@ After=network.target
 ExecStart=$SCRIPT_PATH
 Nice=10
 Restart=no
+
+[Install]
+WantedBy=multi-user.target
 EOS
 
 # -------------------------------
