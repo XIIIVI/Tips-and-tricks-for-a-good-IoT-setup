@@ -73,12 +73,12 @@ loki.process "add_labels" {
 
 loki.write "parent" {
   endpoint {
-    url = "https://loki:3100/loki/api/v1/push"
+    url = "https://iot-stack_loki:3100/loki/api/v1/push"
 
     tls_config {
-       cert_file           = "/etc/alloy/alloy.crt"
-       key_file            = "/etc/alloy/alloy.key"
-       client_ca_file      = "/etc/alloy/ca.crt"
+       cert_file = "/etc/alloy/alloy.crt"
+       key_file  = "/etc/alloy/alloy.key"
+       ca_file   = "/etc/alloy/ca.crt"
     }
   }
 }
