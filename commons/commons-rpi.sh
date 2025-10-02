@@ -86,16 +86,16 @@ sudo chmod 777 "\$DATA_DIR"
 echo "Creating vcgencmd script at \$SCRIPT_PATH"
 sudo tee "\$SCRIPT_PATH" > /dev/null <<EOS
 #!/bin/bash
-METRICS_FILE="${METRICS_FILE}"
+METRICS_FILE="\${METRICS_FILE}"
 EOS
 
-sudo tee -a "$SCRIPT_PATH" > /dev/null << 'EOS'
-HOSTNAME=$(hostname)
+sudo tee -a "\$SCRIPT_PATH" > /dev/null << 'EOS'
+HOSTNAME=\$(hostname)
 
-echo "rpi_metrics,host=${HOSTNAME} soc_temp=$(vcgencmd measure_temp | awk -F '=' '{print \$2}' | sed 's/..$//')" > "${METRICS_FILE}"
-echo "rpi_metrics,host=${HOSTNAME} core_volts=$(vcgencmd measure_volts core | awk -F '=' '{print \$2}' | sed 's/..$//')" >> "${METRICS_FILE}"
-echo "rpi_metrics,host=${HOSTNAME} arm_freq=$(vcgencmd measure_clock arm | awk -F '=' '{print \$2}')" >> "${METRICS_FILE}"
-echo "rpi_metrics,host=${HOSTNAME} throttled_status=$(vcgencmd get_throttled | awk -F '=' '{print \$2}')" >> "${METRICS_FILE}"
+echo "rpi_metrics,host=\${HOSTNAME} soc_temp=\$(vcgencmd measure_temp | awk -F '=' '{print \$2}' | sed 's/..$//')" > "\${METRICS_FILE}"
+echo "rpi_metrics,host=\${HOSTNAME} core_volts=\$(vcgencmd measure_volts core | awk -F '=' '{print \$2}' | sed 's/..$//')" >> "\${METRICS_FILE}"
+echo "rpi_metrics,host=\${HOSTNAME} arm_freq=\$(vcgencmd measure_clock arm | awk -F '=' '{print \$2}')" >> "\${METRICS_FILE}"
+echo "rpi_metrics,host=\${HOSTNAME} throttled_status=\$(vcgencmd get_throttled | awk -F '=' '{print \$2}')" >> "\${METRICS_FILE}"
 EOS
 
 
