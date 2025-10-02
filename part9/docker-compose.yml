@@ -349,7 +349,8 @@ services:
         constraints:
           - node.labels.level == 0
     networks:
-      - public-network
+      - secured-network
+      - log-network
     ports:
       - target: 3100 # container port
         published: 3100 # port exposed on the swarm nodes
