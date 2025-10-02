@@ -177,8 +177,7 @@
                     "loki",
                     "mosquitto",
                     "telegraf",
-                    "vminsert",
-                    "vmselect"
+                    "vmauth"
                 ]
             }
         },

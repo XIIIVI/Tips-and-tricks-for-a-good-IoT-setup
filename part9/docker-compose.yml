@@ -261,7 +261,48 @@ services:
   #          P A R T   6          #
   #                               #
   #################################
+  vmauth:
+    image: ${PRIVATE_REPO}/vmauth:v1.119.0
+    networks:
+      - secured-network
+      - telemetry-network
+      - timeseries-network
+    ports:
+      - target: 8443
+        published: 8443
+        protocol: tcp
 
+    # Mount the auth config under /etc/vmauth
+    configs:
+      - source: vmauth.yml
+        target: /etc/vmauth/auth.yml
+
+    # Mount each TLS file under /etc/vmauth/
+    secrets:
+      - source: vmauth.crt
+        target: /etc/vmauth/vmauth.crt
+        uid:   '0'
+        gid:   '0'
+        mode:  0440
+      - source: vmauth.key
+        target: /etc/vmauth/vmauth.key
+        uid:   '0'
+        gid:   '0'
+        mode:  0400
+      - source: iot.ca
+        target: /etc/vmauth/ca.crt
+        uid:   '0'
+        gid:   '0'
+        mode:  0440
+
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.labels.level == 0
+      
   vminsert:
     image: ${PRIVATE_REPO}/vminsert:v1.119.0-cluster
     deploy:
@@ -276,7 +317,6 @@ services:
     depends_on:
       - vmstorage
     networks:
-      - telemetry-network
       - timeseries-network
     ports:
       - "8480:8480" # remote_write endpoint for Telegraf
@@ -317,7 +357,6 @@ services:
     depends_on:
       - vmstorage
     networks:
-      - secured-network
       - timeseries-network
     ports:
       - "8481:8481" # UI and query API
@@ -516,6 +555,8 @@ configs:
     external: true
   telegraf-level2.conf:
     external: true
+  vmauth.yml:
+    external: true
 
 secrets:
   alloy.crt:
@@ -539,4 +580,8 @@ secrets:
   telegraf.crt:
     external: true
   telegraf.key:
+    external: true
+  vmauth.crt:
+    external: true
+  vmauth.key:
     external: true

@@ -27,7 +27,20 @@
 #  OTHER DEALINGS IN THE SOFTWARE.
 # ============================================================
 
-users:
-  - username: "admin"
-    password: "secret"
-    url_prefix: "http://vmselect:8481/"
+# auth.yml
+httpsListenAddr: ":8443"        # TLS listener for clients
+
+# Paths inside the container where Swarm mounts your secrets:
+tlsCertFile: "/etc/vmauth/vmauth.crt"
+tlsKeyFile:  "/etc/vmauth/vmauth.key"
+tlsClientCAFile: "/etc/vmauth/ca.crt"   # for optional client cert verification
+
+routes:
+  - path: /select/
+    dropSrcPathPrefixParts: 1
+    backends:
+      - url: "http://iot-stack_vmselect:8481"
+  - path: /insert/
+    dropSrcPathPrefixParts: 1
+    backends:
+      - url: "http://iot-stack_vminsert:8480"
