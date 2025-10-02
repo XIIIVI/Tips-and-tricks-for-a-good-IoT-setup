@@ -1,5 +1,5 @@
 # ============================================================
-#  Project:   vmauth.config.yml
+#  Project:   vmauth.yml
 #  Author:    Fabrice TRAN-XUAN
 #  Created:   2025-08-10
 #
@@ -27,20 +27,13 @@
 #  OTHER DEALINGS IN THE SOFTWARE.
 # ============================================================
 
-# auth.yml
-httpsListenAddr: ":8443"        # TLS listener for clients
-
-# Paths inside the container where Swarm mounts your secrets:
-tlsCertFile: "/etc/vmauth/vmauth.crt"
-tlsKeyFile:  "/etc/vmauth/vmauth.key"
-tlsClientCAFile: "/etc/vmauth/ca.crt"   # for optional client cert verification
-
-routes:
-  - path: /select/
-    dropSrcPathPrefixParts: 1
-    backends:
-      - url: "http://iot-stack_vmselect:8481"
-  - path: /insert/
-    dropSrcPathPrefixParts: 1
-    backends:
-      - url: "http://iot-stack_vminsert:8480"
+users:
+  # User for read operations (queries)
+  - username: "file:///run/secrets/vmauth_reader.user"
+    password: "file:///run/secrets/vmauth_reader.passwd"
+    url_prefix: "http://iot-stack_vmselect:8481/select/0/prometheus"
+    
+  # User for write operations (metrics ingestion)
+  - username: "file:///run/secrets/vmauth_writer.user"
+    password: "file:///run/secrets/vmauth_writer.passwd"
+    url_prefix: "http://iot-stack_vminsert:8480/insert/0/influx"

@@ -228,6 +228,8 @@ services:
     networks:
       - telemetry-network
     secrets:
+      - vmauth_writer.user
+      - vmauth_writer.passwd
       - source: telegraf.crt
         target: /etc/telegraf/telegraf.crt
       - source: telegraf.key
@@ -267,18 +269,29 @@ services:
       - secured-network
       - telemetry-network
       - timeseries-network
-    ports:
-      - target: 8443
-        published: 8443
-        protocol: tcp
-
     # Mount the auth config under /etc/vmauth
     configs:
       - source: vmauth.yml
         target: /etc/vmauth/auth.yml
-
+    # override the container’s startup command entirely:
+    ports:
+      - target: 8443
+        published: 8443
+        protocol: tcp
+    # 3. Override ENTRYPOINT to invoke the correct binary + flags
+    entrypoint:
+      - "/vmauth-prod"
+      - "-auth.config=/etc/vmauth/auth.yml"
+      - "-httpListenAddr=0.0.0.0:8443"
+      - "-tls"
+      - "-tlsCertFile=/etc/vmauth/vmauth.crt"
+      - "-tlsKeyFile=/etc/vmauth/vmauth.key"
     # Mount each TLS file under /etc/vmauth/
     secrets:
+      - vmauth_reader.user
+      - vmauth_reader.passwd
+      - vmauth_writer.user
+      - vmauth_writer.passwd
       - source: vmauth.crt
         target: /etc/vmauth/vmauth.crt
         uid:   '0'
@@ -294,7 +307,6 @@ services:
         uid:   '0'
         gid:   '0'
         mode:  0440
-
     deploy:
       mode: global
       restart_policy:
@@ -302,7 +314,8 @@ services:
       placement:
         constraints:
           - node.labels.level == 0
-      
+
+                   
   vminsert:
     image: ${PRIVATE_REPO}/vminsert:v1.119.0-cluster
     deploy:
@@ -584,4 +597,12 @@ secrets:
   vmauth.crt:
     external: true
   vmauth.key:
+    external: true
+  vmauth_reader.passwd:
+    external: true
+  vmauth_reader.user:
+    external: true
+  vmauth_writer.passwd:
+    external: true
+  vmauth_writer.user:
     external: true

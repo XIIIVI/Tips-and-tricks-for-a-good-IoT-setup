@@ -156,6 +156,10 @@
             {
                 "name": "telegraf-level2.conf",
                 "file": "./data/configs/telegraf-level2.conf"
+            },
+            {
+                "name": "vmauth.yml",
+                "file": "./data/configs/vmauth.yml"
             }
         ],
         "secrets": {
@@ -163,6 +167,14 @@
                 {
                     "name": "mosquitto",
                     "login": "mqtt-user"
+                },
+                {
+                    "name": "vmauth_reader",
+                    "login": "reader"
+                },
+                {
+                    "name": "vmauth_writer",
+                    "login": "writer"
                 }
             ],
             "certificates": {
