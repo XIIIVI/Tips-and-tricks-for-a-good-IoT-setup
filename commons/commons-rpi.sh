@@ -1,5 +1,7 @@
 #!/bin/bash
 
+DEFAULT_DATA_DIR="/data"
+
 # ============================================================
 #  Project:   commons-docker.sh
 #  Author:    Fabrice TRAN-XUAN
@@ -57,7 +59,7 @@ set -e
 SCRIPT_PATH="/usr/local/bin/vcgencmd_metrics.sh"
 SERVICE_NAME="vcgencmd.service"
 TIMER_NAME="vcgencmd.timer"
-DATA_DIR="/data/telegraf/metrics"
+DATA_DIR="${DEFAULT_DATA_DIR}/telegraf/metrics"
 METRICS_FILE="\$DATA_DIR/vcgencmd.influx"
 
 # -------------------------------
@@ -84,12 +86,18 @@ sudo chmod 777 "\$DATA_DIR"
 echo "Creating vcgencmd script at \$SCRIPT_PATH"
 sudo tee "\$SCRIPT_PATH" > /dev/null <<EOS
 #!/bin/bash
-HOSTNAME=\\$(hostname)
-echo "rpi_metrics,host=\$HOSTNAME soc_temp=\$(vcgencmd measure_temp | awk -F '=' '{print \$2}' | sed 's/..$//')" > "\$METRICS_FILE"
-echo "rpi_metrics,host=\$HOSTNAME core_volts=\$(vcgencmd measure_volts core | awk -F '=' '{print \$2}' | sed 's/..$//')" >> "\$METRICS_FILE"
-echo "rpi_metrics,host=\$HOSTNAME arm_freq=\$(vcgencmd measure_clock arm | awk -F '=' '{print \$2}')" >> "\$METRICS_FILE"
-echo "rpi_metrics,host=\$HOSTNAME throttled_status=\$(vcgencmd get_throttled | awk -F '=' '{print \$2}')" >> "\$METRICS_FILE"
+METRICS_FILE="${METRICS_FILE}"
 EOS
+
+sudo tee -a "$SCRIPT_PATH" > /dev/null << 'EOS'
+HOSTNAME=$(hostname)
+
+echo "rpi_metrics,host=${HOSTNAME} soc_temp=$(vcgencmd measure_temp | awk -F '=' '{print \$2}' | sed 's/..$//')" > "${METRICS_FILE}"
+echo "rpi_metrics,host=${HOSTNAME} core_volts=$(vcgencmd measure_volts core | awk -F '=' '{print \$2}' | sed 's/..$//')" >> "${METRICS_FILE}"
+echo "rpi_metrics,host=${HOSTNAME} arm_freq=$(vcgencmd measure_clock arm | awk -F '=' '{print \$2}')" >> "${METRICS_FILE}"
+echo "rpi_metrics,host=${HOSTNAME} throttled_status=$(vcgencmd get_throttled | awk -F '=' '{print \$2}')" >> "${METRICS_FILE}"
+EOS
+
 
 sudo chmod +x "\$SCRIPT_PATH"
 
