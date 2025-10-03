@@ -298,10 +298,7 @@ services:
     networks:
       - public-network
     ports:
-      - target: 3100    # container port
-        published: 3100 # port exposed on the swarm nodes
-        protocol: tcp
-        mode: host      # or 'ingress' for routing mesh
+      - "3100:3100"      # or 'ingress' for routing mesh
     volumes:
       - /mnt/replicated-data/loki:/loki-chunks # Persistent storage for Loki
       - /var/lib/loki/:/loki/       # local disk

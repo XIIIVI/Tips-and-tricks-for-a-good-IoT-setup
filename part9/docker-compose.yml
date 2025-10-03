@@ -406,10 +406,7 @@ services:
       - secured-network
       - log-network
     ports:
-      - target: 3100 # container port
-        published: 3100 # port exposed on the swarm nodes
-        protocol: tcp
-        mode: host # or 'ingress' for routing mesh
+      - "3100:3100" # or 'ingress' for routing mesh
     secrets:
       - source: loki.crt
         target: /etc/loki/loki.crt
