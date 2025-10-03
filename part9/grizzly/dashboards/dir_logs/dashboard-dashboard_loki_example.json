@@ -1,0 +1,210 @@
+{
+  "apiVersion": "grizzly.grafana.com/v1alpha1",
+  "kind": "Dashboard",
+  "metadata": {
+    "folder": "dir_logs",
+    "name": "dashboard_loki_example"
+  },
+  "spec": {
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations \u0026 Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "links": [
+      {
+        "asDropdown": true,
+        "icon": "dashboard",
+        "includeVars": true,
+        "keepTime": true,
+        "tags": [],
+        "targetBlank": false,
+        "title": "CPU",
+        "tooltip": "",
+        "type": "link",
+        "url": "/d/dashboard_monitoring/cpu"
+      },
+      {
+        "asDropdown": false,
+        "icon": "dashboard",
+        "includeVars": true,
+        "keepTime": true,
+        "tags": [],
+        "targetBlank": false,
+        "title": "Memory",
+        "tooltip": "",
+        "type": "link",
+        "url": "/d/adt2bxj/memory"
+      }
+    ],
+    "panels": [
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "ds_loki"
+        },
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 14,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "id": 1,
+        "options": {
+          "dedupStrategy": "none",
+          "enableInfiniteScrolling": false,
+          "enableLogDetails": true,
+          "prettifyLogMessage": true,
+          "showCommonLabels": true,
+          "showLabels": false,
+          "showTime": true,
+          "sortOrder": "Descending",
+          "wrapLogMessage": true
+        },
+        "pluginVersion": "12.2.0",
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "ds_loki"
+            },
+            "direction": "backward",
+            "editorMode": "builder",
+            "expr": "{platform=\"docker\", host=~\"$host_list\"} |= ``",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "title": "Log viewer",
+        "transformations": [
+          {
+            "id": "extractFields",
+            "options": {
+              "delimiter": ",",
+              "source": "labels"
+            }
+          },
+          {
+            "id": "filterFieldsByName",
+            "options": {
+              "include": {
+                "names": [
+                  "Time",
+                  "Line",
+                  "id",
+                  "host",
+                  "level",
+                  "service_name"
+                ]
+              }
+            }
+          },
+          {
+            "id": "filterByValue",
+            "options": {
+              "filters": [
+                {
+                  "config": {
+                    "id": "regex",
+                    "options": {
+                      "value": "${service_list:regex}.*"
+                    }
+                  },
+                  "fieldName": "service_name"
+                }
+              ],
+              "match": "all",
+              "type": "include"
+            }
+          }
+        ],
+        "type": "logs"
+      }
+    ],
+    "preload": false,
+    "schemaVersion": 42,
+    "tags": [],
+    "templating": {
+      "list": [
+        {
+          "allowCustomValue": false,
+          "current": {
+            "text": [
+              "orchestrator1"
+            ],
+            "value": [
+              "orchestrator1"
+            ]
+          },
+          "definition": "label_values(cpu_usage_guest,host)",
+          "includeAll": true,
+          "label": "Hosts",
+          "multi": true,
+          "name": "host_list",
+          "options": [],
+          "query": {
+            "qryType": 1,
+            "query": "label_values(cpu_usage_guest,host)",
+            "refId": "PrometheusVariableQueryEditor-VariableQuery"
+          },
+          "refresh": 2,
+          "regex": "",
+          "sort": 5,
+          "type": "query"
+        },
+        {
+          "allowCustomValue": false,
+          "current": {
+            "text": [
+              "iot-stack_alloy-level0"
+            ],
+            "value": [
+              "iot-stack_alloy-level0"
+            ]
+          },
+          "definition": "label_values(container_name)",
+          "includeAll": true,
+          "label": "Services",
+          "multi": true,
+          "name": "service_list",
+          "options": [],
+          "query": {
+            "qryType": 1,
+            "query": "label_values(container_name)",
+            "refId": "PrometheusVariableQueryEditor-VariableQuery"
+          },
+          "refresh": 2,
+          "regex": "/(.*)\\..*\\..*/",
+          "sort": 5,
+          "type": "query"
+        }
+      ]
+    },
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "Europe/Paris",
+    "title": "Loki example",
+    "uid": "dashboard_loki_example"
+  }
+}

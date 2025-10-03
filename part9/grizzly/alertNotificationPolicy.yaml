@@ -1,0 +1,17 @@
+{
+  "apiVersion": "grizzly.grafana.com/v1alpha1",
+  "kind": "AlertNotificationPolicy",
+  "metadata": {
+    "name": "global"
+  },
+  "spec": {
+    "active_time_intervals": null,
+    "group_by": [
+      "grafana_folder",
+      "alertname"
+    ],
+    "mute_time_intervals": null,
+    "receiver": "grafana-default-email",
+    "routes": null
+  }
+}

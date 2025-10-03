@@ -516,7 +516,7 @@ services:
   #################################
 
   grafana:
-    image: ${PRIVATE_REPO}/grafana:12.2.0
+    image: ${PRIVATE_REPO}/grafana:12.3.0-17750354453
     environment:
       - GF_INSTALL_PLUGINS=volkovlabs-echarts-panel,volkovlabs-variable-panel,marcusolsson-static-datasource
       - GF_AUTH_ANONYMOUS_ENABLED=true
@@ -535,7 +535,11 @@ services:
       placement:
         constraints:
           - node.labels.level == 0
-
+    secrets:
+      - vmauth_reader.user
+      - vmauth_reader.passwd
+      - iot.ca        
+      
 networks:
   log-network:
     driver: overlay

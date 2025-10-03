@@ -1,0 +1,21 @@
+{
+  "apiVersion": "grizzly.grafana.com/v1alpha1",
+  "kind": "Datasource",
+  "metadata": {
+    "name": "ds_victoriametrics"
+  },
+  "spec": {
+    "access": "proxy",
+    "basicAuth": true,
+    "basicAuthUser": "$__file{/run/secrets/vmauth_reader.user}",
+    "secureJsonData": {
+      "basicAuthPassword": "$__file{/run/secrets/vmauth_reader.passwd}"
+    },
+    "name": "prometheus",
+    "orgId": 1,
+    "type": "prometheus",
+    "typeLogoUrl": "public/plugins/prometheus/img/prometheus_logo.svg",
+    "uid": "ds_prometheus",
+    "url": "http://iot-stack_vmauth:8443/select/0/prometheus"
+  }
+}
