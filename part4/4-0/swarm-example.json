@@ -186,6 +186,7 @@
                 "organization": "IoT-MQTT",
                 "key-and-csr": [
                     "alloy",
+                    "grafana",
                     "loki",
                     "mosquitto",
                     "telegraf",

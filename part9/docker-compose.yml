@@ -286,6 +286,8 @@ services:
       - "-tls"
       - "-tlsCertFile=/etc/vmauth/vmauth.crt"
       - "-tlsKeyFile=/etc/vmauth/vmauth.key"
+      - "-mtls"
+      - "-mtlsCAFile=/etc/vmauth/ca.crt"
     # Mount each TLS file under /etc/vmauth/
     secrets:
       - vmauth_reader.user
@@ -579,6 +581,10 @@ secrets:
   alloy.crt:
     external: true
   alloy.key:
+    external: true
+  grafana.crt:
+    external: true
+  grafana.key:
     external: true
   iot.ca:
     external: true
