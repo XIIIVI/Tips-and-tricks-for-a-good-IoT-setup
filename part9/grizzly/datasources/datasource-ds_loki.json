@@ -11,6 +11,8 @@
       "tlsAuth": false,
       "tlsAuthWithCACert": true,
       "tlsCACert": "$__file{/run/secrets/iot.ca}",
+      "tlsClientCert": "$__file{/run/secrets/grafana.crt}",
+      "tlsClientKey": "$__file{/run/secrets/grafana.key}",
       "maxLines": 1000
     },
     "name": "loki",
