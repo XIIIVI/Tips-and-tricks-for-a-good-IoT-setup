@@ -2,7 +2,7 @@
   "apiVersion": "grizzly.grafana.com/v1alpha1",
   "kind": "Datasource",
   "metadata": {
-    "name": "ds_victoriametrics"
+    "name": "ds_prometheus"
   },
   "spec": {
     "access": "proxy",
