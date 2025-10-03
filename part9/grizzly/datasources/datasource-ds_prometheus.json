@@ -11,11 +11,17 @@
     "secureJsonData": {
       "basicAuthPassword": "$__file{/run/secrets/vmauth_reader.passwd}"
     },
+    "jsonData": {
+      "tlsAuthWithCACert": true,
+      "tlsCACert": "$__file{/run/secrets/iot.ca}",
+      "httpMethod": "POST",
+      "timeInterval": "30s"
+    },
     "name": "prometheus",
     "orgId": 1,
     "type": "prometheus",
     "typeLogoUrl": "public/plugins/prometheus/img/prometheus_logo.svg",
     "uid": "ds_prometheus",
-    "url": "http://iot-stack_vmauth:8443/select/0/prometheus"
+    "url": "https://iot-stack_vmauth:8443/"
   }
 }
