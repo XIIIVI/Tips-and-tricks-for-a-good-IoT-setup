@@ -490,54 +490,60 @@ done 0< <(jq -c '.swarm.secrets.credentials[]' <<<"$JSON_ARG")
 # build_san
 # This function builds the subjectAltName (SAN) string for OpenSSL from a JSON array.
 # Arguments:
-# JSON_ARG can be a JSON string or a path to a file containing JSON
+#    - JSON_ARG can be a JSON string or a path to a file containing JSON
 # Outputs: prints the -addext value for OpenSSL (e.g. "subjectAltName = DNS:...,IP:...")
 # Exit code 0 and empty output when array missing or empty.
 #
 build_san() {
   set -euo pipefail
 
-  local JSON_ARG="$1"
-  local jq_expr='.swarm.secrets.certificates["key-and-csr"] // []'
+  local JSON_INPUT_ARG="${1:-}"
+  local JQ_PATH='.swarm.secrets.certificates["key-and-csr"] // []'
 
-  # Determine whether JSON_ARG is a file or a raw JSON string
-  local jq_input
-  if [ -f "$JSON_ARG" ]; then
-    jq_input="$(cat "$JSON_ARG")"
+  [ -n "$JSON_INPUT_ARG" ] || return 0
+
+  # Read source: file or raw string
+  local SRC
+  if [ -f "$JSON_INPUT_ARG" ]; then
+    SRC="$(cat "$JSON_INPUT_ARG")"
   else
-    jq_input="$JSON_ARG"
+    SRC="$JSON_INPUT_ARG"
   fi
 
-  # Safely get array length
-  local len
-  len=$(printf '%s' "$jq_input" | jq -r "try (${jq_expr} | length) // 0") || len=0
-  if [ "$len" -le 0 ]; then
-    # Nothing to add
-    return 0
-  fi
+  # Normalize: if the top-level value is a JSON string that encodes JSON,
+  # convert it to actual JSON; else keep as-is.
+  # Then extract the array items raw (one per line), tolerant to missing path.
+  local ITEMS
+  ITEMS=$(printf '%s' "$SRC" \
+    | jq -r 'try (if (type == "string") then fromjson else . end) | try ('"$JQ_PATH"')[]' 2>/dev/null || true)
 
-  # Build comma-separated SAN list, autodetecting IPv4 and IPv6
-  local san_list
-  san_list=$(printf '%s' "$jq_input" \
-    | jq -r "${jq_expr}[] | @text" \
-    | while IFS= read -r item; do
-        # trim
-        item="${item#"${item%%[![:space:]]*}"}"
-        item="${item%"${item##*[![:space:]]}"}"
-        if printf '%s' "$item" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
-          printf 'IP:%s,' "$item"
-        elif printf '%s' "$item" | grep -Eq '^([0-9a-fA-F]{0,4}:){2,}[0-9a-fA-F]{0,4}$'; then
-          printf 'IP:%s,' "$item"
-        else
-          printf 'DNS:%s,' "$item"
-        fi
-      done \
-    | sed 's/,$//')
+  [ -n "$ITEMS" ] || return 0
 
-  # If san_list is empty, return success with no output
-  [ -n "$san_list" ] || return 0
+  # Build CSV of prefixed SANs, skipping empties
+  local PREFIXED=""
+  local ITEM
+  while IFS=$'\n' read -r ITEM; do
+    ITEM="${ITEM#"${ITEM%%[![:space:]]*}"}"
+    ITEM="${ITEM%"${ITEM##*[![:space:]]}"}"
+    [ -z "$ITEM" ] && continue
+    # remove accidental surrounding quotes (defensive)
+    ITEM="${ITEM%\"}"
+    ITEM="${ITEM#\"}"
+    if printf '%s' "$ITEM" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+      PREFIXED="${PREFIXED}IP:${ITEM},"
+    elif printf '%s' "$ITEM" | grep -Eq '^([0-9a-fA-F]{0,4}:){2,}[0-9a-fA-F]{0,4}$'; then
+      PREFIXED="${PREFIXED}IP:${ITEM},"
+    else
+      PREFIXED="${PREFIXED}DNS:${ITEM},"
+    fi
+  done <<EOF
+$ITEMS
+EOF
 
-  printf 'subjectAltName = %s' "$san_list"
+  PREFIXED="${PREFIXED%,}"
+  [ -n "$PREFIXED" ] || return 0
+
+  printf 'subjectAltName = %s' "$PREFIXED"
 }
 
 #
@@ -647,7 +653,7 @@ EOF
       -extfile <( cat cert_sign.ext && printf "subjectAltName=DNS:%s\n" "${NAME}" )
 
     show_cert_summary "${NAME}.crt"
-    
+
     # 3.4 Verify certificate chains to CA
     log_warning "\t\t- Verifying '${NAME}' certificate"
     openssl verify -CAfile "${CA_NAME}.crt" "${NAME}.crt"
