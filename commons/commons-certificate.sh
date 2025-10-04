@@ -39,7 +39,7 @@ show_cert_summary() {
   local CERT_FILE_ARG="$1"
   
   if [ -z "$CERT_FILE_ARG" ] || [ ! -f "$CERT_FILE_ARG" ]; then
-    printf 'Error: cert file missing or not found: %s\n' "$CERT_FILE_ARG" >&2
+    log_error "\t Error: cert file missing or not found: $CERT_FILE_ARG"
     return 2
   fi
 
@@ -78,6 +78,8 @@ show_cert_summary() {
     VERDICT_ARG="valid"
   fi
 
+  log_debug"\t Certificate summary for file: $CERT_FILE_ARG"
+  
   cat <<EOF
 Subject:           ${SUBJ_ARG:-N/A}
 Issuer:            ${ISSUER_ARG:-N/A}
