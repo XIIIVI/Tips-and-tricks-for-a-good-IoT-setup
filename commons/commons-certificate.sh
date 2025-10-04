@@ -78,7 +78,7 @@ show_cert_summary() {
     VERDICT_ARG="valid"
   fi
 
-  log_debug"\t-🔒 Certificate summary for file: $CERT_FILE_ARG"
+  log_debug "\t-🔒 Certificate summary for file: $CERT_FILE_ARG"
 
   cat <<EOF
 Subject:           ${SUBJ_ARG:-N/A}
