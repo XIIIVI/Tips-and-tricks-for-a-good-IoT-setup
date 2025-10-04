@@ -29,6 +29,7 @@
 #  OTHER DEALINGS IN THE SOFTWARE.
 # ============================================================
 
+source "../../commons/commons-certificate.sh"
 source "../../commons/commons-cli.sh"
 source "../../commons/commons-docker.sh"
 source "../../commons/commons-file.sh"
@@ -486,6 +487,60 @@ done 0< <(jq -c '.swarm.secrets.credentials[]' <<<"$JSON_ARG")
 }
 
 #
+# build_san
+# This function builds the subjectAltName (SAN) string for OpenSSL from a JSON array.
+# Arguments:
+# JSON_ARG can be a JSON string or a path to a file containing JSON
+# Outputs: prints the -addext value for OpenSSL (e.g. "subjectAltName = DNS:...,IP:...")
+# Exit code 0 and empty output when array missing or empty.
+#
+build_san() {
+  set -euo pipefail
+
+  local JSON_ARG="$1"
+  local jq_expr='.swarm.secrets.certificates["key-and-csr"] // []'
+
+  # Determine whether JSON_ARG is a file or a raw JSON string
+  local jq_input
+  if [ -f "$JSON_ARG" ]; then
+    jq_input="$(cat "$JSON_ARG")"
+  else
+    jq_input="$JSON_ARG"
+  fi
+
+  # Safely get array length
+  local len
+  len=$(printf '%s' "$jq_input" | jq -r "try (${jq_expr} | length) // 0") || len=0
+  if [ "$len" -le 0 ]; then
+    # Nothing to add
+    return 0
+  fi
+
+  # Build comma-separated SAN list, autodetecting IPv4 and IPv6
+  local san_list
+  san_list=$(printf '%s' "$jq_input" \
+    | jq -r "${jq_expr}[] | @text" \
+    | while IFS= read -r item; do
+        # trim
+        item="${item#"${item%%[![:space:]]*}"}"
+        item="${item%"${item##*[![:space:]]}"}"
+        if printf '%s' "$item" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+          printf 'IP:%s,' "$item"
+        elif printf '%s' "$item" | grep -Eq '^([0-9a-fA-F]{0,4}:){2,}[0-9a-fA-F]{0,4}$'; then
+          printf 'IP:%s,' "$item"
+        else
+          printf 'DNS:%s,' "$item"
+        fi
+      done \
+    | sed 's/,$//')
+
+  # If san_list is empty, return success with no output
+  [ -n "$san_list" ] || return 0
+
+  printf 'subjectAltName = %s' "$san_list"
+}
+
+#
 # create_certificates
 # This function creates and adds certificates as Docker secrets to the Swarm cluster.
 # Arguments:
@@ -499,7 +554,7 @@ create_certificates() {
   local PASSWORD_ARG="$2"
   local IP_ADDRESS_ARG="$3"
   local JSON_ARG="$4"
-  local CA_NAME DAYS_VALID COUNTRY STATE LOCALITY
+  local CA_NAME DAYS_VALID COUNTRY STATE LOCALITY, ADDEXT
 
   log_info "Generating the certificates"
 
@@ -509,17 +564,35 @@ create_certificates() {
   COUNTRY=$(jq -r '.swarm.secrets.certificates.country' <<<"$JSON_ARG")
   STATE=$(jq -r '.swarm.secrets.certificates.state' <<<"$JSON_ARG")
   LOCALITY=$(jq -r '.swarm.secrets.certificates.locality' <<<"$JSON_ARG")
+  # Build the SAN addext string (may print nothing on stdout if no SANs)
+  ADDEXT="$(build_san "$JSON_ARG" || true)"
 
   log_debug "\t- Generating root CA '${CA_NAME}'"
 
   # 1.1 Generate root CA key and certificate
   openssl genrsa -out "${CA_NAME}.key" 4096
-  openssl req -x509 -new -nodes \
-    -key "${CA_NAME}.key" \
-    -sha256 \
-    -days "${DAYS_VALID}" \
-    -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/CN=${CA_NAME}" \
-    -out "${CA_NAME}.crt"
+
+  if [ -n "$ADDEXT" ]; then
+    log_debug "\t- Using SANs: $ADDEXT"
+    openssl req -x509 -new -nodes \
+       -key "${CA_NAME}.key" \
+       -sha256 \
+       -days "${DAYS_VALID}" \
+       -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/CN=${CA_NAME}" \
+       -out "${CA_NAME}.crt" \
+       -addext "$ADDEXT"
+  else
+    log_debug "\t- No SANs provided, creating cert without -addext"
+    openssl req -x509 -new -nodes \
+       -key "${CA_NAME}.key" \
+       -sha256 \
+       -days "${DAYS_VALID}" \
+       -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/CN=${CA_NAME}" \
+       -out "${CA_NAME}.crt" \
+       -addext "$ADDEXT"
+  fi  
+
+  show_cert_summary "${CA_NAME}.crt"
 
   # 1.2 Copy & import CA certificate as a Docker secret on the manager
   log_debug "\t- Copying root CA to ${IP_ADDRESS_ARG}"
@@ -573,6 +646,8 @@ EOF
       -sha256 \
       -extfile <( cat cert_sign.ext && printf "subjectAltName=DNS:%s\n" "${NAME}" )
 
+    show_cert_summary "${NAME}.crt"
+    
     # 3.4 Verify certificate chains to CA
     log_warning "\t\t- Verifying '${NAME}' certificate"
     openssl verify -CAfile "${CA_NAME}.crt" "${NAME}.crt"

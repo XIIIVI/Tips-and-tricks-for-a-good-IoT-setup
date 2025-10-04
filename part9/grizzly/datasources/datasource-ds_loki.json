@@ -5,21 +5,22 @@
     "name": "ds_loki"
   },
   "spec": {
-    "access": "proxy",
-    "isDefault": false,
-    "jsonData": {
-      "tlsAuth": false,
-      "tlsAuthWithCACert": true,
-      "tlsCACert": "$__file{/run/secrets/iot.ca}",
-      "tlsClientCert": "$__file{/run/secrets/grafana.crt}",
-      "tlsClientKey": "$__file{/run/secrets/grafana.key}",
-      "maxLines": 1000
-    },
     "name": "loki",
     "orgId": 1,
     "type": "loki",
     "typeLogoUrl": "public/plugins/loki/img/loki_icon.svg",
     "uid": "ds_loki",
-    "url": "https://iot-stack_loki:3100"
+    "url": "https://iot-stack_loki:3100",
+    "access": "proxy",
+    "isDefault": true,
+    "jsonData": {
+      "tlsAuth": true,
+      "tlsAuthWithCACert": true
+    },
+    "secureJsonData": {
+      "tlsCACert": "${file:/run/secrets/tls_ca_cert}",
+      "tlsClientCert": "${file:/run/secrets/tls_client_cert}",
+      "tlsClientKey": "${file:/run/secrets/tls_client_key}"
+    }
   }
 }
