@@ -5,25 +5,22 @@
     "name": "ds_prometheus"
   },
   "spec": {
-    "access": "proxy",
-    "basicAuth": true,
-    "basicAuthUser": "$__file{/run/secrets/vmauth_reader.user}",
-    "secureJsonData": {
-      "basicAuthPassword": "$__file{/run/secrets/vmauth_reader.passwd}"
-    },
-    "jsonData": {
-      "tlsAuthWithCACert": true,
-      "tlsCACert": "$__file{/run/secrets/iot.ca}",
-      "tlsClientCert": "$__file{/run/secrets/grafana.crt}",
-      "tlsClientKey": "$__file{/run/secrets/grafana.key}",
-      "httpMethod": "POST",
-      "timeInterval": "30s"
-    },
     "name": "prometheus",
     "orgId": 1,
     "type": "prometheus",
     "typeLogoUrl": "public/plugins/prometheus/img/prometheus_logo.svg",
     "uid": "ds_prometheus",
-    "url": "https://vmauth:8443/"
+    "url": "https://vmauth:8443/",
+    "access": "proxy",
+    "isDefault": true,
+    "jsonData": {
+      "tlsAuth": true,
+      "tlsAuthWithCACert": true
+    },
+    "secureJsonData": {
+      "tlsCACert": "${file:/run/secrets/tls_ca_cert}",
+      "tlsClientCert": "${file:/run/secrets/tls_client_cert}",
+      "tlsClientKey": "${file:/run/secrets/tls_client_key}"
+    }
   }
 }
