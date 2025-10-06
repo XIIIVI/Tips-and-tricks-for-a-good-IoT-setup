@@ -27,20 +27,19 @@
 #  OTHER DEALINGS IN THE SOFTWARE.
 # ============================================================
 
-version: '3.8'
+version: "3.8"
 
 services:
-
-#################################
-#                               #
-#          P A R T   4          #
-#                               #
-#################################
+  #################################
+  #                               #
+  #          P A R T   4          #
+  #                               #
+  #################################
 
   mosquitto:
     image: ${PRIVATE_REPO}/eclipse-mosquitto:2.0.22-openssl
     deploy:
-      mode: global  # Ensures one instance per eligible node
+      mode: global # Ensures one instance per eligible node
       restart_policy:
         condition: on-failure
       resources:
@@ -61,15 +60,15 @@ services:
       - /data/mosquitto/data:/mosquitto/data
       - /data/mosquitto/log:/mosquitto/log
 
-#################################
-#                               #
-#          P A R T   5          #
-#                               #
-#################################
+  #################################
+  #                               #
+  #          P A R T   5          #
+  #                               #
+  #################################
   telegraf-level0:
     image: ${PRIVATE_REPO}/telegraf-level0:1.34.4-alpine
     deploy:
-      mode: global  # Ensures one instance per eligible node
+      mode: global # Ensures one instance per eligible node
       restart_policy:
         condition: on-failure
       resources:
@@ -80,23 +79,23 @@ services:
         constraints:
           - node.labels.level == 0
     environment:
-       - DEBUG_ON=false
-       - DEBUG_QUIET=false
-       - DEBUG_LOG_ROTATION_INTERVAL_IN_HOUR=0
-       - DEBUG_LOG_ROTATION_MAX_SIZE_IN_MIB=10
-       - DEBUG_LOG_ROTATION_MAX_ARCHIVES=5
-       # To limit memory consumption for Telegraf
-       # 300MB is the default value
-       - GOMEMLIMIT=314572800
-       - GOGC=50
-       - GOMAXPROCS=4
+      - DEBUG_ON=false
+      - DEBUG_QUIET=false
+      - DEBUG_LOG_ROTATION_INTERVAL_IN_HOUR=0
+      - DEBUG_LOG_ROTATION_MAX_SIZE_IN_MIB=10
+      - DEBUG_LOG_ROTATION_MAX_ARCHIVES=5
+      # To limit memory consumption for Telegraf
+      # 300MB is the default value
+      - GOMEMLIMIT=314572800
+      - GOGC=50
+      - GOMAXPROCS=4
     networks:
       - public-network
     ports:
-      - target: 8791    # container port
+      - target: 8791 # container port
         published: 8791 # port exposed on the swarm nodes
         protocol: tcp
-        mode: host      # or 'ingress' for routing mesh
+        mode: host # or 'ingress' for routing mesh
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -116,7 +115,7 @@ services:
   telegraf-level1:
     image: ${PRIVATE_REPO}/telegraf-level1:1.34.4-alpine
     deploy:
-      mode: global  # Ensures one instance per eligible node
+      mode: global # Ensures one instance per eligible node
       restart_policy:
         condition: on-failure
       resources:
@@ -127,23 +126,23 @@ services:
         constraints:
           - node.labels.level == 1
     environment:
-       - DEBUG_ON=false
-       - DEBUG_QUIET=false
-       - DEBUG_LOG_ROTATION_INTERVAL_IN_HOUR=0
-       - DEBUG_LOG_ROTATION_MAX_SIZE_IN_MIB=10
-       - DEBUG_LOG_ROTATION_MAX_ARCHIVES=5
-       # To limit memory consumption for Telegraf
-       # 300MB is the default value
-       - GOMEMLIMIT=314572800
-       - GOGC=50
-       - GOMAXPROCS=4
+      - DEBUG_ON=false
+      - DEBUG_QUIET=false
+      - DEBUG_LOG_ROTATION_INTERVAL_IN_HOUR=0
+      - DEBUG_LOG_ROTATION_MAX_SIZE_IN_MIB=10
+      - DEBUG_LOG_ROTATION_MAX_ARCHIVES=5
+      # To limit memory consumption for Telegraf
+      # 300MB is the default value
+      - GOMEMLIMIT=314572800
+      - GOGC=50
+      - GOMAXPROCS=4
     networks:
       - public-network
     ports:
-      - target: 8791    # container port
+      - target: 8791 # container port
         published: 8791 # port exposed on the swarm nodes
         protocol: tcp
-        mode: host      # or 'ingress' for routing mesh
+        mode: host # or 'ingress' for routing mesh
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -161,7 +160,7 @@ services:
   telegraf-level2:
     image: ${PRIVATE_REPO}/telegraf-level2:1.34.4-alpine
     deploy:
-      mode: global  # Ensures one instance per eligible node
+      mode: global # Ensures one instance per eligible node
       restart_policy:
         condition: on-failure
       resources:
@@ -172,16 +171,16 @@ services:
         constraints:
           - node.labels.level == 2
     environment:
-       - DEBUG_ON=false
-       - DEBUG_QUIET=false
-       - DEBUG_LOG_ROTATION_INTERVAL_IN_HOUR=0
-       - DEBUG_LOG_ROTATION_MAX_SIZE_IN_MIB=10
-       - DEBUG_LOG_ROTATION_MAX_ARCHIVES=5
-       # To limit memory consumption for Telegraf
-       # 300MB is the default value
-       - GOMEMLIMIT=314572800
-       - GOGC=50
-       - GOMAXPROCS=4
+      - DEBUG_ON=false
+      - DEBUG_QUIET=false
+      - DEBUG_LOG_ROTATION_INTERVAL_IN_HOUR=0
+      - DEBUG_LOG_ROTATION_MAX_SIZE_IN_MIB=10
+      - DEBUG_LOG_ROTATION_MAX_ARCHIVES=5
+      # To limit memory consumption for Telegraf
+      # 300MB is the default value
+      - GOMEMLIMIT=314572800
+      - GOGC=50
+      - GOMAXPROCS=4
     networks:
       - public-network
     volumes:
@@ -202,13 +201,11 @@ services:
       # For vcgencmd metrics
       - /tmp/telegraf_metrics:/telegraf_metrics:ro
 
-
-#################################
-#                               #
-#          P A R T   6          #
-#                               #
-#################################
-
+  #################################
+  #                               #
+  #          P A R T   6          #
+  #                               #
+  #################################
 
   vminsert:
     image: ${PRIVATE_REPO}/vminsert:v1.119.0-cluster
@@ -220,13 +217,13 @@ services:
         constraints:
           - node.labels.level == 0
     command:
-      - '--storageNode=iot-stack_vmstorage:8400'
+      - "--storageNode=iot-stack_vmstorage:8400"
     depends_on:
       - vmstorage
     networks:
       - public-network
     ports:
-      - "8480:8480"  # remote_write endpoint for Telegraf
+      - "8480:8480" # remote_write endpoint for Telegraf
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -242,8 +239,8 @@ services:
         constraints:
           - node.labels.level == 0
     command:
-      - '--retentionPeriod=1d'
-      - '--storageDataPath=/vmstorage'
+      - "--retentionPeriod=1d"
+      - "--storageDataPath=/vmstorage"
     networks:
       - public-network
     volumes:
@@ -266,22 +263,19 @@ services:
     networks:
       - public-network
     ports:
-      - "8481:8481"  # UI and query API
+      - "8481:8481" # UI and query API
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
     command:
-      - '--storageNode=iot-stack_vmstorage:8401'
+      - "--storageNode=iot-stack_vmstorage:8401"
 
-
-#################################
-#                               #
-#          P A R T   7          #
-#                               #
-#################################
-
-
+  #################################
+  #                               #
+  #          P A R T   7          #
+  #                               #
+  #################################
 
   loki:
     image: ${PRIVATE_REPO}/loki:3.0.0
@@ -303,12 +297,12 @@ services:
       - "3100:3100"
     volumes:
       - /mnt/replicated-data/loki:/loki-chunks # Persistent storage for Loki
-      - /var/lib/loki/:/loki/       # local disk
+      - /var/lib/loki/:/loki/ # local disk
 
   alloy-level0:
     image: ${PRIVATE_REPO}/alloy-level0:v1.10.2
     deploy:
-      mode: global  # Ensures one instance per eligible node
+      mode: global # Ensures one instance per eligible node
       restart_policy:
         condition: on-failure
       placement:
@@ -317,10 +311,10 @@ services:
     networks:
       - public-network
     ports:
-      - target: 3110    # container port
+      - target: 3110 # container port
         published: 3110 # port exposed on the swarm nodes
         protocol: tcp
-        mode: host      # or 'ingress' for routing mesh
+        mode: host # or 'ingress' for routing mesh
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -332,7 +326,7 @@ services:
   alloy-level1:
     image: ${PRIVATE_REPO}/alloy-level1:v1.10.2
     deploy:
-      mode: global  # Ensures one instance per eligible node
+      mode: global # Ensures one instance per eligible node
       restart_policy:
         condition: on-failure
       placement:
@@ -343,10 +337,10 @@ services:
     networks:
       - public-network
     ports:
-      - target: 3111    # container port
+      - target: 3111 # container port
         published: 3111 # port exposed on the swarm nodes
         protocol: tcp
-        mode: host      # or 'ingress' for routing mesh
+        mode: host # or 'ingress' for routing mesh
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -358,7 +352,7 @@ services:
   alloy-level2:
     image: ${PRIVATE_REPO}/alloy-level2:v1.10.2
     deploy:
-      mode: global  # Ensures one instance per eligible node
+      mode: global # Ensures one instance per eligible node
       restart_policy:
         condition: on-failure
       placement:
@@ -376,11 +370,11 @@ services:
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
-#################################
-#                               #
-#          P A R T   8          #
-#                               #
-#################################
+  #################################
+  #                               #
+  #          P A R T   8          #
+  #                               #
+  #################################
 
   grafana:
     image: ${PRIVATE_REPO}/grafana:12.2.0
@@ -393,7 +387,7 @@ services:
         constraints:
           - node.labels.level == 0
     environment:
-      - GF_INSTALL_PLUGINS=volkovlabs-echarts-panel,volkovlabs-variable-panel,marcusolsson-static-datasource
+      - GF_PLUGINS_PREINSTALL_SYNC=volkovlabs-echarts-panel,volkovlabs-variable-panel,marcusolsson-static-datasource
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_NAME=Main Org.
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
@@ -405,7 +399,7 @@ services:
 networks:
   public-network:
     driver: overlay
-    internal: true   # isolates backend traffic
+    internal: true # isolates backend traffic
 
 configs:
   loki-config.yaml:
