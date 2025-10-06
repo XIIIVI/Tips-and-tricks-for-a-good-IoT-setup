@@ -284,10 +284,6 @@ services:
       - "-auth.config=/etc/vmauth/auth.yml"
       - "-httpListenAddr=0.0.0.0:8443"
       - "-tls"
-      - "-tlsCertFile=/etc/vmauth/vmauth.crt"
-      - "-tlsKeyFile=/etc/vmauth/vmauth.key"
-      - "-mtls"
-      - "-mtlsCAFile=/etc/vmauth/ca.crt"
     # Mount each TLS file under /etc/vmauth/
     secrets:
       - vmauth_reader.user
@@ -512,6 +508,7 @@ services:
   #          P A R T   8          #
   #                               #
   #################################
+
   grafana:
     image: ${PRIVATE_REPO}/grafana:12.3.0-17750354453
     environment:
@@ -544,7 +541,8 @@ services:
     entrypoint:
       - /bin/sh
       - -c
-    command: |
+    command:
+    - |
       set -euo pipefail
 
       echo "=== grafana init start ==="
@@ -557,9 +555,10 @@ services:
       CLIENT_CERT="$$(cat /etc/grafana/grafana.crt 2>/dev/null || true)"
       CLIENT_KEY="$$(cat /etc/grafana/grafana.key 2>/dev/null || true)"
 
-      VMAUTH_HOST="${VMAUTH_HOST:-vmauth}"
+      # use Compose-safe default expansion for VMAUTH_HOST
+      VMAUTH_HOST="$${VMAUTH_HOST:-vmauth}"
 
-      # write provisioning header and keys with printf (Compose-safe: $$ for every $)
+      # write provisioning header using printf
       printf '%s\n' \
         "apiVersion: 1" \
         "datasources:" \
@@ -597,21 +596,20 @@ services:
         printf '        \n' >> "$$PROV_DIR/prometheus.yaml"
       fi
 
-      # ensure trailing newline
       printf '\n' >> "$$PROV_DIR/prometheus.yaml"
 
-      # set permissions for Grafana UID (472)
+      # permissions for Grafana UID (472)
       chown -R 472:472 /etc/grafana/provisioning || true
       chmod -R 0700 /etc/grafana/provisioning || true
 
       echo "=== grafana init handoff ==="
 
-      # exec original startup so Grafana runs as PID 1
       if [ -x /run.sh ]; then
         exec /run.sh
       else
         exec grafana-server --homepath=/usr/share/grafana --config=/etc/grafana/grafana.ini
       fi
+
 
 networks:
   log-network:

@@ -10,6 +10,12 @@
 
 ---
 
+## Networks
+
+* Tu check which services uses an overlay network: ```sudo docker network inspect <OVERLAY_NETWORK>```
+
+---
+
 ## Nodes
 
 * To list the services on a given node: ```sudo docker node ps <Node's name>```
@@ -24,6 +30,7 @@
 
 ## Services
 
+* Display the details of a service: ```sudo docker service inspect <SERVICE_NAME> --pretty```
 * List all the services: ```sudo docker service ls```
 * Remove a single service: ```sudo docker service rm <Name of the service>```
 * Remove all the services: ```sudo docker service rm $(sudo docker service ls -q)```
