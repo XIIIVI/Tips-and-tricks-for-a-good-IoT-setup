@@ -296,6 +296,9 @@ services:
     ports:
       - "3100:3100"
     volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/hostname:/etc/hostname:ro
       - /mnt/replicated-data/loki:/loki-chunks # Persistent storage for Loki
       - /var/lib/loki/:/loki/ # local disk
 
@@ -395,7 +398,11 @@ services:
       - public-network
     ports:
       - "8080:3000"
-
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/hostname:/etc/hostname:ro
+      
 networks:
   public-network:
     driver: overlay

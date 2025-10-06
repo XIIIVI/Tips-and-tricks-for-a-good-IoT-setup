@@ -359,6 +359,9 @@ services:
       - source: iot.ca
         target: /etc/loki/ca.crt
     volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/hostname:/etc/hostname:ro
       - /mnt/replicated-data/loki:/loki-chunks # Persistent storage for Loki
       - /var/lib/loki/:/loki/ # local disk
 
@@ -485,6 +488,10 @@ services:
         target: /etc/grafana/grafana.key
       - source: iot.ca
         target: /etc/grafana/ca.crt
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/hostname:/etc/hostname:ro
 
 
 networks:

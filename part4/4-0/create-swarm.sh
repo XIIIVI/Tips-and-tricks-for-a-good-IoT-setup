@@ -831,9 +831,9 @@ EOF
 
     done 0< <(jq -c '.swarm.networks[].overlays[]' <<<"$JSON_ARG")
 
-    log_warning "#################################"
-    log_warning "# Overlay networks of the Swarm #"
-    log_warning "#################################"
+    log_warning "#########################"
+    log_warning "# Networks of the Swarm #"
+    log_warning "#########################"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" \
         "sudo docker network ls"
 }
