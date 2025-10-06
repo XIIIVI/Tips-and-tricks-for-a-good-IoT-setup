@@ -32,14 +32,8 @@ users:
   - username: "file:///run/secrets/vmauth_reader.user"
     password: "file:///run/secrets/vmauth_reader.passwd"
     url_prefix: "http://iot-stack_vmselect:8481/select/0/prometheus"
-    tls_ca_file: "/etc/vmauth/ca.crt"
-    tls_cert_file : "/etc/vmauth/vmauth.crt"
-    tls_key_file: "/etc/vmauth/vmauth.key"
     
   # User for write operations (metrics ingestion)
   - username: "file:///run/secrets/vmauth_writer.user"
     password: "file:///run/secrets/vmauth_writer.passwd"
     url_prefix: "http://iot-stack_vminsert:8480/insert/0/prometheus"
-    tls_ca_file: "/etc/vmauth/ca.crt"
-    tls_cert_file : "/etc/vmauth/vmauth.crt"
-    tls_key_file: "/etc/vmauth/vmauth.key"

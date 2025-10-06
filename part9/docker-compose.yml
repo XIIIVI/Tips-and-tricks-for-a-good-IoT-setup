@@ -228,8 +228,6 @@ services:
     networks:
       - telemetry-network
     secrets:
-      - vmauth_writer.user
-      - vmauth_writer.passwd
       - source: telegraf.crt
         target: /etc/telegraf/telegraf.crt
       - source: telegraf.key
@@ -263,55 +261,6 @@ services:
   #          P A R T   6          #
   #                               #
   #################################
-  vmauth:
-    image: ${PRIVATE_REPO}/vmauth:v1.119.0
-    networks:
-      - secured-network
-      - telemetry-network
-      - timeseries-network
-    # Mount the auth config under /etc/vmauth
-    configs:
-      - source: vmauth.yml
-        target: /etc/vmauth/auth.yml
-    # override the container’s startup command entirely:
-    ports:
-      - target: 8443
-        published: 8443
-        protocol: tcp
-    # 3. Override ENTRYPOINT to invoke the correct binary + flags
-    entrypoint:
-      - "/vmauth-prod"
-      - "-auth.config=/etc/vmauth/auth.yml"
-      - "-httpListenAddr=0.0.0.0:8443"
-      - "-tls"
-    # Mount each TLS file under /etc/vmauth/
-    secrets:
-      - vmauth_reader.user
-      - vmauth_reader.passwd
-      - vmauth_writer.user
-      - vmauth_writer.passwd
-      - source: vmauth.crt
-        target: /etc/vmauth/vmauth.crt
-        uid: "0"
-        gid: "0"
-        mode: 0440
-      - source: vmauth.key
-        target: /etc/vmauth/vmauth.key
-        uid: "0"
-        gid: "0"
-        mode: 0400
-      - source: iot.ca
-        target: /etc/vmauth/ca.crt
-        uid: "0"
-        gid: "0"
-        mode: 0440
-    deploy:
-      mode: global
-      restart_policy:
-        condition: on-failure
-      placement:
-        constraints:
-          - node.labels.level == 0
 
   vminsert:
     image: ${PRIVATE_REPO}/vminsert:v1.119.0-cluster
@@ -536,79 +485,6 @@ services:
         target: /etc/grafana/grafana.key
       - source: iot.ca
         target: /etc/grafana/ca.crt
-      - vmauth_reader.user
-      - vmauth_reader.passwd
-    entrypoint:
-      - /bin/sh
-      - -c
-    command:
-    - |
-      set -euo pipefail
-
-      echo "=== grafana init start ==="
-
-      PROV_DIR="/etc/grafana/provisioning/datasources"
-      mkdir -p "$$PROV_DIR"
-
-      # read secrets if they exist
-      CA="$$(cat /etc/grafana/ca.crt 2>/dev/null || true)"
-      CLIENT_CERT="$$(cat /etc/grafana/grafana.crt 2>/dev/null || true)"
-      CLIENT_KEY="$$(cat /etc/grafana/grafana.key 2>/dev/null || true)"
-
-      # use Compose-safe default expansion for VMAUTH_HOST
-      VMAUTH_HOST="$${VMAUTH_HOST:-vmauth}"
-
-      # write provisioning header using printf
-      printf '%s\n' \
-        "apiVersion: 1" \
-        "datasources:" \
-        "  - name: Prometheus via vmauth" \
-        "    type: prometheus" \
-        "    access: proxy" \
-        "    url: https://$$VMAUTH_HOST:8443/" \
-        "    jsonData:" \
-        "      tlsAuth: true" \
-        "      tlsAuthWithCACert: true" \
-        "      tlsServerName: $$VMAUTH_HOST" \
-        "    secureJsonData:" \
-        "      tlsCACert: |" > "$$PROV_DIR/prometheus.yaml"
-
-      # append CA block (8-space indentation) or blank line
-      if [ -n "$$CA" ]; then
-        printf '%s\n' "$$CA" | sed 's/^/        /' >> "$$PROV_DIR/prometheus.yaml"
-      else
-        printf '        \n' >> "$$PROV_DIR/prometheus.yaml"
-      fi
-
-      # tlsClientCert block
-      printf '%s\n' "      tlsClientCert: |" >> "$$PROV_DIR/prometheus.yaml"
-      if [ -n "$$CLIENT_CERT" ]; then
-        printf '%s\n' "$$CLIENT_CERT" | sed 's/^/        /' >> "$$PROV_DIR/prometheus.yaml"
-      else
-        printf '        \n' >> "$$PROV_DIR/prometheus.yaml"
-      fi
-
-      # tlsClientKey block
-      printf '%s\n' "      tlsClientKey: |" >> "$$PROV_DIR/prometheus.yaml"
-      if [ -n "$$CLIENT_KEY" ]; then
-        printf '%s\n' "$$CLIENT_KEY" | sed 's/^/        /' >> "$$PROV_DIR/prometheus.yaml"
-      else
-        printf '        \n' >> "$$PROV_DIR/prometheus.yaml"
-      fi
-
-      printf '\n' >> "$$PROV_DIR/prometheus.yaml"
-
-      # permissions for Grafana UID (472)
-      chown -R 472:472 /etc/grafana/provisioning || true
-      chmod -R 0700 /etc/grafana/provisioning || true
-
-      echo "=== grafana init handoff ==="
-
-      if [ -x /run.sh ]; then
-        exec /run.sh
-      else
-        exec grafana-server --homepath=/usr/share/grafana --config=/etc/grafana/grafana.ini
-      fi
 
 
 networks:
@@ -643,8 +519,6 @@ configs:
     external: true
   telegraf-level2.conf:
     external: true
-  vmauth.yml:
-    external: true
 
 secrets:
   alloy.crt:
@@ -672,16 +546,4 @@ secrets:
   telegraf.crt:
     external: true
   telegraf.key:
-    external: true
-  vmauth.crt:
-    external: true
-  vmauth.key:
-    external: true
-  vmauth_reader.passwd:
-    external: true
-  vmauth_reader.user:
-    external: true
-  vmauth_writer.passwd:
-    external: true
-  vmauth_writer.user:
     external: true

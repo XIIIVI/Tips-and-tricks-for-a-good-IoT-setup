@@ -12,15 +12,6 @@
     "uid": "ds_loki",
     "url": "https://iot-stack_loki:3100",
     "access": "proxy",
-    "isDefault": true,
-    "jsonData": {
-      "tlsAuth": true,
-      "tlsAuthWithCACert": true
-    },
-    "secureJsonData": {
-      "tlsCACert": "${file:/run/secrets/tls_ca_cert}",
-      "tlsClientCert": "${file:/run/secrets/tls_client_cert}",
-      "tlsClientKey": "${file:/run/secrets/tls_client_key}"
-    }
+    "isDefault": false
   }
 }
