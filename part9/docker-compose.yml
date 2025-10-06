@@ -481,6 +481,79 @@ services:
       placement:
         constraints:
           - node.labels.level == 0
+    entrypoint:
+      - /bin/sh
+      - -c
+    command:
+    - |
+      set -euo pipefail
+
+      echo "=== grafana init start ==="
+
+      PROV_DIR="/etc/grafana/provisioning/datasources"
+      mkdir -p "$$PROV_DIR"
+
+      # read secrets if they exist
+      CA="$$(cat /etc/grafana/ca.crt 2>/dev/null || true)"
+      CLIENT_CERT="$$(cat /etc/loki/loki.crt 2>/dev/null || true)"
+      CLIENT_KEY="$$(cat /etc/loki/loki.key 2>/dev/null || true)"
+
+      # use Compose-safe default expansion for LOKI_HOST
+      LOKI_HOST="$${LOKI_HOST:-loki}"
+
+      # write provisioning header using printf
+      printf '%s\n' \
+        "apiVersion: 1" \
+        "datasources:" \
+        "  - name: Loki with TLS" \
+        "    uid: ds_loki" \
+        "    type: loki" \
+        "    access: proxy" \
+        "    typeLogoUrl: public/plugins/loki/img/loki_icon.svg" \
+        "    url: https://$$LOKI_HOST:3100/" \
+        "    jsonData:" \
+        "      tlsAuth: true" \
+        "      tlsAuthWithCACert: true" \
+        "      tlsServerName: $$LOKI_HOST" \
+        "    secureJsonData:" \
+        "      tlsCACert: |" > "$$PROV_DIR/loki.yaml"
+
+      # append CA block (8-space indentation) or blank line
+      if [ -n "$$CA" ]; then
+        printf '%s\n' "$$CA" | sed 's/^/        /' >> "$$PROV_DIR/loki.yaml"
+      else
+        printf '        \n' >> "$$PROV_DIR/loki.yaml"
+      fi
+
+      # tlsClientCert block
+      printf '%s\n' "      tlsClientCert: |" >> "$$PROV_DIR/loki.yaml"
+      if [ -n "$$CLIENT_CERT" ]; then
+        printf '%s\n' "$$CLIENT_CERT" | sed 's/^/        /' >> "$$PROV_DIR/loki.yaml"
+      else
+        printf '        \n' >> "$$PROV_DIR/loki.yaml"
+      fi
+
+      # tlsClientKey block
+      printf '%s\n' "      tlsClientKey: |" >> "$$PROV_DIR/loki.yaml"
+      if [ -n "$$CLIENT_KEY" ]; then
+        printf '%s\n' "$$CLIENT_KEY" | sed 's/^/        /' >> "$$PROV_DIR/loki.yaml"
+      else
+        printf '        \n' >> "$$PROV_DIR/loki.yaml"
+      fi
+
+      printf '\n' >> "$$PROV_DIR/loki.yaml"
+
+      # permissions for Grafana UID (472)
+      chown -R 472:472 /etc/grafana/provisioning || true
+      chmod -R 0700 /etc/grafana/provisioning || true
+
+      echo "=== grafana init handoff ==="
+
+      if [ -x /run.sh ]; then
+        exec /run.sh
+      else
+        exec grafana-server --homepath=/usr/share/grafana --config=/etc/grafana/grafana.ini
+      fi
     secrets:
       - source: grafana.crt
         target: /etc/grafana/grafana.crt
