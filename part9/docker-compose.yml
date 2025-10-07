@@ -483,6 +483,7 @@ services:
       placement:
         constraints:
           - node.labels.level == 0
+    # Ensure the container runs your shell script as PID 1 instead of the image's /run.sh 
     entrypoint:
       - /bin/sh
       - -c
