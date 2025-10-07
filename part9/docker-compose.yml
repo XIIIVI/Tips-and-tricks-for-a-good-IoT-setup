@@ -496,7 +496,7 @@ services:
       mkdir -p "$$PROV_DIR"
 
       # read secrets if they exist
-      CA="$$(cat /etc/grafana/ca.crt 2>/dev/null || true)"
+      CA="$$(cat /etc/loki/ca.crt 2>/dev/null || true)"
       CLIENT_CERT="$$(cat /etc/loki/loki.crt 2>/dev/null || true)"
       CLIENT_KEY="$$(cat /etc/loki/loki.key 2>/dev/null || true)"
 
@@ -557,12 +557,12 @@ services:
         exec grafana-server --homepath=/usr/share/grafana --config=/etc/grafana/grafana.ini
       fi
     secrets:
-      - source: grafana.crt
-        target: /etc/grafana/grafana.crt
-      - source: grafana.key
-        target: /etc/grafana/grafana.key
+      - source: loki.crt
+        target: /etc/loki/loki.crt
+      - source: loki.key
+        target: /etc/loki/loki.key
       - source: iot.ca
-        target: /etc/grafana/ca.crt
+        target: /etc/loki/ca.crt
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
