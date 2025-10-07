@@ -86,42 +86,6 @@
                     }
                 ],
                 "has-display": true
-            },
-            {
-                "ip-address": "192.168.2.120",
-                "hostname": "sat2",
-                "folders": [
-                    "/data/alloy",
-                    "/data/telegraf/logs"
-                ],
-                "labels": [
-                    {
-                        "key": "level",
-                        "value": "1"
-                    }
-                ],
-                "has-display": true
-            },
-            {
-                "ip-address": "192.168.2.120",
-                "hostname": "drone",
-                "folders": [
-                    "/data/alloy",
-                    "/data/telegraf/logs"
-                ],
-                "labels": [
-                    {
-                        "key": "level",
-                        "value": "1"
-                    }
-                ],
-                "config": [
-                    {
-                        "key": "PARENT",
-                        "value": "sat1"
-                    }
-                ],
-                "has-display": true
             }
         ],
         "configurations": [
