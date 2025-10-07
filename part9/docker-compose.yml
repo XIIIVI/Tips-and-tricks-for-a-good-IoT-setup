@@ -365,7 +365,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
       - /mnt/replicated-data/loki:/loki-chunks # Persistent storage for Loki
-      - /var/lib/loki/:/loki/ # local disk
+      - loki_data:/loki/ # local disk
 
   alloy-level0:
     image: ${PRIVATE_REPO}/alloy:v1.10.2
@@ -636,3 +636,6 @@ secrets:
     external: true
   telegraf.key:
     external: true
+
+volumes:
+  loki_data:
