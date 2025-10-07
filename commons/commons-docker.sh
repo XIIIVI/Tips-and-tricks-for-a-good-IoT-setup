@@ -65,6 +65,8 @@ update_docker_repo() {
     echo 'Backup saved as $BAK'
     sudo sed -E -i.bak 's|$SEARCH|$REPLACE|g' '$SRC'
     echo 'Replaced bookworm→bullseye in $SRC'
+    sudo apt clean
+    sudo rm -rf /var/lib/apt/lists/*
     sudo apt-get update -o Acquire::Retries=3
   " && echo "Update complete on $HOST_ARG"
 }
