@@ -508,7 +508,7 @@ services:
         "apiVersion: 1" \
         "datasources:" \
         "  - name: Loki with TLS" \
-        "    uid: ds_loki" \
+        "    uid: ds_loki_tls" \
         "    type: loki" \
         "    access: proxy" \
         "    typeLogoUrl: public/plugins/loki/img/loki_icon.svg" \
@@ -516,7 +516,8 @@ services:
         "    jsonData:" \
         "      tlsAuth: true" \
         "      tlsAuthWithCACert: true" \
-        "      tlsServerName: $$LOKI_HOST" \
+        "      serverName: $$LOKI_HOST" \
+        "      pdcInjected: false" \
         "    secureJsonData:" \
         "      tlsCACert: |" > "$$PROV_DIR/loki.yaml"
 
