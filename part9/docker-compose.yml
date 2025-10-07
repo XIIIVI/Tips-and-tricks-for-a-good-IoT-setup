@@ -276,6 +276,7 @@ services:
     depends_on:
       - vmstorage
     networks:
+      - secured-network
       - timeseries-network
     ports:
       - "8480:8480" # remote_write endpoint for Telegraf
@@ -316,6 +317,7 @@ services:
     depends_on:
       - vmstorage
     networks:
+      - secured-network
       - timeseries-network
     ports:
       - "8481:8481" # UI and query API
