@@ -514,9 +514,14 @@ services:
         "    access: proxy" \
         "    typeLogoUrl: public/plugins/loki/img/loki_icon.svg" \
         "    url: https://$$LOKI_HOST:3100/" \
+        "    basicAuth: false" \
+        "    basicAuthUser: ''" \
+        "    withCredentials: false" \
+        "    isDefault: false" \
         "    jsonData:" \
         "      tlsAuth: true" \
         "      tlsAuthWithCACert: true" \
+        "      tlsSkipVerify: false" \
         "      serverName: $$LOKI_HOST" \
         "      pdcInjected: false" \
         "    secureJsonData:" \
