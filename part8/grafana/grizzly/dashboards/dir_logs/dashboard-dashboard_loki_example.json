@@ -36,19 +36,7 @@
         "title": "CPU",
         "tooltip": "",
         "type": "link",
-        "url": "/d/dashboard_monitoring/cpu"
-      },
-      {
-        "asDropdown": false,
-        "icon": "dashboard",
-        "includeVars": true,
-        "keepTime": true,
-        "tags": [],
-        "targetBlank": false,
-        "title": "Memory",
-        "tooltip": "",
-        "type": "link",
-        "url": "/d/adt2bxj/memory"
+        "url": "http://192.168.2.191:8080/d/dashboard_monitoring/cpu"
       }
     ],
     "panels": [

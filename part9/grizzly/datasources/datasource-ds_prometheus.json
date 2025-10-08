@@ -10,7 +10,7 @@
     "type": "prometheus",
     "typeLogoUrl": "public/plugins/prometheus/img/prometheus_logo.svg",
     "uid": "ds_prometheus",
-    "url": "http://iot-stack_vmselect:8481/select/0/prometheus",
+    "url": "http://vmselect:8481/select/0/prometheus",
     "access": "proxy",
     "isDefault": true
   }

@@ -285,7 +285,7 @@ services:
       - source: loki-config.yaml
         target: /etc/loki/local-config.yaml
     deploy:
-      mode: global
+      mode: replicated
       restart_policy:
         condition: on-failure
       placement:

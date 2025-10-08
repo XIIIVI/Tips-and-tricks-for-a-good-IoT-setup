@@ -272,11 +272,11 @@ services:
         constraints:
           - node.labels.level == 0
     command:
-      - "--storageNode=iot-stack_vmstorage:8400"
+      - "--storageNode=vmstorage:8400"
     depends_on:
       - vmstorage
     networks:
-      - secured-network
+      - telemetry-network
       - timeseries-network
     ports:
       - "8480:8480" # remote_write endpoint for Telegraf
@@ -342,7 +342,7 @@ services:
       - source: loki-config.yaml
         target: /etc/loki/local-config.yaml
     deploy:
-      mode: global
+      mode: replicated
       restart_policy:
         condition: on-failure
       placement:

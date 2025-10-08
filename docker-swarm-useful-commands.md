@@ -41,7 +41,7 @@ On the host, run the following commands
 
 1) Get the container ID: ```CID=$(sudo docker ps --filter name=<SERVICE_NAME> --format '{{.ID}}' | head -n1)```
 
-2) Run the command: ```sudo docker exec -it "$CID" bash``` to open a console or ```sudo docker exec -it "$CID" sh -c '<COMMAND>'``` to execute a command
+2) Run the command: ```sudo docker exec -it "$CID" bash```(or ```sudo docker exec -it "$CID" sh```) to open a console or ```sudo docker exec -it "$CID" sh -c '<COMMAND>'``` to execute a command
 
 ### Logs
 
