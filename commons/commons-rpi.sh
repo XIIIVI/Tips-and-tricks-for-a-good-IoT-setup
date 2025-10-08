@@ -95,7 +95,7 @@ HOSTNAME=\$(hostname)
 echo "rpi_metrics,host=\${HOSTNAME} soc_temp=\$(vcgencmd measure_temp | awk -F '=' '{print \$2}' | sed 's/..$//')" > "\${METRICS_FILE}"
 echo "rpi_metrics,host=\${HOSTNAME} core_volts=\$(vcgencmd measure_volts core | awk -F '=' '{print \$2}' | sed 's/..$//')" >> "\${METRICS_FILE}"
 echo "rpi_metrics,host=\${HOSTNAME} arm_freq=\$(vcgencmd measure_clock arm | awk -F '=' '{print \$2}')" >> "\${METRICS_FILE}"
-echo "rpi_metrics,host=\${HOSTNAME} throttled_status=\$(vcgencmd get_throttled | awk -F '=' '{print \$2}')" >> "\${METRICS_FILE}"
+echo "rpi_metrics,host=\${HOSTNAME} throttled_status=\$(vcgencmd get_throttled | awk -F '=' '{print \$2}' | xargs printf '%d')i" >> "\${METRICS_FILE}"
 EOS
 
 

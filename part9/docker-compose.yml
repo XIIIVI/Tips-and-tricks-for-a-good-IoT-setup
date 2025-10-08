@@ -80,6 +80,7 @@ services:
   #################################
   telegraf-level0:
     image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
+    user: root
     configs:
       - source: telegraf-level0.conf
         target: /etc/telegraf/telegraf.conf
@@ -141,6 +142,7 @@ services:
 
   telegraf-level1:
     image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
+    user: root
     configs:
       - source: telegraf-level1.conf
         target: /etc/telegraf/telegraf.conf
@@ -200,6 +202,7 @@ services:
 
   telegraf-level2:
     image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
+    user: root
     configs:
       - source: telegraf-level2.conf
         target: /etc/telegraf/telegraf.conf
@@ -369,6 +372,7 @@ services:
 
   alloy-level0:
     image: ${PRIVATE_REPO}/alloy:v1.10.2
+    user: root
     configs:
       - source: alloy-level0.alloy
         target: /etc/alloy/config.alloy
@@ -404,6 +408,7 @@ services:
 
   alloy-level1:
     image: ${PRIVATE_REPO}/alloy:v1.10.2
+    user: root
     configs:
       - source: alloy-level1.alloy
         target: /etc/alloy/config.alloy
@@ -434,6 +439,7 @@ services:
 
   alloy-level2:
     image: ${PRIVATE_REPO}/alloy:v1.10.2
+    user: root
     configs:
       - source: alloy-level2.alloy
         target: /etc/alloy/config.alloy
