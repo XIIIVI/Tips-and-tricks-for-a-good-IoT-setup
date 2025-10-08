@@ -76,13 +76,13 @@
         },
         "workers": [
             {
-                "ip-address": "192.168.2.118",
+                "ip-address": "192.168.2.120",
                 "hostname": "sat1",
                 "folders": [
                     "/data/alloy",
                     "/data/telegraf/logs",
                     "/data/telegraf/states"
-                    ],
+                ],
                 "labels": [
                     {
                         "key": "level",
