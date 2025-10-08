@@ -62,6 +62,89 @@ You can directly import configuration files thru the section `configurations`
 
 `file` is the path to the file to import.
 
+### Managers
+
+This section details the node `managers`used to automatically create the managers of the swarm.
+
+```json
+        "managers": {
+            "hostname-default-prefix": "orchestrator",
+            "members": [
+                {
+                    "ip-address": "192.168.2.191",
+                    "folders": [
+                        "/data/alloy",
+                        "/data/database",
+                        "/data/mosquitto/config",
+                        "/data/mosquitto/data",
+                        "/data/mosquitto/log",
+                        "/data/telegraf/logs"
+                    ],
+                    "labels": [
+                        {
+                            "key": "mqtt",
+                            "value": "true"
+                        },
+                        {
+                            "key": "level",
+                            "value": "0"
+                        }
+                    ],
+                    "has-display": true
+                },
+                ...
+            ]
+        }
+```
+
+`hostname-default-prefix` is the default prefix to use when setting the hostname. The index (starting from 1) of the item in the array `members` is appended to this prefix.
+
+`labels` is an array of keypair values used as labels of the node.
+
+`has-display` if set to `true`, the script will install all the needed packages to display a message on the SSD1306 display.
+
+`members` is an array of manager's configurations.
+
+For each item, 
+
+`ip-address` is the IP address of the host, mainly used with `ssh` to log on.
+
+`folders` defines the list of folders to create. :warning: Please note that the permission 777 is applied to each folder. To have fine-grained level of permission, refer to the section `Volumes` of this [chapter](https://medium.com/p/3af124734c42).
+
+### Workers
+
+This section details the node `workers`used to automatically create the workers of the swarm.
+
+```json
+        "workers": [
+            {
+                "ip-address": "192.168.2.118",
+                "hostname": "sat1",
+                "folders": [
+                    "/data/alloy",
+                    "/data/telegraf/logs",
+                    "/data/telegraf/states"
+                ],
+                "labels": [
+                    {
+                        "key": "level",
+                        "value": "1"
+                    }
+                ],
+                "has-display": true
+            }
+        ],
+```
+`workers` is an array of workers.
+
+For each item (worker),
+
+`ip-address` is the IP address of the host, mainly used with `ssh` to log on.
+
+`hostname` is the hostname. As by default, a swarm is a flat architecture, unlike the managers, the hostname of a worker must be explicitly set.
+
+`folders`, `labels`and `has-display` have the same roles as the ones explained for the managers.
+
 ### Secrets
 
 #### Credentials
