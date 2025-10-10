@@ -252,6 +252,8 @@ process_grizzly_resources() {
   PREFIX=$(get_prefix "$(basename "${FOLDER_ARG}")")
 
   if [[ -n "${PREFIX}" ]]; then
+    remove_secured_datasources "${GRIZZLY_BASEDIR_ARG}"
+
     find "${FOLDER_ARG}" -type f -name "*.json" | while read -r FILE; do
       normalize_uid "${FILE}" "${PREFIX}" "${GRIZZLY_BASEDIR_ARG}"
     done
@@ -440,6 +442,48 @@ export_grafana_resources() {
     tree "${GRIZZLY_BASEDIR_ARG}"
 }
 
+
+#
+# Function: remove_secured_datasources
+# Removes datasource JSON files that have any TLS-related fields set to true.
+# Parameters:
+#   BASEDIR_ARG - Base directory containing 'datasources' subdirectory.
+#
+remove_secured_datasources() {
+  local BASEDIR_ARG="$1"
+  local DS_DIR
+  local JQ_EXPR
+  local DELETED=0
+  local FILE
+
+  if [ -z "$BASEDIR_ARG" ]; then
+    log_error "\t- Usage: remove_secured_datasources BASEDIR" >&2
+    return 2
+  fi
+
+  DS_DIR="$BASEDIR_ARG/datasources"
+  [ -d "$DS_DIR" ] || return 0
+
+  JQ_EXPR='[ .. | objects | to_entries[] | select(.key | test("^tls")) | .value ] | any(. == true)'
+
+  log_info "🧼 Removing secured datasources in $DS_DIR containing TLS-based properties set to true"
+  while IFS= read -r -d '' FILE; do
+    [ -r "$FILE" ] || { log_warning "\t-⚠️ Skipping unreadable file: $FILE" >&2; continue; }
+
+    if jq -e "$JQ_EXPR" "$FILE" >/dev/null 2>&1; then
+      log_debug "\- Deleting secured datasource file: $FILE" >&2
+      rm -f -- "$FILE" && DELETED=$((DELETED+1))
+    else
+      if ! jq . "$FILE" >/dev/null 2>&1; then
+        log_warning "\t-⚠️ Warning: invalid JSON, skipping: $FILE" >&2
+      fi
+    fi
+  done < <(find "$DS_DIR" -type f -name '*.json' -print0)
+
+  log_debug "\- Deleted $DELETED file(s)." >&2
+
+  return 0
+}
 
 # ---------------------------------------------
 # Function: import_grafana_resources
