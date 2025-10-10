@@ -2,7 +2,7 @@
 
 This repository contains the code examples of the series of posts "Tips and tricks for a good IoT setup" published in [Medium](https://medium.com/p/5d7b34c5f068)
 
-Here is the corresponding table between folders and Medium's post
+Here is the mapping table between folders and Medium's post
 
 | Part #| References the post|
 |--|--|

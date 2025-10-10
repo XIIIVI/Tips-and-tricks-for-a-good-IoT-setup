@@ -461,9 +461,9 @@ while IFS= read -r cred_json; do
 
     # Create Docker secrets on remote host
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-        "sudo docker secret create ${name}.passwd /tmp/${PASSWORD_FILENAME}" < /dev/null
+        "sudo docker secret rm ${name}.passwd 2>/dev/null || true && sudo docker secret create ${name}.passwd /tmp/${PASSWORD_FILENAME}" < /dev/null
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-        "echo -n \"${name}\" | sudo docker secret create ${name}.user -" < /dev/null
+        "echo -n \"${name}\" | sudo docker secret rm ${name}.user 2>/dev/null || true && sudo docker secret create ${name}.user -" < /dev/null
 
     # Remove temp files on remote host
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
@@ -712,7 +712,7 @@ create_single_configuration() {
 
     log_warning "\t\t- Creating the configuration ${NAME_ARG} on ${IP_ADDRESS_ARG}"
     copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${FILE_ARG}" "/tmp/"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker config create ${NAME_ARG} /tmp/${NAME_ARG}"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker config rm ${NAME_ARG} 2>/dev/null || true && sudo docker config create ${NAME_ARG} /tmp/${NAME_ARG}"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${NAME_ARG}"
     cat <<EOF >>"${CONFIG_TEMPLATE}"
   ${NAME_ARG}:
