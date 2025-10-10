@@ -55,21 +55,72 @@ update_docker_repo() {
     || { echo "ERROR: $SRC not found on $HOST_ARG"; return 1; }
 
   # Backup once if not already pointing to ${CURRENT_RASPBERRY_DISTRO}
-  sshpass -p "$PASSWORD_ARG" ssh "$LOGIN_ARG@$HOST_ARG" bash -lc "
-    set -euo pipefail
-    if grep -q 'docker\.com/linux/debian\s\+${CURRENT_RASPBERRY_DISTRO}' '$SRC'; then
-      echo 'Already using ${CURRENT_RASPBERRY_DISTRO} on $HOST_ARG.'
-      exit 0
-    fi
-    sudo cp '$SRC' '$BAK'
-    echo 'Backup saved as $BAK'
-    sudo sed -E -i.bak 's|$SEARCH|$REPLACE|g' '$SRC'
-    echo 'Replaced bookworm→$CURRENT_RASPBERRY_DISTRO in $SRC'
-    sudo apt clean > /dev/null 2>&1
-    sudo rm -rf /var/lib/apt/lists/* > /dev/null 2>&1
-    sudo apt update > /dev/null 2>&1
-    sudo apt-get update -o Acquire::Retries=3
-  " && echo "Update complete on $HOST_ARG"
+  sshpass -p "$PASSWORD_ARG" ssh -o BatchMode=no -o StrictHostKeyChecking=no "$LOGIN_ARG@$HOST_ARG" bash -lc "
+set -euo pipefail
+
+SRC='${SRC}'
+BAK='${BAK}'
+SEARCH='${SEARCH}'
+REPLACE='${REPLACE}'
+CURRENT_RASPBERRY_DISTRO='${CURRENT_RASPBERRY_DISTRO}'
+HOST_ARG='${HOST_ARG}'
+
+# quick guard: ensure SRC exists
+if [ ! -f \"\$SRC\" ]; then
+  echo \"Source file \$SRC not found on \$HOST_ARG\" >&2
+  exit 2
+fi
+
+# If already contains expected distro entry, exit cleanly
+if grep -Eq 'docker\\.com/linux/debian[[:space:]]+${CURRENT_RASPBERRY_DISTRO}' \"\$SRC\"; then
+  echo \"Already using ${CURRENT_RASPBERRY_DISTRO} on \$HOST_ARG.\"
+  exit 0
+fi
+
+# backup with timestamp
+TS=\$(date +%Y%m%dT%H%M%S)
+sudo cp -a \"\$SRC\" \"\$BAK\".\$TS
+echo \"Backup saved as \$BAK.\$TS\"
+
+# make replacements robust:
+# 1) replace http://deb.debian.org/debian-security -> https://security.debian.org/debian-security
+# 2) replace http://deb.debian.org/debian -> https://ftp.debian.org/debian
+# 3) apply user-supplied SEARCH->REPLACE as a final pass
+sudo sed -E -i.bak1 -e 's|http://deb.debian.org/debian-security|https://security.debian.org/debian-security|g' \
+                     -e 's|http://deb.debian.org/debian|https://ftp.debian.org/debian|g' \
+                     \"\$SRC\"
+
+# apply user intended replacement if provided
+if [ -n \"\$SEARCH\" ]; then
+  # use a temporary file to avoid partial edits on failure
+  sudo sed -E -e \"s|\$SEARCH|\$REPLACE|g\" \"\$SRC\" > \"\$SRC\".tmp && sudo mv \"\$SRC\".tmp \"\$SRC\"
+  echo \"Applied SEARCH->REPLACE in \$SRC\"
+fi
+
+# comment out any CD-ROM sources to avoid apt errors
+sudo sed -E -i.bak2 's|^[[:space:]]*deb[[:space:]]+cdrom:|# &|' \"\$SRC\"
+
+# sanitize files under /etc/apt/sources.list.d
+if [ -d /etc/apt/sources.list.d ]; then
+  sudo find /etc/apt/sources.list.d -type f -name '*.list' -print0 | while IFS= read -r -d '' f; do
+    sudo cp -a \"\$f\" \"\$f\".\$TS.bak
+    sudo sed -E -e 's|http://deb.debian.org/debian-security|https://security.debian.org/debian-security|g' \
+                -e 's|http://deb.debian.org/debian|https://ftp.debian.org/debian|g' \
+                -i \"\$f\"
+  done
+fi
+
+echo \"Replacements complete in \$SRC and /etc/apt/sources.list.d (backups kept). Clearing apt lists...\"
+
+sudo apt-get clean -y >/dev/null 2>&1 || true
+sudo rm -rf /var/lib/apt/lists/* >/dev/null 2>&1 || true
+
+# update with some visible feedback and retries
+sudo apt-get update -o Acquire::Retries=3
+sudo apt-get -y --no-install-recommends upgrade || true
+
+echo \"Update complete on \$HOST_ARG\"
+" && echo "Update complete on $HOST_ARG"
 }
 
 #
