@@ -572,9 +572,9 @@ create_certificates() {
   # 1) Extract CA parameters
   CRT_CA_NAME=$(jq -r '.swarm.secrets.certificates.name' <<<"$JSON_ARG")
   CRT_DAYS_VALID=$(jq -r '.swarm.secrets.certificates["days-valid"]' <<<"$JSON_ARG")
-  CRT_COUNTRY=$(jq -r '.swarm.secrets.certificates.CRT_COUNTRY' <<<"$JSON_ARG")
-  CRT_STATE=$(jq -r '.swarm.secrets.certificates.CRT_STATE' <<<"$JSON_ARG")
-  CRT_LOCALITY=$(jq -r '.swarm.secrets.certificates.CRT_LOCALITY' <<<"$JSON_ARG")
+  CRT_COUNTRY=$(jq -r '.swarm.secrets.certificates.country' <<<"$JSON_ARG")
+  CRT_STATE=$(jq -r '.swarm.secrets.certificates.state' <<<"$JSON_ARG")
+  CRT_LOCALITY=$(jq -r '.swarm.secrets.certificates.locality' <<<"$JSON_ARG")
   # Build the SAN addext string (may print nothing on stdout if no SANs)
   ADDEXT="$(build_san "$JSON_ARG" || true)"
 
