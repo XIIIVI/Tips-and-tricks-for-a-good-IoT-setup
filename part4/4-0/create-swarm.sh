@@ -560,7 +560,12 @@ create_certificates() {
   local PASSWORD_ARG="$2"
   local IP_ADDRESS_ARG="$3"
   local JSON_ARG="$4"
-  local CA_NAME DAYS_VALID COUNTRY STATE LOCALITY, ADDEXT
+  local CA_NAME
+  local DAYS_VALID
+  local COUNTRY 
+  local STATE 
+  local LOCALITY
+  local ADDEXT
 
   log_info "Generating the certificates"
 

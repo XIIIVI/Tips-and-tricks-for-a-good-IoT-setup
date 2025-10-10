@@ -29,7 +29,7 @@
 #  OTHER DEALINGS IN THE SOFTWARE.
 # ============================================================
 
-CURRENT_RASPBERRY_DISTRO="bullseye"
+CURRENT_RASPBERRY_DISTRO="trixie"
 
 #
 # update_docker_repo
@@ -64,7 +64,7 @@ update_docker_repo() {
     sudo cp '$SRC' '$BAK'
     echo 'Backup saved as $BAK'
     sudo sed -E -i.bak 's|$SEARCH|$REPLACE|g' '$SRC'
-    echo 'Replaced bookworm→bullseye in $SRC'
+    echo 'Replaced bookworm→$CURRENT_RASPBERRY_DISTRO in $SRC'
     sudo apt clean > /dev/null 2>&1
     sudo rm -rf /var/lib/apt/lists/* > /dev/null 2>&1
     sudo apt update > /dev/null 2>&1
