@@ -139,7 +139,7 @@
                 "country": "FR",
                 "state": "Isère",
                 "locality": "Grenoble",
-                "organization": "IoT-MQTT",
+                "organization": "IoT Dpt",
                 "key-and-csr": [
                     "alloy",
                     "grafana",
