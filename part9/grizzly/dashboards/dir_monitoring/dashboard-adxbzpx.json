@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "folder": "dir_monitoring",
-    "name": "dashboard_monitoring"
+    "name": "adxbzpx"
   },
   "spec": {
     "annotations": {
@@ -45,10 +45,10 @@
         "keepTime": true,
         "tags": [],
         "targetBlank": false,
-        "title": "Memory",
+        "title": "CPU",
         "tooltip": "",
         "type": "link",
-        "url": "/d/adt2bxj/memory"
+        "url": "/d/dashboard_monitoring/cpu"
       },
       {
         "asDropdown": false,
@@ -57,10 +57,10 @@
         "keepTime": true,
         "tags": [],
         "targetBlank": false,
-        "title": "Raspberry",
+        "title": "Memory",
         "tooltip": "",
         "type": "link",
-        "url": "/d/adxbzpx/raspberry-s-metrics"
+        "url": "/d/adt2bxj/memory"
       }
     ],
     "panels": [
@@ -72,41 +72,7 @@
         "fieldConfig": {
           "defaults": {
             "color": {
-              "mode": "palette-classic"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "showValues": false,
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "off"
-              }
+              "mode": "thresholds"
             },
             "mappings": [],
             "thresholds": {
@@ -115,38 +81,36 @@
                 {
                   "color": "green",
                   "value": 0
-                },
-                {
-                  "color": "red",
-                  "value": 80
                 }
               ]
             },
-            "unit": "percent"
+            "unit": "rothz"
           },
           "overrides": []
         },
         "gridPos": {
-          "h": 13,
-          "w": 10,
+          "h": 12,
+          "w": 9,
           "x": 0,
           "y": 0
         },
         "id": 1,
         "options": {
-          "legend": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
             "calcs": [
               "lastNotNull"
             ],
-            "displayMode": "list",
-            "placement": "bottom",
-            "showLegend": true
+            "fields": "",
+            "values": false
           },
-          "tooltip": {
-            "hideZeros": false,
-            "mode": "single",
-            "sort": "none"
-          }
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
         },
         "pluginVersion": "12.3.0-17750354453",
         "targets": [
@@ -155,31 +119,102 @@
               "type": "prometheus",
               "uid": "ds_prometheus"
             },
-            "editorMode": "code",
-            "expr": "cpu_usage_system{host=~\"$host_list\"}",
+            "editorMode": "builder",
+            "expr": "rpi_metrics_arm_freq",
             "legendFormat": "__auto",
             "range": true,
             "refId": "A"
           }
         ],
-        "title": "Usage system",
+        "title": "ARM's frequency",
         "transformations": [
           {
             "id": "labelsToFields",
             "options": {
               "keepLabels": [
-                "__name__",
-                "cpu",
                 "host"
-              ]
+              ],
+              "valueLabel": "host"
             }
-          },
-          {
-            "id": "merge",
-            "options": {}
           }
         ],
-        "type": "timeseries"
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "ds_prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "blue",
+                  "value": 0
+                }
+              ]
+            },
+            "unit": "celsius"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 12,
+          "w": 9,
+          "x": 9,
+          "y": 0
+        },
+        "id": 2,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "pluginVersion": "12.3.0-17750354453",
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "ds_prometheus"
+            },
+            "editorMode": "builder",
+            "expr": "rpi_metrics_soc_temp",
+            "legendFormat": "__auto",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "ARM's temperature",
+        "transformations": [
+          {
+            "id": "labelsToFields",
+            "options": {
+              "keepLabels": [
+                "host"
+              ],
+              "valueLabel": "host"
+            }
+          }
+        ],
+        "type": "stat"
       },
       {
         "datasource": {
@@ -200,8 +235,8 @@
               "barAlignment": 0,
               "barWidthFactor": 0.6,
               "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
+              "fillOpacity": 50,
+              "gradientMode": "opacity",
               "hideFrom": {
                 "legend": false,
                 "tooltip": false,
@@ -239,22 +274,20 @@
                 }
               ]
             },
-            "unit": "percent"
+            "unit": "volt"
           },
           "overrides": []
         },
         "gridPos": {
-          "h": 13,
-          "w": 10,
-          "x": 10,
-          "y": 0
+          "h": 10,
+          "w": 18,
+          "x": 0,
+          "y": 12
         },
-        "id": 2,
+        "id": 3,
         "options": {
           "legend": {
-            "calcs": [
-              "lastNotNull"
-            ],
+            "calcs": [],
             "displayMode": "list",
             "placement": "bottom",
             "showLegend": true
@@ -268,56 +301,22 @@
         "pluginVersion": "12.3.0-17750354453",
         "targets": [
           {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "ds_prometheus"
-            },
-            "editorMode": "code",
-            "expr": "cpu_usage_user{host=~\"$host_list\"}",
+            "editorMode": "builder",
+            "expr": "rpi_metrics_core_volts",
             "legendFormat": "__auto",
             "range": true,
             "refId": "A"
           }
         ],
-        "title": "Usage user",
+        "title": "Voltage",
         "transformations": [
           {
             "id": "labelsToFields",
             "options": {
               "keepLabels": [
-                "__name__",
-                "cpu",
                 "host"
-              ]
-            }
-          },
-          {
-            "id": "merge",
-            "options": {}
-          },
-          {
-            "id": "groupBy",
-            "options": {
-              "fields": {
-                "Time": {
-                  "aggregations": [],
-                  "operation": "groupby"
-                },
-                "cpu": {
-                  "aggregations": [],
-                  "operation": "groupby"
-                },
-                "cpu_usage_user": {
-                  "aggregations": [
-                    "last"
-                  ],
-                  "operation": "aggregate"
-                },
-                "host": {
-                  "aggregations": [],
-                  "operation": "groupby"
-                }
-              }
+              ],
+              "valueLabel": "host"
             }
           }
         ],
@@ -325,64 +324,11 @@
       }
     ],
     "preload": false,
-    "refresh": "30s",
+    "refresh": "1m",
     "schemaVersion": 42,
     "tags": [],
     "templating": {
-      "list": [
-        {
-          "allowCustomValue": false,
-          "current": {
-            "text": [
-              "orchestrator1"
-            ],
-            "value": [
-              "orchestrator1"
-            ]
-          },
-          "definition": "label_values(cpu_usage_guest,host)",
-          "includeAll": true,
-          "label": "Hosts",
-          "multi": true,
-          "name": "host_list",
-          "options": [],
-          "query": {
-            "qryType": 1,
-            "query": "label_values(cpu_usage_guest,host)",
-            "refId": "PrometheusVariableQueryEditor-VariableQuery"
-          },
-          "refresh": 1,
-          "regex": "",
-          "sort": 5,
-          "type": "query"
-        },
-        {
-          "allowCustomValue": false,
-          "current": {
-            "text": [
-              "All"
-            ],
-            "value": [
-              "$__all"
-            ]
-          },
-          "definition": "label_values({host=~\"$host_list\"},container_name)",
-          "includeAll": true,
-          "label": "Services",
-          "multi": true,
-          "name": "service_list",
-          "options": [],
-          "query": {
-            "qryType": 1,
-            "query": "label_values({host=~\"$host_list\"},container_name)",
-            "refId": "PrometheusVariableQueryEditor-VariableQuery"
-          },
-          "refresh": 1,
-          "regex": "/(.*)\\..*\\..*/",
-          "sort": 5,
-          "type": "query"
-        }
-      ]
+      "list": []
     },
     "time": {
       "from": "now-6h",
@@ -390,7 +336,7 @@
     },
     "timepicker": {},
     "timezone": "Europe/Paris",
-    "title": "CPU",
-    "uid": "dashboard_monitoring"
+    "title": "Raspberry's metrics",
+    "uid": "adxbzpx"
   }
 }

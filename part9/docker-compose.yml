@@ -140,7 +140,7 @@ services:
       # For memory metrics
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
-    user: root
+    user: "telegraf:985"
 
   telegraf-level1:
     image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
@@ -201,7 +201,7 @@ services:
       # For memory metrics
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
-    user: root
+    user: "telegraf:985"
 
   telegraf-level2:
     image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
@@ -261,7 +261,7 @@ services:
       - /sys/class/thermal:/sys/class/thermal:ro
       # For vcgencmd metrics
       - /tmp/telegraf_metrics:/telegraf_metrics:ro
-    user: root
+    user: "telegraf:985"
 
   #################################
   #                               #
@@ -413,7 +413,7 @@ services:
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    user: root
+    user: "telegraf:985"
 
   alloy-level1:
     image: ${PRIVATE_REPO}/alloy:v1.10.2
@@ -445,7 +445,7 @@ services:
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    user: root
+    user: "telegraf:985"
 
   alloy-level2:
     image: ${PRIVATE_REPO}/alloy:v1.10.2
@@ -472,7 +472,7 @@ services:
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    user: root
+    user: "telegraf:985"
 
   #################################
   #                               #

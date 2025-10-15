@@ -49,6 +49,18 @@
         "tooltip": "",
         "type": "link",
         "url": "/d/dashboard_monitoring/cpu"
+      },
+      {
+        "asDropdown": false,
+        "icon": "dashboard",
+        "includeVars": true,
+        "keepTime": true,
+        "tags": [],
+        "targetBlank": false,
+        "title": "Raspberry",
+        "tooltip": "",
+        "type": "link",
+        "url": "/d/adxbzpx/raspberry-s-metrics"
       }
     ],
     "panels": [
@@ -117,7 +129,7 @@
           "cellHeight": "sm",
           "showHeader": true
         },
-        "pluginVersion": "12.2.0",
+        "pluginVersion": "12.3.0-17750354453",
         "targets": [
           {
             "editorMode": "builder",
@@ -359,7 +371,7 @@
             "sort": "none"
           }
         },
-        "pluginVersion": "12.2.0",
+        "pluginVersion": "12.3.0-17750354453",
         "targets": [
           {
             "datasource": {
@@ -433,11 +445,9 @@
         {
           "allowCustomValue": false,
           "current": {
-            "text": [
-              "iot-stack_alloy-level0"
-            ],
+            "text": "All",
             "value": [
-              "iot-stack_alloy-level0"
+              "$__all"
             ]
           },
           "definition": "label_values({host=~\"$host_list\"},container_name)",

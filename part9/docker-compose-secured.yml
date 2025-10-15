@@ -150,8 +150,8 @@ services:
       # For memory metrics
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
-    # The user must be root to get acess to the Docker socket
-    user: root
+    # The user must be telegraf (belonging to the docker group) to get access to the Docker socket
+    user: "telegraf:985"
     read_only: true
     cap_drop:
       - ALL
@@ -221,8 +221,8 @@ services:
       # For memory metrics
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
-    # The user must be root to get acess to the Docker socket
-    user: root
+    # The user must be telegraf (belonging to the docker group) to get access to the Docker socket
+    user: "telegraf:985"
     read_only: true
     cap_drop:
       - ALL
@@ -291,8 +291,8 @@ services:
       - /sys/class/thermal:/sys/class/thermal:ro
       # For vcgencmd metrics
       - /tmp/telegraf_metrics:/telegraf_metrics:ro
-    # The user must be root to get acess to the Docker socket
-    user: root
+    # The user must be telegraf (belonging to the docker group) to get access to the Docker socket
+    user: "telegraf:985"
     read_only: true
     cap_drop:
       - ALL
@@ -446,8 +446,8 @@ services:
       - /etc/hostname:/etc/hostname:ro
       - /mnt/replicated-data/loki:/loki-chunks # Persistent storage for Loki
       - loki_data:/loki/ # local disk
-    # The user must be root to get acess to the Docker socket
-    user: root
+    # The user must be telegraf (belonging to the docker group) to get access to the Docker socket
+    user: "telegraf:985"
     read_only: true
     cap_drop:
       - ALL
@@ -493,8 +493,8 @@ services:
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    # The user must be root to get acess to the Docker socket
-    user: root
+    # The user must be telegraf (belonging to the docker group) to get access to the Docker socket
+    user: "telegraf:985"
     read_only: true
     cap_drop:
       - ALL
@@ -535,7 +535,8 @@ services:
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    user: root  # Non-root UID:GID
+    # The user must be telegraf (belonging to the docker group) to get access to the Docker socket
+    user: "telegraf:985"
     read_only: true
     cap_drop:
       - ALL
@@ -571,8 +572,8 @@ services:
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    # The user must be root to get acess to the Docker socket
-    user: root
+    # The user must be telegraf (belonging to the docker group) to get access to the Docker socket
+    user: "telegraf:985"
     read_only: true
     cap_drop:
       - ALL

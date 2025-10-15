@@ -49,13 +49,25 @@
         "tooltip": "",
         "type": "link",
         "url": "/d/adt2bxj/memory"
+      },
+      {
+        "asDropdown": false,
+        "icon": "dashboard",
+        "includeVars": true,
+        "keepTime": true,
+        "tags": [],
+        "targetBlank": false,
+        "title": "Raspberry",
+        "tooltip": "",
+        "type": "link",
+        "url": "/d/adxbzpx/raspberry-s-metrics"
       }
     ],
     "panels": [
       {
         "datasource": {
           "type": "loki",
-          "uid": "ds_loki"
+          "uid": "ds_loki_tls"
         },
         "fieldConfig": {
           "defaults": {},
@@ -79,16 +91,16 @@
           "sortOrder": "Descending",
           "wrapLogMessage": true
         },
-        "pluginVersion": "12.2.0",
+        "pluginVersion": "12.3.0-17750354453",
         "targets": [
           {
             "datasource": {
               "type": "loki",
-              "uid": "ds_loki"
+              "uid": "ds_loki_tls"
             },
             "direction": "backward",
-            "editorMode": "builder",
-            "expr": "{platform=\"docker\", host=~\"$host_list\"} |= ``",
+            "editorMode": "code",
+            "expr": "{platform=\"docker\", host=~\"$host_list\"}",
             "queryType": "range",
             "refId": "A"
           }
@@ -174,10 +186,10 @@
           "allowCustomValue": false,
           "current": {
             "text": [
-              "iot-stack_alloy-level0"
+              "All"
             ],
             "value": [
-              "iot-stack_alloy-level0"
+              "$__all"
             ]
           },
           "definition": "label_values(container_name)",
