@@ -82,7 +82,6 @@ services:
   telegraf-level0:
     image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
     hostname: "{{.Node.Hostname}}"
-    user: root
     configs:
       - source: telegraf-level0.conf
         target: /etc/telegraf/telegraf.conf
@@ -141,11 +140,11 @@ services:
       # For memory metrics
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
+    user: root
 
   telegraf-level1:
     image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
     hostname: "{{.Node.Hostname}}"
-    user: root
     configs:
       - source: telegraf-level1.conf
         target: /etc/telegraf/telegraf.conf
@@ -202,11 +201,11 @@ services:
       # For memory metrics
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
+    user: root
 
   telegraf-level2:
     image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
     hostname: "{{.Node.Hostname}}"
-    user: root
     configs:
       - source: telegraf-level2.conf
         target: /etc/telegraf/telegraf.conf
@@ -262,6 +261,7 @@ services:
       - /sys/class/thermal:/sys/class/thermal:ro
       # For vcgencmd metrics
       - /tmp/telegraf_metrics:/telegraf_metrics:ro
+    user: root
 
   #################################
   #                               #
@@ -381,7 +381,6 @@ services:
   alloy-level0:
     image: ${PRIVATE_REPO}/alloy:v1.10.2
     hostname: "{{.Node.Hostname}}"
-    user: root
     configs:
       - source: alloy-level0.alloy
         target: /etc/alloy/config.alloy
@@ -414,11 +413,11 @@ services:
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    user: root
 
   alloy-level1:
     image: ${PRIVATE_REPO}/alloy:v1.10.2
     hostname: "{{.Node.Hostname}}"
-    user: root
     configs:
       - source: alloy-level1.alloy
         target: /etc/alloy/config.alloy
@@ -446,11 +445,11 @@ services:
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    user: root
 
   alloy-level2:
     image: ${PRIVATE_REPO}/alloy:v1.10.2
     hostname: "{{.Node.Hostname}}"
-    user: root
     configs:
       - source: alloy-level2.alloy
         target: /etc/alloy/config.alloy
@@ -473,6 +472,7 @@ services:
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    user: root
 
   #################################
   #                               #

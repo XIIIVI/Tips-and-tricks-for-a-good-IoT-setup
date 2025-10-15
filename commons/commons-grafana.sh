@@ -224,8 +224,8 @@ normalize_uid() {
       mv "${FILE_ARG}" "${NEW_FILE}"
 
       if [[ -n "${NAME}" ]]; then
-        # Replace old UID occurrences across all files
-        grep -rl -- "${NAME}" "${GRIZZLY_BASEDIR_ARG}" | xargs sed -i "s/${NAME}/${NEW_UID}/g"
+         # Replace old UID occurrences across all files safely
+         find "${GRIZZLY_BASEDIR_ARG}" -type f -exec grep -q "${NAME}" {} \; -exec sed -i "s/${NAME}/${NEW_UID}/g" {} \;
       fi
 
       # Logging
@@ -471,7 +471,7 @@ remove_secured_datasources() {
     [ -r "$FILE" ] || { log_warning "\t-⚠️ Skipping unreadable file: $FILE" >&2; continue; }
 
     if jq -e "$JQ_EXPR" "$FILE" >/dev/null 2>&1; then
-      log_debug "\- Deleting secured datasource file: $FILE" >&2
+      log_debug "\t- Deleting secured datasource file: $FILE" >&2
       rm -f -- "$FILE" && DELETED=$((DELETED+1))
     else
       if ! jq . "$FILE" >/dev/null 2>&1; then
@@ -480,7 +480,7 @@ remove_secured_datasources() {
     fi
   done < <(find "$DS_DIR" -type f -name '*.json' -print0)
 
-  log_debug "\- Deleted $DELETED file(s)." >&2
+  log_debug "\t- Deleted $DELETED file(s)." >&2
 
   return 0
 }
