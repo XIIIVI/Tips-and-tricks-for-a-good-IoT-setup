@@ -577,20 +577,19 @@ services:
   #                               #
   #################################
 
+
   grafana:
-    image: ${PRIVATE_REPO}/grafana:12.2.0
+    image: ${PRIVATE_REPO}/grafana:12.3.0-17750354453
     hostname: "{{.Node.Hostname}}"
     environment:
-      - GF_PLUGINS_PREINSTALL_SYNC=volkovlabs-echarts-panel,volkovlabs-variable-panel,marcusolsson-static-datasource
+      - GF_PATHS_DATA=/var/lib/grafana
+      - GF_PATHS_LOGS=/var/log/grafana
+      - GF_PATHS_PLUGINS=/var/lib/grafana/plugins
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_NAME=Main Org.
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_UID=dash_raspberry_s_metrics
-    networks:
-      - public-network
-      - secured-network
-    ports:
-      - "8080:3000"
     deploy:
       mode: replicated
       replicas: 1
@@ -599,7 +598,22 @@ services:
       placement:
         constraints:
           - node.labels.level == 0
-    # Ensure the container runs your shell script as PID 1 instead of the image's /run.sh 
+    ports:
+      - "8080:3000"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - grafana_data:/var/lib/grafana
+      - grafana_logs:/var/log/grafana
+    # Try without any capability restrictions first
+    security_opt:
+      - no-new-privileges:true
+    tty: false
+    stdin_open: false
+    networks:
+      - public-network
+      - secured-network
+      # Ensure the container runs your shell script as PID 1 instead of the image's /run.sh 
     entrypoint:
       - /bin/sh
       - -c
@@ -686,19 +700,6 @@ services:
         target: /etc/loki/loki.key
       - source: iot.ca
         target: /etc/loki/ca.crt
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
-    user: "10001:10001"  # Non-root UID:GID
-    cap_drop:
-      - ALL
-    cap_add:
-      - NET_BIND_SERVICE  # Add only what's strictly needed
-    security_opt:
-      - no-new-privileges:true
-    tty: false
-    stdin_open: false
 
 
 networks:
@@ -764,6 +765,8 @@ secrets:
     external: true
 
 volumes:
+  grafana_data:
+  grafana_logs:
   loki_data:
   vmstorage-data:
     driver: local
