@@ -481,13 +481,14 @@ services:
   #################################
 
   grafana:
-    image: ${PRIVATE_REPO}/grafana:12.3.0-17750354453
+    image: ${PRIVATE_REPO}/grafana:12.2.0
     hostname: "{{.Node.Hostname}}"
     environment:
       - GF_PLUGINS_PREINSTALL_SYNC=volkovlabs-echarts-panel,volkovlabs-variable-panel,marcusolsson-static-datasource
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_NAME=Main Org.
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_UID=dash_raspberry_s_metrics
     networks:
       - public-network
       - secured-network
