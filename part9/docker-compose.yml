@@ -312,7 +312,7 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
-      - /data/database:/vmstorage
+      - vmstorage-data:/vmstorage
 
   vmselect:
     image: ${PRIVATE_REPO}/vmselect:v1.119.0-cluster
@@ -658,3 +658,5 @@ secrets:
 
 volumes:
   loki_data:
+  vmstorage-data:
+    driver: local

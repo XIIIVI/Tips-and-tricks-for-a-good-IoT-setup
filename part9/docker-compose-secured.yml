@@ -362,7 +362,7 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
-      - /data/database:/vmstorage
+      - vmstorage-data:/vmstorage
     user: "10001:10001"  # Non-root UID:GID
     read_only: true
     cap_drop:
@@ -398,7 +398,6 @@ services:
     command:
       - "--storageNode=vmstorage:8401"
     user: "10001:10001"  # Non-root UID:GID
-    read_only: true
     cap_drop:
       - ALL
     cap_add:
@@ -704,7 +703,6 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/hostname:/etc/hostname:ro
     user: "10001:10001"  # Non-root UID:GID
-    read_only: true
     cap_drop:
       - ALL
     cap_add:
@@ -779,3 +777,6 @@ secrets:
 
 volumes:
   loki_data:
+  vmstorage-data:
+    driver: local
+   

@@ -189,8 +189,14 @@ cp "./${CUSTOM_DB}" "${BUILD_CTX}/grafana.db"
 cat > "${BUILD_CTX}/Dockerfile" <<EOF
 # Use the official image for the desired version; buildx will pull the ${TARGET_ARCH} variant
 FROM grafana/grafana:${VERSION_NUMBER}
+
+USER root
+
 # Replace SQLite database with customized one
 COPY --chown=472:472 grafana.db /var/lib/grafana/grafana.db
+RUN chmod 640 /var/lib/grafana/grafana.db
+
+USER 472
 EOF
 
 # Ensure buildx exists and a builder is selected
