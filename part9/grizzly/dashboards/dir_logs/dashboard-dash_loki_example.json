@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "folder": "dir_logs",
-    "name": "dashboard_loki_example"
+    "name": "dash_loki_example"
   },
   "spec": {
     "annotations": {
@@ -36,14 +36,38 @@
         "title": "CPU",
         "tooltip": "",
         "type": "link",
-        "url": "http://192.168.2.191:8080/d/dashboard_monitoring/cpu"
+        "url": "/d/dash_cpu/cpu"
+      },
+      {
+        "asDropdown": false,
+        "icon": "dashboard",
+        "includeVars": true,
+        "keepTime": true,
+        "tags": [],
+        "targetBlank": false,
+        "title": "Memory",
+        "tooltip": "",
+        "type": "link",
+        "url": "/d/dash_memory/memory"
+      },
+      {
+        "asDropdown": false,
+        "icon": "dashboard",
+        "includeVars": true,
+        "keepTime": true,
+        "tags": [],
+        "targetBlank": false,
+        "title": "Raspberry",
+        "tooltip": "",
+        "type": "link",
+        "url": "/d/dash_raspberry_s_metrics/raspberry-s-metrics"
       }
     ],
     "panels": [
       {
         "datasource": {
           "type": "loki",
-          "uid": "ds_loki"
+          "uid": "ds_loki_tls"
         },
         "fieldConfig": {
           "defaults": {},
@@ -67,16 +91,16 @@
           "sortOrder": "Descending",
           "wrapLogMessage": true
         },
-        "pluginVersion": "12.2.0",
+        "pluginVersion": "12.3.0-17750354453",
         "targets": [
           {
             "datasource": {
               "type": "loki",
-              "uid": "ds_loki"
+              "uid": "ds_loki_tls"
             },
             "direction": "backward",
-            "editorMode": "builder",
-            "expr": "{platform=\"docker\", host=~\"$host_list\"} |= ``",
+            "editorMode": "code",
+            "expr": "{platform=\"docker\", host=~\"$host_list\"}",
             "queryType": "range",
             "refId": "A"
           }
@@ -162,10 +186,10 @@
           "allowCustomValue": false,
           "current": {
             "text": [
-              "iot-stack_alloy-level0"
+              "All"
             ],
             "value": [
-              "iot-stack_alloy-level0"
+              "$__all"
             ]
           },
           "definition": "label_values(container_name)",
@@ -193,6 +217,6 @@
     "timepicker": {},
     "timezone": "Europe/Paris",
     "title": "Loki example",
-    "uid": "dashboard_loki_example"
+    "uid": "dash_loki_example"
   }
 }

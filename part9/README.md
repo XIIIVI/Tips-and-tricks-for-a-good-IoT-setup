@@ -6,26 +6,13 @@ To check the installation, please check the [list of the useful commands](../../
 
 ---
 
-# Installation of the Grafana's dashboards
+# Secured dashboards
 
-1) install Grizzly with the script ```chmod +x ./install_grizzly.sh && ./install_grizzly.sh```,
+The folder ```grizzly``` contains an updated version of the Grafana's dashboards provided in part #8.
 
-2) Logged as an admin in Grafana, create a service account token as described [here](https://medium.com/p/157166dce55d) (Section "Service account"),
+These version introduces the usage of the secured version of the Loki datasource.
 
-3) Copy the generated token in the following code snippet, update the Grafana's URL
-
-```bash
-    grr config set grafana.url "http://<IP_OF_AN_ORCHESTRATOR>:8080/"
-    grr config set grafana.token "<MY_NEW_TOKEN>"
-    grr config set targets Datasource,DashboardFolder,LibraryElement,Dashboard,AlertRuleGroup,AlertNotificationPolicy,AlertContactPoint,AlertNotificationTemplate
-    grr config set output-format json
-```
-
-4) Copy/paste those lines in the prompt,
-
-5) Move to the folder `part9` and then type the command `grr push ./part9/grizzly`, the result should look like this
-
-![alt text](images/grr-push.png)
+To install them, please, follow the process detailed in [part #8](../part8/README.md)
 
 ---
 

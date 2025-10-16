@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "folder": "dir_monitoring",
-    "name": "adxbzpx"
+    "name": "dash_raspberry_s_metrics"
   },
   "spec": {
     "annotations": {
@@ -36,7 +36,7 @@
         "title": "Logs",
         "tooltip": "",
         "type": "link",
-        "url": "/d/dashboard_loki_example/loki-example"
+        "url": "/d/dash_loki_example/loki-example"
       },
       {
         "asDropdown": false,
@@ -48,7 +48,7 @@
         "title": "CPU",
         "tooltip": "",
         "type": "link",
-        "url": "/d/dashboard_monitoring/cpu"
+        "url": "/d/dash_cpu/cpu"
       },
       {
         "asDropdown": false,
@@ -60,7 +60,7 @@
         "title": "Memory",
         "tooltip": "",
         "type": "link",
-        "url": "/d/adt2bxj/memory"
+        "url": "/d/dash_memory/memory"
       }
     ],
     "panels": [
@@ -337,6 +337,6 @@
     "timepicker": {},
     "timezone": "Europe/Paris",
     "title": "Raspberry's metrics",
-    "uid": "adxbzpx"
+    "uid": "dash_raspberry_s_metrics"
   }
 }

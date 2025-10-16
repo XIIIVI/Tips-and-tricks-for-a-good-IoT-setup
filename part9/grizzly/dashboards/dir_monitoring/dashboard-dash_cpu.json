@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "folder": "dir_monitoring",
-    "name": "adt2bxj"
+    "name": "dash_cpu"
   },
   "spec": {
     "annotations": {
@@ -36,7 +36,7 @@
         "title": "Logs",
         "tooltip": "",
         "type": "link",
-        "url": "/d/dashboard_loki_example/loki-example"
+        "url": "/d/dash_loki_example/loki-example"
       },
       {
         "asDropdown": false,
@@ -45,10 +45,22 @@
         "keepTime": true,
         "tags": [],
         "targetBlank": false,
-        "title": "CPU",
+        "title": "Memory",
         "tooltip": "",
         "type": "link",
-        "url": "/d/dashboard_monitoring/cpu"
+        "url": "/d/dash_memory/memory"
+      },
+      {
+        "asDropdown": false,
+        "icon": "dashboard",
+        "includeVars": true,
+        "keepTime": true,
+        "tags": [],
+        "targetBlank": false,
+        "title": "Raspberry",
+        "tooltip": "",
+        "type": "link",
+        "url": "/d/dash_raspberry_s_metrics/raspberry-s-metrics"
       }
     ],
     "panels": [
@@ -60,17 +72,41 @@
         "fieldConfig": {
           "defaults": {
             "color": {
-              "mode": "thresholds"
+              "mode": "palette-classic"
             },
             "custom": {
-              "align": "auto",
-              "cellOptions": {
-                "type": "auto"
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 0,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
               },
-              "footer": {
-                "reducers": []
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
               },
-              "inspect": false
+              "showPoints": "auto",
+              "showValues": false,
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
             },
             "mappings": [],
             "thresholds": {
@@ -85,71 +121,55 @@
                   "value": 80
                 }
               ]
-            }
+            },
+            "unit": "percent"
           },
-          "overrides": [
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Stack name"
-              },
-              "properties": [
-                {
-                  "id": "custom.align",
-                  "value": "center"
-                },
-                {
-                  "id": "displayName",
-                  "value": "Stack"
-                }
-              ]
-            }
-          ]
+          "overrides": []
         },
         "gridPos": {
-          "h": 17,
-          "w": 12,
+          "h": 13,
+          "w": 10,
           "x": 0,
           "y": 0
         },
-        "id": 2,
+        "id": 1,
         "options": {
-          "cellHeight": "sm",
-          "showHeader": true
-        },
-        "pluginVersion": "12.2.0",
-        "targets": [
-          {
-            "editorMode": "builder",
-            "expr": "docker_container_cpu_usage_percent",
-            "hide": false,
-            "legendFormat": "__auto",
-            "range": true,
-            "refId": "A"
+          "legend": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
           },
+          "tooltip": {
+            "hideZeros": false,
+            "mode": "single",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "12.3.0-17750354453",
+        "targets": [
           {
             "datasource": {
               "type": "prometheus",
               "uid": "ds_prometheus"
             },
-            "editorMode": "builder",
-            "expr": "docker_container_mem_usage_percent",
-            "hide": false,
-            "instant": false,
+            "editorMode": "code",
+            "expr": "cpu_usage_system{host=~\"$host_list\"}",
             "legendFormat": "__auto",
             "range": true,
-            "refId": "B"
+            "refId": "A"
           }
         ],
-        "title": "Stats",
+        "title": "Usage system",
         "transformations": [
           {
             "id": "labelsToFields",
             "options": {
               "keepLabels": [
-                "com.docker.stack.namespace",
-                "com.docker.swarm.service.name",
-                "container_status",
+                "__name__",
+                "cpu",
                 "host"
               ]
             }
@@ -157,92 +177,9 @@
           {
             "id": "merge",
             "options": {}
-          },
-          {
-            "id": "organize",
-            "options": {
-              "excludeByName": {},
-              "includeByName": {},
-              "indexByName": {
-                "Time": 0,
-                "com.docker.stack.namespace": 3,
-                "com.docker.swarm.service.name": 4,
-                "container_status": 5,
-                "docker_container_cpu_usage_percent": 2,
-                "docker_container_mem_usage_percent": 6,
-                "host": 1
-              },
-              "renameByName": {
-                "com.docker.stack.namespace": "Stack",
-                "com.docker.swarm.service.name": "Service",
-                "container_status": "Status",
-                "docker_container_cpu_usage_percent": "CPU (%)",
-                "docker_container_mem_usage_percent": "Memory (%)",
-                "host": "Host"
-              }
-            }
-          },
-          {
-            "id": "groupToNestedTable",
-            "options": {
-              "fields": {
-                "Host": {
-                  "aggregations": []
-                },
-                "Service": {
-                  "aggregations": [],
-                  "operation": "groupby"
-                },
-                "Stack": {
-                  "aggregations": []
-                },
-                "com.docker.stack.namespace": {
-                  "aggregations": [
-                    "last"
-                  ],
-                  "operation": "aggregate"
-                },
-                "com.docker.swarm.service.name": {
-                  "aggregations": [
-                    "last"
-                  ]
-                },
-                "container_status": {
-                  "aggregations": [
-                    "last"
-                  ]
-                },
-                "docker_container_cpu_usage_percent": {
-                  "aggregations": [
-                    "allValues"
-                  ]
-                },
-                "docker_container_mem_usage_percent": {
-                  "aggregations": [
-                    "allValues"
-                  ]
-                },
-                "host": {
-                  "aggregations": [],
-                  "operation": "groupby"
-                }
-              },
-              "showSubframeHeaders": true
-            }
-          },
-          {
-            "id": "sortBy",
-            "options": {
-              "fields": {},
-              "sort": [
-                {
-                  "field": "Service"
-                }
-              ]
-            }
           }
         ],
-        "type": "table"
+        "type": "timeseries"
       },
       {
         "datasource": {
@@ -304,51 +241,20 @@
             },
             "unit": "percent"
           },
-          "overrides": [
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "docker_container_mem_usage"
-              },
-              "properties": [
-                {
-                  "id": "custom.axisPlacement",
-                  "value": "right"
-                },
-                {
-                  "id": "unit",
-                  "value": "bytes"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "docker_container_mem_usage_percent"
-              },
-              "properties": [
-                {
-                  "id": "custom.axisPlacement",
-                  "value": "left"
-                },
-                {
-                  "id": "unit",
-                  "value": "percent"
-                }
-              ]
-            }
-          ]
+          "overrides": []
         },
         "gridPos": {
-          "h": 17,
-          "w": 12,
-          "x": 12,
+          "h": 13,
+          "w": 10,
+          "x": 10,
           "y": 0
         },
-        "id": 1,
+        "id": 2,
         "options": {
           "legend": {
-            "calcs": [],
+            "calcs": [
+              "lastNotNull"
+            ],
             "displayMode": "list",
             "placement": "bottom",
             "showLegend": true
@@ -359,47 +265,67 @@
             "sort": "none"
           }
         },
-        "pluginVersion": "12.2.0",
+        "pluginVersion": "12.3.0-17750354453",
         "targets": [
           {
             "datasource": {
               "type": "prometheus",
               "uid": "ds_prometheus"
             },
-            "editorMode": "builder",
-            "expr": "docker_container_mem_usage_percent{host=~\"$host_list\", \"com.docker.swarm.service.name\"=~\"$service_list\"}",
+            "editorMode": "code",
+            "expr": "cpu_usage_user{host=~\"$host_list\"}",
             "legendFormat": "__auto",
             "range": true,
             "refId": "A"
           }
         ],
-        "title": "Docker - Memory usage",
+        "title": "Usage user",
         "transformations": [
           {
             "id": "labelsToFields",
             "options": {
               "keepLabels": [
                 "__name__",
-                "com.docker.stack.namespace",
-                "com.docker.swarm.service.name",
-                "com.docker.swarm.task.name",
-                "container_image",
-                "container_name",
-                "container_status",
+                "cpu",
                 "host"
-              ],
-              "valueLabel": "com.docker.swarm.service.name"
+              ]
             }
           },
           {
             "id": "merge",
             "options": {}
+          },
+          {
+            "id": "groupBy",
+            "options": {
+              "fields": {
+                "Time": {
+                  "aggregations": [],
+                  "operation": "groupby"
+                },
+                "cpu": {
+                  "aggregations": [],
+                  "operation": "groupby"
+                },
+                "cpu_usage_user": {
+                  "aggregations": [
+                    "last"
+                  ],
+                  "operation": "aggregate"
+                },
+                "host": {
+                  "aggregations": [],
+                  "operation": "groupby"
+                }
+              }
+            }
           }
         ],
         "type": "timeseries"
       }
     ],
     "preload": false,
+    "refresh": "30s",
     "schemaVersion": 42,
     "tags": [],
     "templating": {
@@ -434,10 +360,10 @@
           "allowCustomValue": false,
           "current": {
             "text": [
-              "iot-stack_alloy-level0"
+              "All"
             ],
             "value": [
-              "iot-stack_alloy-level0"
+              "$__all"
             ]
           },
           "definition": "label_values({host=~\"$host_list\"},container_name)",
@@ -464,7 +390,7 @@
     },
     "timepicker": {},
     "timezone": "Europe/Paris",
-    "title": "Memory",
-    "uid": "adt2bxj"
+    "title": "CPU",
+    "uid": "dash_cpu"
   }
 }
