@@ -70,7 +70,6 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /data/mosquitto/data:/mosquitto/data
       - /data/mosquitto/log:/mosquitto/log
 
@@ -128,15 +127,11 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /data/telegraf:/telegraf
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # File system
-      - /proc/sys/fs:/host/proc/sys/fs:ro
-      # For CPU metrics
-      - /proc/stat:/proc/stat:ro
-      - /proc/cpuinfo:/proc/cpuinfo:ro
+      - /proc/sys/fs:/proc/sys/fs:ro
       # For memory metrics
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -191,13 +186,9 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /data/telegraf:/telegraf
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # For CPU metrics
-      - /proc/stat:/proc/stat:ro
-      - /proc/cpuinfo:/proc/cpuinfo:ro
       # For memory metrics
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -247,18 +238,12 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /data/telegraf:/telegraf
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # For CPU metrics
-      - /proc/stat:/proc/stat:ro
-      - /proc/cpuinfo:/proc/cpuinfo:ro
       # For memory metrics
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
-      # For temperature metrics
-      - /sys/class/thermal:/sys/class/thermal:ro
       # For vcgencmd metrics
       - /tmp/telegraf_metrics:/telegraf_metrics:ro
     user: "telegraf:985"
@@ -291,7 +276,6 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
 
   vmstorage:
     image: ${PRIVATE_REPO}/vmstorage:v1.119.0-cluster
@@ -311,7 +295,6 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - vmstorage-data:/vmstorage
 
   vmselect:
@@ -334,7 +317,6 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
     command:
       - "--storageNode=vmstorage:8401"
 
@@ -374,7 +356,6 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /mnt/replicated-data/loki:/loki-chunks # Persistent storage for Loki
       - loki_data:/loki/ # local disk
 
@@ -409,7 +390,6 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -441,7 +421,6 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -468,7 +447,6 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -502,86 +480,86 @@ services:
       placement:
         constraints:
           - node.labels.level == 0
-    # Ensure the container runs your shell script as PID 1 instead of the image's /run.sh 
+    # Ensure the container runs your shell script as PID 1 instead of the image's /run.sh
     entrypoint:
       - /bin/sh
       - -c
     command:
-    - |
-      set -euo pipefail
+      - |
+        set -euo pipefail
 
-      echo "=== grafana init start ==="
+        echo "=== grafana init start ==="
 
-      PROV_DIR="/etc/grafana/provisioning/datasources"
-      mkdir -p "$$PROV_DIR"
+        PROV_DIR="/etc/grafana/provisioning/datasources"
+        mkdir -p "$$PROV_DIR"
 
-      # read secrets if they exist
-      CA="$$(cat /etc/loki/ca.crt 2>/dev/null || true)"
-      CLIENT_CERT="$$(cat /etc/loki/loki.crt 2>/dev/null || true)"
-      CLIENT_KEY="$$(cat /etc/loki/loki.key 2>/dev/null || true)"
+        # read secrets if they exist
+        CA="$$(cat /etc/loki/ca.crt 2>/dev/null || true)"
+        CLIENT_CERT="$$(cat /etc/loki/loki.crt 2>/dev/null || true)"
+        CLIENT_KEY="$$(cat /etc/loki/loki.key 2>/dev/null || true)"
 
-      # use Compose-safe default expansion for LOKI_HOST
-      LOKI_HOST="$${LOKI_HOST:-loki}"
+        # use Compose-safe default expansion for LOKI_HOST
+        LOKI_HOST="$${LOKI_HOST:-loki}"
 
-      # write provisioning header using printf
-      printf '%s\n' \
-        "apiVersion: 1" \
-        "datasources:" \
-        "  - name: Loki with TLS" \
-        "    uid: ds_loki_tls" \
-        "    type: loki" \
-        "    access: proxy" \
-        "    typeLogoUrl: public/plugins/loki/img/loki_icon.svg" \
-        "    url: https://$$LOKI_HOST:3100/" \
-        "    basicAuth: false" \
-        "    basicAuthUser: ''" \
-        "    withCredentials: false" \
-        "    isDefault: false" \
-        "    jsonData:" \
-        "      tlsAuth: true" \
-        "      tlsAuthWithCACert: true" \
-        "      tlsSkipVerify: false" \
-        "      serverName: $$LOKI_HOST" \
-        "      pdcInjected: false" \
-        "    secureJsonData:" \
-        "      tlsCACert: |" > "$$PROV_DIR/loki.yaml"
+        # write provisioning header using printf
+        printf '%s\n' \
+          "apiVersion: 1" \
+          "datasources:" \
+          "  - name: Loki with TLS" \
+          "    uid: ds_loki_tls" \
+          "    type: loki" \
+          "    access: proxy" \
+          "    typeLogoUrl: public/plugins/loki/img/loki_icon.svg" \
+          "    url: https://$$LOKI_HOST:3100/" \
+          "    basicAuth: false" \
+          "    basicAuthUser: ''" \
+          "    withCredentials: false" \
+          "    isDefault: false" \
+          "    jsonData:" \
+          "      tlsAuth: true" \
+          "      tlsAuthWithCACert: true" \
+          "      tlsSkipVerify: false" \
+          "      serverName: $$LOKI_HOST" \
+          "      pdcInjected: false" \
+          "    secureJsonData:" \
+          "      tlsCACert: |" > "$$PROV_DIR/loki.yaml"
 
-      # append CA block (8-space indentation) or blank line
-      if [ -n "$$CA" ]; then
-        printf '%s\n' "$$CA" | sed 's/^/        /' >> "$$PROV_DIR/loki.yaml"
-      else
-        printf '        \n' >> "$$PROV_DIR/loki.yaml"
-      fi
+        # append CA block (8-space indentation) or blank line
+        if [ -n "$$CA" ]; then
+          printf '%s\n' "$$CA" | sed 's/^/        /' >> "$$PROV_DIR/loki.yaml"
+        else
+          printf '        \n' >> "$$PROV_DIR/loki.yaml"
+        fi
 
-      # tlsClientCert block
-      printf '%s\n' "      tlsClientCert: |" >> "$$PROV_DIR/loki.yaml"
-      if [ -n "$$CLIENT_CERT" ]; then
-        printf '%s\n' "$$CLIENT_CERT" | sed 's/^/        /' >> "$$PROV_DIR/loki.yaml"
-      else
-        printf '        \n' >> "$$PROV_DIR/loki.yaml"
-      fi
+        # tlsClientCert block
+        printf '%s\n' "      tlsClientCert: |" >> "$$PROV_DIR/loki.yaml"
+        if [ -n "$$CLIENT_CERT" ]; then
+          printf '%s\n' "$$CLIENT_CERT" | sed 's/^/        /' >> "$$PROV_DIR/loki.yaml"
+        else
+          printf '        \n' >> "$$PROV_DIR/loki.yaml"
+        fi
 
-      # tlsClientKey block
-      printf '%s\n' "      tlsClientKey: |" >> "$$PROV_DIR/loki.yaml"
-      if [ -n "$$CLIENT_KEY" ]; then
-        printf '%s\n' "$$CLIENT_KEY" | sed 's/^/        /' >> "$$PROV_DIR/loki.yaml"
-      else
-        printf '        \n' >> "$$PROV_DIR/loki.yaml"
-      fi
+        # tlsClientKey block
+        printf '%s\n' "      tlsClientKey: |" >> "$$PROV_DIR/loki.yaml"
+        if [ -n "$$CLIENT_KEY" ]; then
+          printf '%s\n' "$$CLIENT_KEY" | sed 's/^/        /' >> "$$PROV_DIR/loki.yaml"
+        else
+          printf '        \n' >> "$$PROV_DIR/loki.yaml"
+        fi
 
-      printf '\n' >> "$$PROV_DIR/loki.yaml"
+        printf '\n' >> "$$PROV_DIR/loki.yaml"
 
-      # permissions for Grafana UID (472)
-      chown -R 472:472 /etc/grafana/provisioning || true
-      chmod -R 0700 /etc/grafana/provisioning || true
+        # permissions for Grafana UID (472)
+        chown -R 472:472 /etc/grafana/provisioning || true
+        chmod -R 0700 /etc/grafana/provisioning || true
 
-      echo "=== grafana init handoff ==="
+        echo "=== grafana init handoff ==="
 
-      if [ -x /run.sh ]; then
-        exec /run.sh
-      else
-        exec grafana-server --homepath=/usr/share/grafana --config=/etc/grafana/grafana.ini
-      fi
+        if [ -x /run.sh ]; then
+          exec /run.sh
+        else
+          exec grafana-server --homepath=/usr/share/grafana --config=/etc/grafana/grafana.ini
+        fi
     secrets:
       - source: loki.crt
         target: /etc/loki/loki.crt
@@ -592,8 +570,6 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
-
 
 networks:
   log-network:

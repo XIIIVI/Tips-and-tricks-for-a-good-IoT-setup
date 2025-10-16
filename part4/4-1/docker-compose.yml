@@ -27,11 +27,12 @@
 #  OTHER DEALINGS IN THE SOFTWARE.
 # ============================================================
 
-version: '3.8'
+version: "3.8"
 
 services:
   mosquitto:
     image: ${PRIVATE_REPO}/eclipse-mosquitto:2.0.22-openssl
+    hostname: "{{.Node.Hostname}}"
     deploy:
       replicas: 5
       restart_policy:
@@ -50,11 +51,10 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /data/mosquitto/data:/mosquitto/data
       - /data/mosquitto/log:/mosquitto/log
 
 networks:
   public-network:
     driver: overlay
-    internal: true   # isolates backend traffic
+    internal: true # isolates backend traffic

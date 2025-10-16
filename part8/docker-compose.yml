@@ -38,6 +38,7 @@ services:
 
   mosquitto:
     image: ${PRIVATE_REPO}/eclipse-mosquitto:2.0.22-openssl
+    hostname: "{{.Node.Hostname}}"
     deploy:
       mode: global # Ensures one instance per eligible node
       restart_policy:
@@ -56,7 +57,6 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /data/mosquitto/data:/mosquitto/data
       - /data/mosquitto/log:/mosquitto/log
 
@@ -67,6 +67,7 @@ services:
   #################################
   telegraf-level0:
     image: ${PRIVATE_REPO}/telegraf-level0:1.34.4-alpine
+    hostname: "{{.Node.Hostname}}"
     deploy:
       mode: global # Ensures one instance per eligible node
       restart_policy:
@@ -99,21 +100,18 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /data/telegraf:/telegraf
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # File system
-      - /proc/sys/fs:/host/proc/sys/fs:ro
-      # For CPU metrics
-      - /proc/stat:/proc/stat:ro
-      - /proc/cpuinfo:/proc/cpuinfo:ro
+      - /proc/sys/fs:/proc/sys/fs:ro
       # For memory metrics
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
 
   telegraf-level1:
     image: ${PRIVATE_REPO}/telegraf-level1:1.34.4-alpine
+    hostname: "{{.Node.Hostname}}"
     deploy:
       mode: global # Ensures one instance per eligible node
       restart_policy:
@@ -146,19 +144,16 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /data/telegraf:/telegraf
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # For CPU metrics
-      - /proc/stat:/proc/stat:ro
-      - /proc/cpuinfo:/proc/cpuinfo:ro
       # For memory metrics
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
 
   telegraf-level2:
     image: ${PRIVATE_REPO}/telegraf-level2:1.34.4-alpine
+    hostname: "{{.Node.Hostname}}"
     deploy:
       mode: global # Ensures one instance per eligible node
       restart_policy:
@@ -186,18 +181,12 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /data/telegraf:/telegraf
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # For CPU metrics
-      - /proc/stat:/proc/stat:ro
-      - /proc/cpuinfo:/proc/cpuinfo:ro
       # For memory metrics
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
-      # For temperature metrics
-      - /sys/class/thermal:/sys/class/thermal:ro
       # For vcgencmd metrics
       - /tmp/telegraf_metrics:/telegraf_metrics:ro
 
@@ -209,6 +198,7 @@ services:
 
   vminsert:
     image: ${PRIVATE_REPO}/vminsert:v1.119.0-cluster
+    hostname: "{{.Node.Hostname}}"
     deploy:
       mode: global
       restart_policy:
@@ -227,10 +217,10 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
 
   vmstorage:
     image: ${PRIVATE_REPO}/vmstorage:v1.119.0-cluster
+    hostname: "{{.Node.Hostname}}"
     deploy:
       mode: global
       restart_policy:
@@ -246,11 +236,11 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - vmstorage-data:/vmstorage
 
   vmselect:
     image: ${PRIVATE_REPO}/vmselect:v1.119.0-cluster
+    hostname: "{{.Node.Hostname}}"
     deploy:
       mode: global
       restart_policy:
@@ -267,7 +257,6 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
     command:
       - "--storageNode=iot-stack_vmstorage:8401"
 
@@ -279,6 +268,7 @@ services:
 
   loki:
     image: ${PRIVATE_REPO}/loki:3.0.0
+    hostname: "{{.Node.Hostname}}"
     user: "10001:10001"
     command: -config.file=/etc/loki/local-config.yaml
     configs:
@@ -298,7 +288,6 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /mnt/replicated-data/loki:/loki-chunks # Persistent storage for Loki
       - /var/lib/loki/:/loki/ # local disk
     security_opt:
@@ -308,6 +297,7 @@ services:
 
   alloy-level0:
     image: ${PRIVATE_REPO}/alloy-level0:v1.10.2
+    hostname: "{{.Node.Hostname}}"
     deploy:
       mode: global # Ensures one instance per eligible node
       restart_policy:
@@ -325,15 +315,14 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
     cap_drop:
       - ALL
     cap_add:
-      - DAC_OVERRIDE     # Most critical for Docker socket access
-      - DAC_READ_SEARCH  # For reading Docker metadata
+      - DAC_OVERRIDE # Most critical for Docker socket access
+      - DAC_READ_SEARCH # For reading Docker metadata
     security_opt:
       - no-new-privileges:true
     tty: false
@@ -341,6 +330,7 @@ services:
 
   alloy-level1:
     image: ${PRIVATE_REPO}/alloy-level1:v1.10.2
+    hostname: "{{.Node.Hostname}}"
     deploy:
       mode: global # Ensures one instance per eligible node
       restart_policy:
@@ -360,15 +350,14 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
     cap_drop:
       - ALL
     cap_add:
-      - DAC_OVERRIDE     # Most critical for Docker socket access
-      - DAC_READ_SEARCH  # For reading Docker metadata
+      - DAC_OVERRIDE # Most critical for Docker socket access
+      - DAC_READ_SEARCH # For reading Docker metadata
     security_opt:
       - no-new-privileges:true
     tty: false
@@ -376,6 +365,7 @@ services:
 
   alloy-level2:
     image: ${PRIVATE_REPO}/alloy-level2:v1.10.2
+    hostname: "{{.Node.Hostname}}"
     deploy:
       mode: global # Ensures one instance per eligible node
       restart_policy:
@@ -390,15 +380,14 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
     cap_drop:
       - ALL
     cap_add:
-      - DAC_OVERRIDE     # Most critical for Docker socket access
-      - DAC_READ_SEARCH  # For reading Docker metadata
+      - DAC_OVERRIDE # Most critical for Docker socket access
+      - DAC_READ_SEARCH # For reading Docker metadata
     security_opt:
       - no-new-privileges:true
     tty: false
@@ -412,6 +401,7 @@ services:
 
   grafana:
     image: ${PRIVATE_REPO}/grafana:12.2.0
+    hostname: "{{.Node.Hostname}}"
     deploy:
       mode: replicated
       replicas: 1
@@ -432,8 +422,7 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - /etc/hostname:/etc/hostname:ro
-      
+
 networks:
   public-network:
     driver: overlay
@@ -442,7 +431,6 @@ networks:
 configs:
   loki-config.yaml:
     external: true
-
 
 volumes:
   vmstorage-data:
