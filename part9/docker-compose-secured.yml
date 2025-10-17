@@ -454,8 +454,6 @@ services:
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    # The user must be telegraf (belonging to the docker group) to get access to the Docker socket
-    user: "telegraf:985"
     cap_drop:
       - ALL
     cap_add:
@@ -495,8 +493,6 @@ services:
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    # The user must be telegraf (belonging to the docker group) to get access to the Docker socket
-    user: "telegraf:985"
     cap_drop:
       - ALL
     cap_add:
@@ -531,8 +527,6 @@ services:
       - /data/alloy:/alloy
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    # The user must be telegraf (belonging to the docker group) to get access to the Docker socket
-    user: "telegraf:985"
     cap_drop:
       - ALL
     cap_add:
