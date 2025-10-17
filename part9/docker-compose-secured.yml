@@ -343,6 +343,8 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - vmstorage-data:/vmstorage
+    tty: false
+    stdin_open: false
 
   vmselect:
     image: ${PRIVATE_REPO}/vmselect:v1.119.0-cluster
