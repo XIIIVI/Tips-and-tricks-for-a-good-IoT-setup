@@ -80,6 +80,9 @@ services:
   #################################
   telegraf-level0:
     image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
+    depends_on:
+      - mosquitto
+      - vminsert
     hostname: "{{.Node.Hostname}}"
     configs:
       - source: telegraf-level0.conf
@@ -139,6 +142,8 @@ services:
 
   telegraf-level1:
     image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
+    depends_on:
+      - telegraf-level0
     hostname: "{{.Node.Hostname}}"
     configs:
       - source: telegraf-level1.conf
@@ -196,6 +201,8 @@ services:
 
   telegraf-level2:
     image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
+    depends_on:
+      - telegraf-level1
     hostname: "{{.Node.Hostname}}"
     configs:
       - source: telegraf-level2.conf
@@ -361,6 +368,8 @@ services:
 
   alloy-level0:
     image: ${PRIVATE_REPO}/alloy:v1.10.2
+    depends_on:
+      - loki
     hostname: "{{.Node.Hostname}}"
     configs:
       - source: alloy-level0.alloy
@@ -397,6 +406,8 @@ services:
 
   alloy-level1:
     image: ${PRIVATE_REPO}/alloy:v1.10.2
+    depends_on:
+      - alloy-level0
     hostname: "{{.Node.Hostname}}"
     configs:
       - source: alloy-level1.alloy
@@ -428,6 +439,8 @@ services:
 
   alloy-level2:
     image: ${PRIVATE_REPO}/alloy:v1.10.2
+    depends_on:
+      - alloy-level1
     hostname: "{{.Node.Hostname}}"
     configs:
       - source: alloy-level2.alloy
@@ -460,6 +473,9 @@ services:
 
   grafana:
     image: ${PRIVATE_REPO}/grafana:12.2.0
+    depends_on:
+      - loki
+      - vmselect
     hostname: "{{.Node.Hostname}}"
     environment:
       - GF_PLUGINS_PREINSTALL_SYNC=volkovlabs-echarts-panel,volkovlabs-variable-panel,marcusolsson-static-datasource
