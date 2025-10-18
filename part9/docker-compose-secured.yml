@@ -127,9 +127,9 @@ services:
         protocol: tcp
         mode: host # or 'ingress' for routing mesh
     secrets:
-      - source: telegraf.crt
+      - source: telegraf-level0.crt
         target: /etc/telegraf/telegraf.crt
-      - source: telegraf.key
+      - source: telegraf-level0.key
         target: /etc/telegraf/telegraf.key
       - source: iot.ca
         target: /etc/telegraf/ca.crt
@@ -195,9 +195,9 @@ services:
         protocol: tcp
         mode: host # or 'ingress' for routing mesh
     secrets:
-      - source: telegraf.crt
+      - source: telegraf-level1.crt
         target: /etc/telegraf/telegraf.crt
-      - source: telegraf.key
+      - source: telegraf-level1.key
         target: /etc/telegraf/telegraf.key
       - source: iot.ca
         target: /etc/telegraf/ca.crt
@@ -258,9 +258,9 @@ services:
     networks:
       - telemetry-network
     secrets:
-      - source: telegraf.crt
+      - source: telegraf-level2.crt
         target: /etc/telegraf/telegraf.crt
-      - source: telegraf.key
+      - source: telegraf-level2.key
         target: /etc/telegraf/telegraf.key
       - source: iot.ca
         target: /etc/telegraf/ca.crt
@@ -738,9 +738,17 @@ secrets:
     external: true
   mosquitto.user:
     external: true
-  telegraf.crt:
+  telegraf-level0.crt:
     external: true
-  telegraf.key:
+  telegraf-level0.key:
+    external: true
+  telegraf-level1.crt:
+    external: true
+  telegraf-level1.key:
+    external: true
+  telegraf-level2.crt:
+    external: true
+  telegraf-level2.key:
     external: true
 
 volumes:
