@@ -52,6 +52,8 @@ services:
         target: /etc/mosquitto/mosquitto.key
       - source: mosquitto.passwd
         target: /etc/mosquitto/mosquitto.credentials
+        # mode on the service-level mapping is supported in recent compose specs
+        mode: 0400
       - source: iot.ca
         target: /etc/mosquitto/ca.crt
     deploy:
@@ -72,12 +74,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /data/mosquitto/data:/mosquitto/data
       - /data/mosquitto/log:/mosquitto/log
-    user: "10001:10001" # Non-root UID:GID
     read_only: true
-    cap_drop:
-      - ALL
-    cap_add:
-      - NET_BIND_SERVICE # Add only what's strictly needed
     security_opt:
       - no-new-privileges:true
     tty: false

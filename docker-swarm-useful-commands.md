@@ -25,6 +25,7 @@
 ## Secrets
 
 * To list the imported secrets: ```sudo docker secret ls```
+* To delete an imported secrets: ```sudo docker secret rm <SECRET>```
   
 ---
 

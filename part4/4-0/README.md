@@ -105,7 +105,7 @@ This section details the node `managers`used to automatically create the manager
 
 `members` is an array of manager's configurations.
 
-For each item, 
+For each item,
 
 `ip-address` is the IP address of the host, mainly used with `ssh` to log on.
 
@@ -206,7 +206,7 @@ You can add a file containing credentials thru the array `credentials` in the se
                     "state": "...",
                     "locality": "...",
                     "organization": "...",
-                    "common-name": "..."
+                    "key-and-csr": [ ... ]
                 },
             ]
         }
@@ -226,7 +226,9 @@ You can add a file containing credentials thru the array `credentials` in the se
 
 `organization` is the organization delivering the certificate.
 
-`common-name` is the common-name of the certificate.
+:warning: `key-and-csr` is an array of service names used to define the SAN (Subject Alternative Names) of the certificate used for TLS.
+
+ 
 
 ### Volumes
 

@@ -438,7 +438,7 @@ create_credentials() {
     # Iterate over each credential object safely
 while IFS= read -r cred_json; do
     # Extract fields safely
-    local name login GENERATED_PASSWORD HASH PASSWORD_FILENAME
+    local name login GENERATED_PASSWORD PASSWORD_FILENAME
     name=$(jq -r '.name' <<<"$cred_json")
     login=$(jq -r '.login' <<<"$cred_json")
 
@@ -446,10 +446,9 @@ while IFS= read -r cred_json; do
 
     PASSWORD_FILENAME="${name}.credentials"
     GENERATED_PASSWORD=$(openssl rand -base64 16)
-    HASH=$(htpasswd -bnB "${login}" "${GENERATED_PASSWORD}" | cut -d ':' -f2)
 
     # Create local password file
-    echo "${login}:${HASH}" > "./${PASSWORD_FILENAME}"
+    htpasswd -bnB "${login}" "${GENERATED_PASSWORD}" > "./${PASSWORD_FILENAME}"
 
     log_debug "\t- Importing the secret ${name} for user ${login} on ${IP_ADDRESS_ARG}"
 
@@ -461,7 +460,7 @@ while IFS= read -r cred_json; do
 
     # Create Docker secrets on remote host
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-        "sudo docker secret rm ${name}.passwd 2>/dev/null || true && sudo docker secret create ${name}.passwd /tmp/${PASSWORD_FILENAME}" < /dev/null
+        "sudo docker secret rm ${name}.passwd 2>/dev/null || true && sudo chmod 0400 /tmp/${PASSWORD_FILENAME} && sudo docker secret create ${name}.passwd /tmp/${PASSWORD_FILENAME}" < /dev/null
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
         "sudo docker secret rm ${name}.user 2>/dev/null || true && echo -n \"${name}\" | sudo docker secret create ${name}.user -" < /dev/null
 
