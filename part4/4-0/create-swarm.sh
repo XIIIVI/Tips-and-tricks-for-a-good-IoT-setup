@@ -438,7 +438,7 @@ create_credentials() {
     # Iterate over each credential object safely
 while IFS= read -r cred_json; do
     # Extract fields safely
-    local name login GENERATED_PASSWORD PASSWORD_FILENAME
+    local name login GENERATED_PASSWORD HASHED_PASSWORD PASSWORD_FILENAME SALT
     name=$(jq -r '.name' <<<"$cred_json")
     login=$(jq -r '.login' <<<"$cred_json")
 
@@ -448,11 +448,21 @@ while IFS= read -r cred_json; do
     # Generate a random password
     GENERATED_PASSWORD=$(openssl rand -base64 16)
 
-    # Generate SHA512 hash (to be compliant with Mosquitto format for instance)
-    HASHED_PASSWORD=$(printf "%s" "${GENERATED_PASSWORD}" | openssl passwd -6 -stdin)
+    # Create a crypt(3)-compatible salt using allowed characters A-Za-z0-9./
+    SALT=$(tr -dc 'A-Za-z0-9./' < /dev/urandom | head -c 16)
 
-    # Write to password file in format: username:hashed_password
-    echo "${login}:${HASHED_PASSWORD}" > "./${PASSWORD_FILENAME}"
+    # Use Python3's crypt to produce a $6$salt$hash entry compatible with Mosquitto
+    HASHED_PASSWORD=$(
+  python3 - <<PY
+import crypt, sys
+pw = sys.stdin.read().rstrip('\n')
+salt = "$6$" + "$SALT$"
+print(crypt.crypt(pw, salt))
+PY
+  <<<"$GENERATED_PASSWORD"
+)
+
+    printf '%s:%s\n' "$login" "$HASHED_PASSWORD" > "./${PASSWORD_FILENAME}"
 
     log_debug "\t- Importing the secret ${name} for user ${login} on ${IP_ADDRESS_ARG}"
 
