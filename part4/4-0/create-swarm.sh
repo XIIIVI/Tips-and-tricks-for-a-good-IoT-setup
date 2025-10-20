@@ -448,7 +448,7 @@ while IFS= read -r cred_json; do
     # Generate a random password
     GENERATED_PASSWORD=$(openssl rand -base64 16)
 
-    # Generate SHA512 hash in Mosquitto format
+    # Generate SHA512 hash (to be compliant with Mosquitto format for instance)
     HASHED_PASSWORD=$(printf "%s" "${GENERATED_PASSWORD}" | openssl passwd -6 -stdin)
 
     # Write to password file in format: username:hashed_password
