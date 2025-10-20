@@ -460,7 +460,7 @@ while IFS= read -r cred_json; do
 
     # Create Docker secrets on remote host
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-        "sudo docker secret rm ${name}.passwd 2>/dev/null || true && sudo chmod 0400 /tmp/${PASSWORD_FILENAME} && sudo docker secret create ${name}.passwd /tmp/${PASSWORD_FILENAME}" < /dev/null
+        "sudo docker secret rm ${name}.passwd 2>/dev/null || true && sudo docker secret create ${name}.passwd /tmp/${PASSWORD_FILENAME}" < /dev/null
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
         "sudo docker secret rm ${name}.user 2>/dev/null || true && echo -n \"${name}\" | sudo docker secret create ${name}.user -" < /dev/null
 
