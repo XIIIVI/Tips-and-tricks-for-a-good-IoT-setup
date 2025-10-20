@@ -448,19 +448,18 @@ while IFS= read -r cred_json; do
     # Generate a random password
     GENERATED_PASSWORD=$(openssl rand -base64 16)
 
-    # Create a crypt(3)-compatible salt using allowed characters A-Za-z0-9./
+    # Create a crypt(3)-safe salt using allowed characters A-Za-z0-9./ and limit length
     SALT=$(tr -dc 'A-Za-z0-9./' < /dev/urandom | head -c 16)
 
-    # Use Python3's crypt to produce a $6$salt$hash entry compatible with Mosquitto
-    HASHED_PASSWORD=$(
-  python3 - <<PY
-import crypt, sys
-pw = sys.stdin.read().rstrip('\n')
-salt = "$6$" + "$SALT$"
-print(crypt.crypt(pw, salt))
-PY
-  <<<"$GENERATED_PASSWORD"
-)
+    # Use OpenSSL to produce a SHA512-crypt entry in the form $6$salt$hash without rounds=
+    # Note: -salt takes the raw salt and -6 requests SHA512-crypt
+    HASHED_PASSWORD=$(printf '%s' "$GENERATED_PASSWORD" | openssl passwd -6 -salt "$SALT" -stdin)
+
+    # Ensure hashed output starts with $6$salt$
+    if [[ $HASHED_PASSWORD != \$6\$$SALT\$* ]]; then
+      echo "Error: unexpected hash format from openssl" >&2
+      exit 1
+    fi
 
     printf '%s:%s\n' "$login" "$HASHED_PASSWORD" > "./${PASSWORD_FILENAME}"
 
