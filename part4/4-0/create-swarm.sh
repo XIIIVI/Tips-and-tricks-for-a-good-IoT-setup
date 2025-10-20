@@ -445,9 +445,14 @@ while IFS= read -r cred_json; do
     log_debug "\t- Creating the secret ${name} for user ${login}"
 
     PASSWORD_FILENAME="${name}.credentials"
+    # Generate a random password
     GENERATED_PASSWORD=$(openssl rand -base64 16)
-    # Create password file without bcrypt - use default MD5 or SHA
-    htpasswd -nb "${login}" "${GENERATED_PASSWORD}" > "./${PASSWORD_FILENAME}"
+
+    # Generate SHA512 hash in Mosquitto format
+    HASHED_PASSWORD=$(printf "%s" "${GENERATED_PASSWORD}" | openssl passwd -6 -stdin)
+
+    # Write to password file in format: username:hashed_password
+    echo "${login}:${HASHED_PASSWORD}" > "./${PASSWORD_FILENAME}"
 
     log_debug "\t- Importing the secret ${name} for user ${login} on ${IP_ADDRESS_ARG}"
 
