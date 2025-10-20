@@ -446,9 +446,8 @@ while IFS= read -r cred_json; do
 
     PASSWORD_FILENAME="${name}.credentials"
     GENERATED_PASSWORD=$(openssl rand -base64 16)
-
-    # Create local password file
-    htpasswd -bnB "${login}" "${GENERATED_PASSWORD}" > "./${PASSWORD_FILENAME}"
+    # Create password file without bcrypt - use default MD5 or SHA
+    htpasswd -nb "${login}" "${GENERATED_PASSWORD}" > "./${PASSWORD_FILENAME}"
 
     log_debug "\t- Importing the secret ${name} for user ${login} on ${IP_ADDRESS_ARG}"
 
