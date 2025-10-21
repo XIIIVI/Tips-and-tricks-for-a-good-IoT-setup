@@ -1,6 +1,6 @@
 The script **create_swarm.sh** creates and configures both managers and workers of a Docker Swarm.
 
-> :warning: This script must be executed with `sudo`.
+> :warning: This script must be executed with `sudo` on a device where Docker has been previously installed.
 
 > :warning: All the hosts should have the same default login and password for an automatic deployment.
 
