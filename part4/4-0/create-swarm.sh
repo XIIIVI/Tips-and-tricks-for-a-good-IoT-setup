@@ -438,7 +438,7 @@ create_credentials() {
     # Iterate over each credential object safely
 while IFS= read -r cred_json; do
     # Extract fields safely
-    local name login GENERATED_PASSWORD HASHED_PASSWORD PASSWORD_FILENAME SALT
+    local name login GENERATED_PASSWORD PASSWORD_FILENAME
     name=$(jq -r '.name' <<<"$cred_json")
     login=$(jq -r '.login' <<<"$cred_json")
 
@@ -448,25 +448,18 @@ while IFS= read -r cred_json; do
     # Generate a random password
     GENERATED_PASSWORD=$(openssl rand -base64 16)
 
-    # Create a crypt(3)-safe salt using allowed characters A-Za-z0-9./ and limit length
-    SALT=$(tr -dc 'A-Za-z0-9./' < /dev/urandom | head -c 16)
-
-    # Use OpenSSL to produce a SHA512-crypt entry in the form $6$salt$hash without rounds=
-    # Note: -salt takes the raw salt and -6 requests SHA512-crypt
-    HASHED_PASSWORD=$(printf '%s' "$GENERATED_PASSWORD" | openssl passwd -6 -salt "$SALT" -stdin)
-
-    # Ensure hashed output starts with $6$salt$
-    if [[ $HASHED_PASSWORD != \$6\$$SALT\$* ]]; then
-      echo "Error: unexpected hash format from openssl" >&2
-      exit 1
-    fi
-
-    printf '%s:%s\n' "$login" "$HASHED_PASSWORD" > "./${PASSWORD_FILENAME}"
+    # Use ephemeral container to generate password file
+    # we use mosquitto_passwd utility from eclipse-mosquitto image as mosquitto only accepts 
+    # hashed passwords and not plain text ones
+    docker run --rm \
+      -v /tmp:/data \
+      eclipse-mosquitto:2.0.22 \
+      mosquitto_passwd -b -c /data/"${PASSWORD_FILENAME}" "${login}" "${GENERATED_PASSWORD}"
 
     log_debug "\t- Importing the secret ${name} for user ${login} on ${IP_ADDRESS_ARG}"
 
     # Copy to host
-    copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${PASSWORD_FILENAME}" "/tmp/" < /dev/null
+    copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "/tmp/${PASSWORD_FILENAME}" "/tmp/" < /dev/null
 
     # Remove local password file
     rm -f "./${PASSWORD_FILENAME}"
