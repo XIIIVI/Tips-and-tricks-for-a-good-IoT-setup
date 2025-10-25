@@ -31,6 +31,17 @@ auth_enabled: false
 
 server:
   http_listen_port: 3100
+  http_tls_config:
+    cert_file: /etc/loki/loki.crt
+    key_file:  /etc/loki/loki.key
+    client_auth_type: RequireAndVerifyClientCert
+    client_ca_file: /etc/loki/ca.crt
+  grpc_listen_port: 9095
+  grpc_server_max_recv_msg_size: 104857600
+  grpc_server_max_send_msg_size: 104857600
+
+# Explicitly set target to all for monolithic mode
+target: all
 
 common:
   ring:
@@ -39,6 +50,28 @@ common:
       store: inmemory
   replication_factor: 1
   path_prefix: /loki
+
+# Disable memberlist (not needed for single instance)
+memberlist:
+  join_members: []
+
+# Configure query frontend to work in single-process mode
+query_range:
+  align_queries_with_step: true
+  cache_results: true
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
+
+# Configure querier for single-process mode  
+querier:
+  max_concurrent: 4
+
+# Frontend worker connects to local frontend
+frontend_worker:
+  frontend_address: 127.0.0.1:9095
 
 schema_config:
   configs:

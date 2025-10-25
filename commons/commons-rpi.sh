@@ -1,0 +1,156 @@
+#!/bin/bash
+
+DEFAULT_DATA_DIR="/data"
+
+# ============================================================
+#  Project:   commons-docker.sh
+#  Author:    Fabrice TRAN-XUAN
+#  Created:   2025-08-10
+#
+#  License:   MIT License
+#
+#  Permission is hereby granted, free of charge, to any person
+#  obtaining a copy of this software and associated documentation
+#  files (the "Software"), to deal in the Software without
+#  restriction, including without limitation the rights to use,
+#  copy, modify, merge, publish, distribute, sublicense, and/or
+#  sell copies of the Software, and to permit persons to whom the
+#  Software is furnished to do so, subject to the following
+#  conditions:
+#
+#  The above copyright notice and this permission notice shall be
+#  included in all copies or substantial portions of the Software.
+#
+#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+#  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+#  OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+#  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+#  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+#  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+#  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+#  OTHER DEALINGS IN THE SOFTWARE.
+# ============================================================
+
+# -----------------------------------------------------------
+# install_vcgencmd
+# Deploy vcgencmd metrics collection remotely via sshpass
+# Arguments:
+#   1. SSH username
+#   2. SSH password
+#   3. SSH host
+# -----------------------------------------------------------
+install_vcgencmd() {
+    # -------------------------------
+    # SSH connection parameters
+    # -------------------------------
+    local USER_ARG="$1"           # SSH username
+    local PASS_ARG="$2"           # SSH password
+    local HOST_ARG="$3"           # SSH host
+
+    log_info "Deploying vcgencmd metrics collection to $HOST_ARG ..."
+
+    # -------------------------------
+    # Execute remote deployment
+    # -------------------------------
+    sshpass -p "$PASS_ARG" ssh -o StrictHostKeyChecking=no "$USER_ARG@$HOST_ARG" "bash -s" <<EOF
+#!/bin/bash
+set -e
+
+SCRIPT_PATH="/usr/local/bin/vcgencmd_metrics.sh"
+SERVICE_NAME="vcgencmd.service"
+TIMER_NAME="vcgencmd.timer"
+DATA_DIR="${DEFAULT_DATA_DIR}/telegraf/metrics"
+METRICS_FILE="\$DATA_DIR/vcgencmd.influx"
+
+# -------------------------------
+# Ensure vcgencmd is installed
+# -------------------------------
+if ! command -v vcgencmd >/dev/null 2>&1; then
+    echo "Installing vcgencmd (libraspberrypi-bin)..."
+    sudo apt-get update -y
+    sudo apt-get install -y libraspberrypi-bin
+else
+    echo "vcgencmd already installed."
+fi
+
+# -------------------------------
+# Create temporary directory
+# -------------------------------
+echo "Creating temporary directory: \$DATA_DIR"
+sudo mkdir -p "\$DATA_DIR"
+sudo chmod 777 "\$DATA_DIR"
+
+# -------------------------------
+# Create vcgencmd metrics script
+# -------------------------------
+echo "Creating vcgencmd script at \$SCRIPT_PATH"
+sudo tee "\$SCRIPT_PATH" > /dev/null <<EOS
+#!/bin/bash
+METRICS_FILE="\${METRICS_FILE}"
+EOS
+
+sudo tee -a "\$SCRIPT_PATH" > /dev/null << 'EOS'
+HOSTNAME=\$(hostname)
+
+echo "rpi_metrics,host=\${HOSTNAME} soc_temp=\$(vcgencmd measure_temp | awk -F '=' '{print \$2}' | sed 's/..$//')" > "\${METRICS_FILE}"
+echo "rpi_metrics,host=\${HOSTNAME} core_volts=\$(vcgencmd measure_volts core | awk -F '=' '{print \$2}' | sed 's/..$//')" >> "\${METRICS_FILE}"
+echo "rpi_metrics,host=\${HOSTNAME} arm_freq=\$(vcgencmd measure_clock arm | awk -F '=' '{print \$2}')" >> "\${METRICS_FILE}"
+echo "rpi_metrics,host=\${HOSTNAME} throttled_status=\$(vcgencmd get_throttled | awk -F '=' '{print \$2}' | xargs printf '%d')i" >> "\${METRICS_FILE}"
+EOS
+
+
+sudo chmod +x "\$SCRIPT_PATH"
+
+# -------------------------------
+# Create systemd service
+# -------------------------------
+echo "Creating systemd service: \$SERVICE_NAME"
+sudo tee "/etc/systemd/system/\$SERVICE_NAME" > /dev/null <<EOS
+[Unit]
+Description=Collect vcgencmd metrics for Telegraf
+After=network.target
+
+[Service]
+ExecStart=\$SCRIPT_PATH
+Nice=10
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
+EOS
+
+# -------------------------------
+# Create systemd timer
+# -------------------------------
+echo "Creating systemd timer: \$TIMER_NAME"
+sudo tee "/etc/systemd/system/\$TIMER_NAME" > /dev/null <<EOS
+[Unit]
+Description=Timer to trigger vcgencmd service every 10s
+
+[Timer]
+OnUnitActiveSec=10s
+Unit=\$SERVICE_NAME
+
+[Install]
+WantedBy=timers.target
+EOS
+
+# -------------------------------
+# Reload systemd and enable/start
+# -------------------------------
+echo "Reloading systemd and enabling services..."
+sudo systemctl daemon-reload
+sudo systemctl enable "\$SERVICE_NAME"
+sudo systemctl start "\$SERVICE_NAME"
+sudo systemctl enable "\$TIMER_NAME"
+sudo systemctl start "\$TIMER_NAME"
+
+# -------------------------------
+# Verify setup
+# -------------------------------
+echo "Checking active timers..."
+sudo systemctl list-timers --all | grep "\$TIMER_NAME"
+
+echo "Setup complete! Metrics will update every 10 seconds in: \$METRICS_FILE"
+EOF
+}

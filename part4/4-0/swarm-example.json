@@ -4,14 +4,15 @@
             "hostname-default-prefix": "orchestrator",
             "members": [
                 {
-                    "ip-address": "192.168.2.191",
+                    "ip-address": "192.168.2.193",
                     "folders": [
                         "/data/alloy",
                         "/data/database",
                         "/data/mosquitto/config",
                         "/data/mosquitto/data",
                         "/data/mosquitto/log",
-                        "/data/telegraf"
+                        "/data/telegraf/logs",
+                        "/data/telegraf/states"
                     ],
                     "labels": [
                         {
@@ -26,7 +27,7 @@
                     "has-display": true
                 },
                 {
-                    "ip-address": "192.168.2.125",
+                    "ip-address": "192.168.2.126",
                     "hostname": "orchestrator2",
                     "folders": [
                         "/data/alloy",
@@ -34,7 +35,8 @@
                         "/data/mosquitto/config",
                         "/data/mosquitto/data",
                         "/data/mosquitto/log",
-                        "/data/telegraf"
+                        "/data/telegraf/logs",
+                        "/data/telegraf/states"
                     ],
                     "labels": [
                         {
@@ -49,13 +51,14 @@
                     "has-display": true
                 },
                 {
-                    "ip-address": "192.168.2.245",
+                    "ip-address": "192.168.2.246",
                     "folders": [
                         "/data/alloy",
                         "/data/database",
                         "/data/mosquitto/data",
                         "/data/mosquitto/log",
-                        "/data/telegraf"
+                        "/data/telegraf/logs",
+                        "/data/telegraf/states"
                     ],
                     "labels": [
                         {
@@ -73,52 +76,17 @@
         },
         "workers": [
             {
-                "ip-address": "192.168.2.118",
+                "ip-address": "192.168.2.120",
                 "hostname": "sat1",
                 "folders": [
                     "/data/alloy",
-                    "/data/telegraf"
+                    "/data/telegraf/logs",
+                    "/data/telegraf/states"
                 ],
                 "labels": [
                     {
                         "key": "level",
                         "value": "1"
-                    }
-                ],
-                "has-display": true
-            },
-            {
-                "ip-address": "192.168.2.120",
-                "hostname": "sat2",
-                "folders": [
-                    "/data/alloy",
-                    "/data/telegraf"
-                ],
-                "labels": [
-                    {
-                        "key": "level",
-                        "value": "1"
-                    }
-                ],
-                "has-display": true
-            },
-            {
-                "ip-address": "192.168.2.120",
-                "hostname": "drone",
-                "folders": [
-                    "/data/alloy",
-                    "/data/telegraf"
-                ],
-                "labels": [
-                    {
-                        "key": "level",
-                        "value": "1"
-                    }
-                ],
-                "config": [
-                    {
-                        "key": "PARENT",
-                        "value": "sat1"
                     }
                 ],
                 "has-display": true
@@ -165,26 +133,23 @@
                     "login": "mqtt-user"
                 }
             ],
-            "certificates": [
-                {
-                    "name": "mosquitto",
-                    "days-valid": 3650,
-                    "country": "FR",
-                    "state": "Isère",
-                    "locality": "Grenoble",
-                    "organization": "IoT-MQTT",
-                    "common-name": "mosquitto"
-                },
-                {
-                    "name": "telegraf",
-                    "days-valid": 3650,
-                    "country": "FR",
-                    "state": "Isère",
-                    "locality": "Grenoble",
-                    "organization": "IoT-Telegraf",
-                    "common-name": "telegraf"
-                }
-            ]
+            "certificates": {
+                "name": "iot",
+                "days-valid": 3650,
+                "country": "FR",
+                "state": "Isère",
+                "locality": "Grenoble",
+                "organization": "IoT Dpt",
+                "key-and-csr": [
+                    "alloy",
+                    "grafana",
+                    "loki",
+                    "mosquitto",
+                    "telegraf-level0",
+                    "telegraf-level1",
+                    "telegraf-level2"
+                ]
+            }
         },
         "networks": [
             {

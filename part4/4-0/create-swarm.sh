@@ -29,12 +29,14 @@
 #  OTHER DEALINGS IN THE SOFTWARE.
 # ============================================================
 
+source "../../commons/commons-certificate.sh"
 source "../../commons/commons-cli.sh"
 source "../../commons/commons-docker.sh"
 source "../../commons/commons-file.sh"
 source "../../commons/commons-i2c.sh"
 source "../../commons/commons-log.sh"
 source "../../commons/commons-net.sh"
+source "../../commons/commons-rpi.sh"
 source "../../commons/commons-ssh.sh"
 source "../../commons/commons-time.sh"
 source "../../commons/commons-uart.sh"
@@ -176,6 +178,7 @@ create_single_manager() {
             fi
 
             activate_uart "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
+            install_vcgencmd "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
             install_chrony_ntp "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
 
             log_debug "\t- Creating the folders"
@@ -203,6 +206,9 @@ create_single_manager() {
             done
 
             create_single_configuration "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}" "${NODE_HOSTNAME}_env.config" "${CONFIG_DIR}/${NODE_HOSTNAME}_env.config"
+
+            log_info "✅ Manager ${NODE_HOSTNAME} created successfully at IP address ${IP_ADDRESS}"
+            log_info "👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏👏"
 
             log_warning "########################"
             log_warning "# Content of the Swarm #"
@@ -311,9 +317,10 @@ create_single_worker() {
                 install_uctronics_pi_rack "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "./data"
             fi
 
-            activate_uart "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
-            install_chrony_ntp "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
             install_docker "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}" "${REGISTRY_IP_ADDRESS_ARG}" "${REGISTRY_PORT_ARG}" "${REGISTRY_CERTIFICATE_FILE_ARG}"
+            activate_uart "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
+            install_vcgencmd "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
+            install_chrony_ntp "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS}"
 
             log_debug "\t- Adding the worker ${NODE_HOSTNAME} to the Swarm"
             sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS}" "sudo ${JOIN_WORKER_CMD}"
@@ -426,37 +433,42 @@ create_credentials() {
     local IP_ADDRESS_ARG="$3"
     local JSON_ARG="$4"
 
-    log_debug "\t- Creating the secrets for credentials on ${IP_ADDRESS_ARG}"
+    log_info "🔑 Creating the secrets for credentials on ${IP_ADDRESS_ARG}"
 
     # Iterate over each credential object safely
 while IFS= read -r cred_json; do
     # Extract fields safely
-    local name login GENERATED_PASSWORD HASH PASSWORD_FILENAME
+    local name login GENERATED_PASSWORD PASSWORD_FILENAME
     name=$(jq -r '.name' <<<"$cred_json")
     login=$(jq -r '.login' <<<"$cred_json")
 
-    log_warning "\t\t- Creating the secret ${name} for user ${login}"
+    log_debug "\t- Creating the secret ${name} for user ${login}"
 
-    PASSWORD_FILENAME="${name}.passwd"
+    PASSWORD_FILENAME="${name}.credentials"
+    # Generate a random password
     GENERATED_PASSWORD=$(openssl rand -base64 16)
-    HASH=$(htpasswd -bnB "${login}" "${GENERATED_PASSWORD}" | cut -d ':' -f2)
 
-    # Create local password file
-    echo "${login}:${HASH}" > "./${PASSWORD_FILENAME}"
+    # Use ephemeral container to generate password file
+    # we use mosquitto_passwd utility from eclipse-mosquitto image as mosquitto only accepts 
+    # hashed passwords and not plain text ones
+    docker run --rm \
+      -v /tmp:/data \
+      eclipse-mosquitto:2.0.22 \
+      mosquitto_passwd -b -c /data/"${PASSWORD_FILENAME}" "${login}" "${GENERATED_PASSWORD}"
 
-    log_warning "\t\t- Importing the secret ${name} for user ${login} on ${IP_ADDRESS_ARG}"
+    log_debug "\t- Importing the secret ${name} for user ${login} on ${IP_ADDRESS_ARG}"
 
     # Copy to host
-    copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${PASSWORD_FILENAME}" "/tmp/" < /dev/null
+    copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "/tmp/${PASSWORD_FILENAME}" "/tmp/" < /dev/null
 
     # Remove local password file
     rm -f "./${PASSWORD_FILENAME}"
 
     # Create Docker secrets on remote host
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-        "sudo docker secret create ${name}.passwd /tmp/${PASSWORD_FILENAME}" < /dev/null
+        "sudo docker secret rm ${name}.passwd 2>/dev/null || true && sudo docker secret create ${name}.passwd /tmp/${PASSWORD_FILENAME}" < /dev/null
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-        "echo -n \"${name}\" | sudo docker secret create ${name}.user -" < /dev/null
+        "sudo docker secret rm ${name}.user 2>/dev/null || true && echo -n \"${name}\" | sudo docker secret create ${name}.user -" < /dev/null
 
     # Remove temp files on remote host
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
@@ -480,6 +492,66 @@ done 0< <(jq -c '.swarm.secrets.credentials[]' <<<"$JSON_ARG")
 }
 
 #
+# build_san
+# This function builds the subjectAltName (SAN) string for OpenSSL from a JSON array.
+# Arguments:
+#    - JSON_ARG can be a JSON string or a path to a file containing JSON
+# Outputs: prints the -addext value for OpenSSL (e.g. "subjectAltName = DNS:...,IP:...")
+# Exit code 0 and empty output when array missing or empty.
+#
+build_san() {
+  set -euo pipefail
+
+  local JSON_INPUT_ARG="${1:-}"
+  local JQ_PATH='.swarm.secrets.certificates["key-and-csr"] // []'
+
+  [ -n "$JSON_INPUT_ARG" ] || return 0
+
+  # Read source: file or raw string
+  local SRC
+  if [ -f "$JSON_INPUT_ARG" ]; then
+    SRC="$(cat "$JSON_INPUT_ARG")"
+  else
+    SRC="$JSON_INPUT_ARG"
+  fi
+
+  # Normalize: if the top-level value is a JSON string that encodes JSON,
+  # convert it to actual JSON; else keep as-is.
+  # Then extract the array items raw (one per line), tolerant to missing path.
+  local ITEMS
+  ITEMS=$(printf '%s' "$SRC" \
+    | jq -r 'try (if (type == "string") then fromjson else . end) | try ('"$JQ_PATH"')[]' 2>/dev/null || true)
+
+  [ -n "$ITEMS" ] || return 0
+
+  # Build CSV of prefixed SANs, skipping empties
+  local PREFIXED=""
+  local ITEM
+  while IFS=$'\n' read -r ITEM; do
+    ITEM="${ITEM#"${ITEM%%[![:space:]]*}"}"
+    ITEM="${ITEM%"${ITEM##*[![:space:]]}"}"
+    [ -z "$ITEM" ] && continue
+    # remove accidental surrounding quotes (defensive)
+    ITEM="${ITEM%\"}"
+    ITEM="${ITEM#\"}"
+    if printf '%s' "$ITEM" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+      PREFIXED="${PREFIXED}IP:${ITEM},"
+    elif printf '%s' "$ITEM" | grep -Eq '^([0-9a-fA-F]{0,4}:){2,}[0-9a-fA-F]{0,4}$'; then
+      PREFIXED="${PREFIXED}IP:${ITEM},"
+    else
+      PREFIXED="${PREFIXED}DNS:${ITEM},"
+    fi
+  done <<EOF
+$ITEMS
+EOF
+
+  PREFIXED="${PREFIXED%,}"
+  [ -n "$PREFIXED" ] || return 0
+
+  printf 'subjectAltName = %s' "$PREFIXED"
+}
+
+#
 # create_certificates
 # This function creates and adds certificates as Docker secrets to the Swarm cluster.
 # Arguments:
@@ -489,81 +561,146 @@ done 0< <(jq -c '.swarm.secrets.credentials[]' <<<"$JSON_ARG")
 #   4. JSON_ARG: The JSON object containing the certificates configuration.
 #
 create_certificates() {
-    local LOGIN_ARG="$1"
-    local PASSWORD_ARG="$2"
-    local IP_ADDRESS_ARG="$3"
-    local JSON_ARG="$4"
+  local LOGIN_ARG="$1"
+  local PASSWORD_ARG="$2"
+  local IP_ADDRESS_ARG="$3"
+  local JSON_ARG="$4"
+  local CRT_CA_NAME
+  local CRT_DAYS_VALID
+  local CRT_COUNTRY 
+  local CRT_STATE 
+  local CRT_LOCALITY
+  local ADDEXT
 
-    log_debug "\t- Creating the secrets for certificates on ${IP_ADDRESS_ARG}"
+  log_info "Generating the certificates"
 
-    # Iterate over each certificate object safely
-    while IFS= read -r cert_json; do
-        # Extract fields safely
-        local NAME DAYS_VALID COUNTRY STATE LOCALITY ORGANIZATION COMMON_NAME
-        NAME=$(jq -r '.name' <<<"$cert_json")
-        DAYS_VALID=$(jq -r '."days-valid"' <<<"$cert_json")
-        COUNTRY=$(jq -r '.country' <<<"$cert_json")
-        STATE=$(jq -r '.state' <<<"$cert_json")
-        LOCALITY=$(jq -r '.locality' <<<"$cert_json")
-        ORGANIZATION=$(jq -r '.organization' <<<"$cert_json")
-        COMMON_NAME=$(jq -r '."common-name"' <<<"$cert_json")
+  # 1) Extract CA parameters
+  CRT_CA_NAME=$(jq -r '.swarm.secrets.certificates.name' <<<"$JSON_ARG")
+  CRT_DAYS_VALID=$(jq -r '.swarm.secrets.certificates["days-valid"]' <<<"$JSON_ARG")
+  CRT_COUNTRY=$(jq -r '.swarm.secrets.certificates.country' <<<"$JSON_ARG")
+  CRT_STATE=$(jq -r '.swarm.secrets.certificates.state' <<<"$JSON_ARG")
+  CRT_LOCALITY=$(jq -r '.swarm.secrets.certificates.locality' <<<"$JSON_ARG")
+  # Build the SAN addext string (may print nothing on stdout if no SANs)
+  ADDEXT="$(build_san "$JSON_ARG" || true)"
 
-        log_warning "\t\t- Creating the secret ${NAME} with common name ${COMMON_NAME} valid for ${DAYS_VALID} days"
+  log_debug "\t- Generating root CA '${CRT_CA_NAME}'"
 
-        # Generate CA certificate
-        openssl req -x509 -new -nodes -newkey rsa:4096 \
-            -keyout ca.key -out "${NAME}.ca" -days "${DAYS_VALID}" \
-            -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}" < /dev/null
+  # 1.1 Generate root CA key and certificate
+  openssl genrsa -out "${CRT_CA_NAME}.key" 4096
 
-        # Generate CSR and private key
-        openssl req -new -nodes -newkey rsa:2048 \
-            -keyout "${NAME}.key" -out "${NAME}.csr" \
-            -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/O=${ORGANIZATION}/CN=${COMMON_NAME}" < /dev/null
+  if [ -n "$ADDEXT" ]; then
+    log_debug "\t- Using SANs: $ADDEXT"
+    openssl req -x509 -new -nodes \
+       -key "${CRT_CA_NAME}.key" \
+       -sha256 \
+       -days "${CRT_DAYS_VALID}" \
+       -subj "/C=${CRT_COUNTRY}/ST=${CRT_STATE}/L=${CRT_LOCALITY}/CN=${CRT_CA_NAME}" \
+       -out "${CRT_CA_NAME}.crt" \
+       -addext "$ADDEXT"
+  else
+    log_debug "\t- No SANs provided, creating cert without -addext"
+    openssl req -x509 -new -nodes \
+       -key "${CRT_CA_NAME}.key" \
+       -sha256 \
+       -days "${CRT_DAYS_VALID}" \
+       -subj "/C=${CRT_COUNTRY}/ST=${CRT_STATE}/L=${CRT_LOCALITY}/CN=${CRT_CA_NAME}" \
+       -out "${CRT_CA_NAME}.crt" \
+       -addext "$ADDEXT"
+  fi  
 
-        # Sign certificate
-        openssl x509 -req -in "${NAME}.csr" -CA "${NAME}.ca" -CAkey ca.key -CAcreateserial \
-            -out "${NAME}.crt" -days 825 -sha256 \
-            -extfile <(printf "subjectAltName=DNS:localhost,IP:127.0.0.1") < /dev/null
+  show_cert_summary "${CRT_CA_NAME}.crt"
 
-        log_warning "\t\t- Importing the secret ${NAME} on ${IP_ADDRESS_ARG}"
+  # 1.2 Copy & import CA certificate as a Docker secret on the manager
+  log_debug "\t- Copying root CA to ${IP_ADDRESS_ARG}"
+  copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" \
+    "./${CRT_CA_NAME}.crt" "/tmp/" < /dev/null
+  sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
+    "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+    "sudo docker secret rm ${CRT_CA_NAME}.ca 2>/dev/null || true && \
+     sudo docker secret create ${CRT_CA_NAME}.ca - < /tmp/${CRT_CA_NAME}.crt" < /dev/null
 
-        # Copy to host
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.ca" "/tmp/" < /dev/null
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.crt" "/tmp/" < /dev/null
-        copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "./${NAME}.key" "/tmp/" < /dev/null
-
-        # Create Docker secrets
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-            "sudo docker secret create ${NAME}.ca /tmp/${NAME}.ca" < /dev/null
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-            "sudo docker secret create ${NAME}.crt /tmp/${NAME}.crt" < /dev/null
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-            "sudo docker secret create ${NAME}.key /tmp/${NAME}.key" < /dev/null
-
-        # Remove temp files on host
-        sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
-            "rm -f /tmp/${NAME}*.crt /tmp/${NAME}*.key /tmp/${NAME}*.ca" < /dev/null
-
-        # Append to secret template
-        cat <<EOF >>"${SECRET_TEMPLATE}"
-    ${NAME}.ca:
-      external: true
-    ${NAME}.crt:
-      external: true
-    ${NAME}.key:
-      external: true
+  # 2) Build signing ext-file (authorityKeyIdentifier, keyUsage…)
+  cat > cert_sign.ext <<'EOF'
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage=digitalSignature,keyEncipherment
+extendedKeyUsage=clientAuth,serverAuth
 EOF
 
-        # Local cleanup
-        rm -f "${NAME}.ca" "${NAME}.crt" "${NAME}.key" "${NAME}.csr" ca.key ca.srl
+  # 3) Loop through each 'key-and-csr' entry
+  while IFS= read -r NAME; do
+    log_debug "\t- Processing '${NAME}'"
 
-    done 0< <(jq -c '.swarm.secrets.certificates[]' <<<"$JSON_ARG")
+    # 3.1 Build minimal CSR config (only SAN)
+    cat > csr_${NAME}.conf <<EOF
+[req]
+distinguished_name = req_distinguished_name
+req_extensions     = req_ext
+[req_distinguished_name]
+[req_ext]
+subjectAltName = DNS:${NAME}
+EOF
 
-    log_warning "########################"
-    log_warning "# Secrets of the Swarm #"
-    log_warning "########################"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" \
-        "sudo docker secret ls"
+    # 3.2 Generate private key and CSR
+    log_warning "\t\t- Generating '${NAME}' private key and CSR"
+    openssl genrsa -out "${NAME}.key" 2048
+    openssl req -new \
+      -key "${NAME}.key" \
+      -subj "/CN=${NAME}" \
+      -out "${NAME}.csr" \
+      -config csr_${NAME}.conf
+
+    # 3.3 Sign CSR with CA and full extensions (merging SAN)
+    log_warning "\t\t- Signing '${NAME}' CSR with CA '${CRT_CA_NAME}'"
+    openssl x509 -req \
+      -in "${NAME}.csr" \
+      -CA "${CRT_CA_NAME}.crt" \
+      -CAkey "${CRT_CA_NAME}.key" \
+      -CAcreateserial \
+      -out "${NAME}.crt" \
+      -days "${CRT_DAYS_VALID}" \
+      -sha256 \
+      -extfile <( cat cert_sign.ext && printf "subjectAltName=DNS:%s\n" "${NAME}" )
+
+    show_cert_summary "${NAME}.crt"
+
+    # 3.4 Verify certificate chains to CA
+    log_warning "\t\t- Verifying '${NAME}' certificate"
+    openssl verify -CAfile "${CRT_CA_NAME}.crt" "${NAME}.crt"
+
+    # 3.5 Copy key & cert to manager and import as secrets
+    log_warning "\t\t- Copying '${NAME}' certs to ${IP_ADDRESS_ARG}"
+    copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" \
+      "./${NAME}.key" "/tmp/" < /dev/null
+    copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" \
+      "./${NAME}.crt" "/tmp/" < /dev/null
+
+    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
+      "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+      "sudo docker secret rm ${NAME}.key 2>/dev/null || true && \
+       sudo docker secret create ${NAME}.key - < /tmp/${NAME}.key" < /dev/null
+    sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
+      "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+      "sudo docker secret rm ${NAME}.crt 2>/dev/null || true && \
+       sudo docker secret create ${NAME}.crt - < /tmp/${NAME}.crt" < /dev/null
+
+    # 3.6 Cleanup local per-service artifacts
+    rm -f "${NAME}.key" "${NAME}.csr" "${NAME}.crt" csr_${NAME}.conf
+  done < <(jq -r '.swarm.secrets.certificates["key-and-csr"][]' <<<"${JSON_ARG}")
+
+  # 4) Cleanup local CA artifacts
+  rm -f "${CRT_CA_NAME}.key" "${CRT_CA_NAME}.crt" cert_sign.ext "${CRT_CA_NAME}.srl"
+
+  # 5) Cleanup remote temp files
+  sshpass -p "${PASSWORD_ARG}" ssh -o StrictHostKeyChecking=no \
+    "${LOGIN_ARG}@${IP_ADDRESS_ARG}" \
+    "sudo rm -f /tmp/${CRT_CA_NAME}.crt /tmp/*.key /tmp/*.crt" < /dev/null
+
+  log_warning "########################"
+  log_warning "# Secrets of the Swarm #"
+  log_warning "########################"
+  sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" \
+        "sudo docker secret ls" < /dev/null
 }
 
 #
@@ -585,7 +722,7 @@ create_single_configuration() {
 
     log_warning "\t\t- Creating the configuration ${NAME_ARG} on ${IP_ADDRESS_ARG}"
     copy_file_to_host "${LOGIN_ARG}" "${PASSWORD_ARG}" "${IP_ADDRESS_ARG}" "${FILE_ARG}" "/tmp/"
-    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker config create ${NAME_ARG} /tmp/${NAME_ARG}"
+    sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "sudo docker config rm ${NAME_ARG} 2>/dev/null || true && sudo docker config create ${NAME_ARG} /tmp/${NAME_ARG}"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${IP_ADDRESS_ARG}" "rm -f /tmp/${NAME_ARG}"
     cat <<EOF >>"${CONFIG_TEMPLATE}"
   ${NAME_ARG}:
@@ -704,9 +841,9 @@ EOF
 
     done 0< <(jq -c '.swarm.networks[].overlays[]' <<<"$JSON_ARG")
 
-    log_warning "#################################"
-    log_warning "# Overlay networks of the Swarm #"
-    log_warning "#################################"
+    log_warning "#########################"
+    log_warning "# Networks of the Swarm #"
+    log_warning "#########################"
     sshpass -p "${PASSWORD_ARG}" ssh "${LOGIN_ARG}@${MAIN_MANAGER_IP_ADDRESS}" \
         "sudo docker network ls"
 }
@@ -966,7 +1103,9 @@ create_swarm() {
     create_workers "${LOGIN_ARG}" "${PASSWORD_ARG}" "${JSON_CONTENT_ARG}" "${REGISTRY_IP_ADDRESS}" "${REGISTRY_PORT}" "${REGISTRY_CERTIFICATE_FILE}"
     create_volumes "${LOGIN_ARG}" "${PASSWORD_ARG}" "${JSON_CONTENT_ARG}"
 
-    log_info "✅ Swarm cluster created successfully."    
+    log_info "✅ Swarm cluster created successfully."
+
+    display_swarm_recap "${LOGIN_ARG}" "${PASSWORD_ARG}" "${MAIN_MANAGER_IP_ADDRESS}"
 }
 
 #
@@ -1078,7 +1217,7 @@ EOF
     # Creates the Swarm 
     create_swarm "${LOGIN}" "${PASSWORD}" "${JSON_CONTENT}"
     
-    log_info "Creating the Docker compose template file at ${DOCKER_COMPOSE_TEMPLATE}"
+    log_info "\nCreating the Docker compose template file at ${DOCKER_COMPOSE_TEMPLATE}"
     cat <<EOF_TEMPLATE >"${DOCKER_COMPOSE_TEMPLATE}"
 version: '3.8'
 
@@ -1093,13 +1232,17 @@ $(cat ${SECRET_TEMPLATE})
 $(cat ${VOLUME_TEMPLATE})
 EOF_TEMPLATE
 
-    log_warning "⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️"
+    log_warning "\n⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️"
     log_warning "⚠️                                                                       ️⚠️"
     log_warning "⚠️ DO NOT FORGET TO CHANGE THE PASSWORD OF THE ROOT USER ON ALL NODES !!! ⚠️"
     log_warning "⚠️                                                                       ️⚠️"
     log_warning "⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️"
-    log_info "A template of a Docker compose file is available at ${DOCKER_COMPOSE_TEMPLATE}."
+    log_info "\n\n📃 A template of a Docker compose file is available at ${DOCKER_COMPOSE_TEMPLATE}."
     log_info "It declares all the resources we've just created."
+
+    log_warning "\n\n♻️ To deploy your swarm from a file docker-compose.yml"
+    log_warning "1) jump to the folder containing the file docker-compose.yml",
+    log_warning "2) run the command: sudo PRIVATE_REPO=<IP_ADDRESS_OF_THE_REPO>:<LOCAL_REGISTRY_PORT> docker stack deploy --compose-file docker-compose.yml iot-stack"
 }
 
 time main "$@"

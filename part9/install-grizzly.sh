@@ -1,5 +1,7 @@
+#!/bin/bash
+
 # ============================================================
-#  Project:   vmauth.config.yml
+#  Project:   install-grizzly.sh
 #  Author:    Fabrice TRAN-XUAN
 #  Created:   2025-08-10
 #
@@ -27,7 +29,17 @@
 #  OTHER DEALINGS IN THE SOFTWARE.
 # ============================================================
 
-users:
-  - username: "admin"
-    password: "secret"
-    url_prefix: "http://vmselect:8481/"
+source "../commons/commons-cli.sh"
+source "../commons/commons-grafana.sh"
+
+# Normalize HOST_ARCH to Go/Docker naming
+uname_m="$(uname -m)"
+case "$uname_m" in
+  x86_64) HOST_ARCH="amd64" ;;
+  aarch64) HOST_ARCH="arm64" ;;
+  armv7l) HOST_ARCH="armv7" ;;
+  *) log_error "❌ Unsupported host arch: $uname_m"; exit 1 ;;
+esac
+
+# Install Grizzly if missing
+install_grizzly "${HOST_ARCH}"

@@ -1,3 +1,32 @@
+// ============================================================
+//  Project:   alloy-level0.alloy
+//  Author:    Fabrice TRAN-XUAN
+//  Created:   2025-08-10
+//
+//  License:   MIT License
+//
+//  Permission is hereby granted, free of charge, to any person
+//  obtaining a copy of this software and associated documentation
+//  files (the "Software"), to deal in the Software without
+//  restriction, including without limitation the rights to use,
+//  copy, modify, merge, publish, distribute, sublicense, and/or
+//  sell copies of the Software, and to permit persons to whom the
+//  Software is furnished to do so, subject to the following
+//  conditions:
+//
+//  The above copyright notice and this permission notice shall be
+//  included in all copies or substantial portions of the Software.
+//
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+//  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+//  OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+//  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+//  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+//  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+//  OTHER DEALINGS IN THE SOFTWARE.
+// ============================================================
+
 logging {
   level  = "info"
   format = "logfmt"
@@ -11,6 +40,7 @@ loki.source.api "loki_push_api" {
         listen_address = "0.0.0.0"
         listen_port = 3110
     }
+    
     forward_to = [loki.process.add_labels.receiver]
 }
 
@@ -18,9 +48,7 @@ loki.source.api "loki_push_api" {
 // #### Local logging Configuration ####
 // #####################################
 local.file_match "local_files" {
-    path_targets = [
-        {__path__ = "/host/log/*.log"}
-        ]
+    path_targets = [ {__path__ = "/host/log/*.log"}, { "__path__" = "/storage/telegraf/logs/*.log" } ]
     sync_period = "5s"
 }
 
@@ -74,6 +102,12 @@ loki.process "add_labels" {
 
 loki.write "parent" {
   endpoint {
-    url = "http://loki:3100/loki/api/v1/push"
+    url = "https://loki:3100/loki/api/v1/push"
+
+    tls_config {
+       cert_file = "/etc/alloy/alloy.crt"
+       key_file  = "/etc/alloy/alloy.key"
+       ca_file   = "/etc/alloy/ca.crt"
+    }
   }
 }

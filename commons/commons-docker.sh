@@ -29,6 +29,100 @@
 #  OTHER DEALINGS IN THE SOFTWARE.
 # ============================================================
 
+CURRENT_RASPBERRY_DISTRO="trixie"
+
+#
+# update_docker_repo
+# This function updates the Docker APT repository on a remote host from 'bookworm' to ${CURRENT_RASPBERRY_DISTRO}.
+#   - LOGIN_ARG:       SSH user
+#   - PASSWORD:   SSH password (sshpass)
+#   - HOST_ARG:       remote hostname or IP
+#
+update_docker_repo() {
+  local LOGIN_ARG="${1}"
+  local PASSWORD_ARG="${2}"
+  local HOST_ARG="${3}"
+  local SRC="/etc/apt/sources.list.d/docker.list"
+  local BAK="${SRC}.bak.$(date +%Y%m%d%H%M%S)"
+  local SEARCH='deb .*docker\.com/linux/debian\s\+bookworm'
+  local REPLACE='deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian '"${CURRENT_RASPBERRY_DISTRO}"' stable'
+
+  log_info "Updating Docker APT repository on $HOST_ARG from 'bookworm' to '${CURRENT_RASPBERRY_DISTRO}' ..."
+
+  # Verify remote file exists
+  sshpass -p "$PASSWORD_ARG" ssh -o StrictHostKeyChecking=no "$LOGIN_ARG@$HOST_ARG" \
+    "[ -f \"$SRC\" ]" \
+    || { echo "ERROR: $SRC not found on $HOST_ARG"; return 1; }
+
+  # Backup once if not already pointing to ${CURRENT_RASPBERRY_DISTRO}
+  sshpass -p "$PASSWORD_ARG" ssh -o BatchMode=no -o StrictHostKeyChecking=no "$LOGIN_ARG@$HOST_ARG" bash -lc "
+set -euo pipefail
+
+SRC='${SRC}'
+BAK='${BAK}'
+SEARCH='${SEARCH}'
+REPLACE='${REPLACE}'
+CURRENT_RASPBERRY_DISTRO='${CURRENT_RASPBERRY_DISTRO}'
+HOST_ARG='${HOST_ARG}'
+
+# quick guard: ensure SRC exists
+if [ ! -f \"\$SRC\" ]; then
+  echo \"Source file \$SRC not found on \$HOST_ARG\" >&2
+  exit 2
+fi
+
+# If already contains expected distro entry, exit cleanly
+if grep -Eq 'docker\\.com/linux/debian[[:space:]]+${CURRENT_RASPBERRY_DISTRO}' \"\$SRC\"; then
+  echo \"Already using ${CURRENT_RASPBERRY_DISTRO} on \$HOST_ARG.\"
+  exit 0
+fi
+
+# backup with timestamp
+TS=\$(date +%Y%m%dT%H%M%S)
+sudo cp -a \"\$SRC\" \"\$BAK\".\$TS
+echo \"Backup saved as \$BAK.\$TS\"
+
+# make replacements robust:
+# 1) replace http://deb.debian.org/debian-security -> https://security.debian.org/debian-security
+# 2) replace http://deb.debian.org/debian -> https://ftp.debian.org/debian
+# 3) apply user-supplied SEARCH->REPLACE as a final pass
+sudo sed -E -i.bak1 -e 's|http://deb.debian.org/debian-security|https://security.debian.org/debian-security|g' \
+                     -e 's|http://deb.debian.org/debian|https://ftp.debian.org/debian|g' \
+                     \"\$SRC\"
+
+# apply user intended replacement if provided
+if [ -n \"\$SEARCH\" ]; then
+  # use a temporary file to avoid partial edits on failure
+  sudo sed -E -e \"s|\$SEARCH|\$REPLACE|g\" \"\$SRC\" > \"\$SRC\".tmp && sudo mv \"\$SRC\".tmp \"\$SRC\"
+  echo \"Applied SEARCH->REPLACE in \$SRC\"
+fi
+
+# comment out any CD-ROM sources to avoid apt errors
+sudo sed -E -i.bak2 's|^[[:space:]]*deb[[:space:]]+cdrom:|# &|' \"\$SRC\"
+
+# sanitize files under /etc/apt/sources.list.d
+if [ -d /etc/apt/sources.list.d ]; then
+  sudo find /etc/apt/sources.list.d -type f -name '*.list' -print0 | while IFS= read -r -d '' f; do
+    sudo cp -a \"\$f\" \"\$f\".\$TS.bak
+    sudo sed -E -e 's|http://deb.debian.org/debian-security|https://security.debian.org/debian-security|g' \
+                -e 's|http://deb.debian.org/debian|https://ftp.debian.org/debian|g' \
+                -i \"\$f\"
+  done
+fi
+
+echo \"Replacements complete in \$SRC and /etc/apt/sources.list.d (backups kept). Clearing apt lists...\"
+
+sudo apt-get clean -y >/dev/null 2>&1 || true
+sudo rm -rf /var/lib/apt/lists/* >/dev/null 2>&1 || true
+
+# update with some visible feedback and retries
+sudo apt-get update -o Acquire::Retries=3
+sudo apt-get -y --no-install-recommends upgrade || true
+
+echo \"Update complete on \$HOST_ARG\"
+" && echo "Update complete on $HOST_ARG"
+}
+
 #
 # install_docker_container_viewer
 # This function installs Docker Container Viewer (DCV) on the specified host.
@@ -136,6 +230,7 @@ install_docker() {
 
     log_debug "\t- Installing Docker on $HOST_IP_ARG ..."
 
+    update_docker_repo "$ROOT_USER_ARG" "$ROOT_PASS_ARG" "$HOST_IP_ARG" < /dev/null
     sshpass -p "$ROOT_PASS_ARG" ssh -o StrictHostKeyChecking=no "$ROOT_USER_ARG@$HOST_IP_ARG" <<'EOF_SSH'
     export DEBIAN_FRONTEND=noninteractive
     export DEBCONF_NOWARNINGS=yes 
@@ -320,4 +415,67 @@ EOF_SSH
        log_debug "\t❌ Docker installation has failed ..."
        exit 1
     fi
+}
+
+#
+# display_swarm_recap
+# Prints a summary of Docker Swarm resources on the remote manager using sudo.
+# Arguments:
+#   1. USER_ARG: The SSH username for the Docker Swarm manager.
+#   2. PASS_ARG: The SSH password for the Docker Swarm manager.
+#   3. HOST_ARG: The IP address or hostname of the Docker Swarm manager.
+display_swarm_recap() {
+  local USER_ARG="$1"
+  local PASS_ARG="$2"
+  local HOST_ARG="$3"
+  local SSHPASS_BIN
+  SSHPASS_BIN=$(command -v sshpass 2>/dev/null)
+
+  if [[ -z "$SSHPASS_BIN" ]]; then
+    echo "Error: sshpass is not installed." >&2
+    return 2
+  fi
+
+  "$SSHPASS_BIN" -p "$PASS_ARG" ssh -o StrictHostKeyChecking=no \
+    "$USER_ARG@$HOST_ARG" <<'EOF'
+
+echo
+echo "===== 🏁 DOCKER SWARM RECAP 🏁 ====="
+echo
+
+echo "--- ➿ NODES ---"
+sudo docker node ls --format "table {{.ID}}\t{{.Hostname}}\t{{.Status}}\t{{.Availability}}\t{{.ManagerStatus}}"
+
+echo
+echo "--- 📦 SERVICES ---"
+sudo docker service ls --format "table {{.ID}}\t{{.Name}}\t{{.Replicas}}\t{{.Image}}"
+
+echo
+echo "--- ✏️ TASKS ---"
+for svc in $(sudo docker service ls -q); do
+  echo "Service: $svc"
+  sudo docker service ps "$svc" \
+    --format "table {{.ID}}\t{{.Name}}\t{{.CurrentState}}\t{{.DesiredState}}\t{{.Node}}"
+  echo
+done
+
+echo
+echo "--- 🔑 SECRETS ---"
+sudo docker secret ls --format "table {{.ID}}\t{{.Name}}\t{{.Driver}}"
+
+echo
+echo "--- ⚙️ CONFIGS ---"
+sudo docker config ls --format "table {{.ID}}\t{{.Name}}\t{{.CreatedAt}}"
+
+echo
+echo "--- 🌏 NETWORKS ---"
+sudo docker network ls --filter scope=swarm --format "table {{.ID}}\t{{.Name}}\t{{.Driver}}"
+
+echo
+echo "--- 💾 VOLUMES ---"
+sudo docker volume ls --format "table {{.Name}}\t{{.Driver}}\t{{.Mountpoint}}"
+
+EOF
+
+  return 0
 }

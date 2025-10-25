@@ -39,6 +39,25 @@ services:
   mosquitto:
     image: ${PRIVATE_REPO}/eclipse-mosquitto:2.0.22-openssl
     hostname: "{{.Node.Hostname}}"
+    configs:
+      - source: mosquitto.conf
+        target: /mosquitto/config/mosquitto.conf
+    networks:
+      - telemetry-network
+      - secured-network
+    secrets:
+      - source: mosquitto.crt
+        target: /etc/mosquitto/mosquitto.crt
+      - source: mosquitto.key
+        target: /etc/mosquitto/mosquitto.key
+      - source: mosquitto.passwd
+        target: /etc/mosquitto/mosquitto.credentials
+        # mode on the service-level mapping is supported in recent compose specs
+        mode: 0400
+        uid: '10001'
+        gid: '10001'
+      - source: iot.ca
+        target: /etc/mosquitto/ca.crt
     deploy:
       mode: global # Ensures one instance per eligible node
       restart_policy:
@@ -50,8 +69,6 @@ services:
       placement:
         constraints:
           - node.labels.mqtt == true
-    networks:
-      - public-network
     ports:
       - "1883:3881"
     volumes:
@@ -59,6 +76,16 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /data/mosquitto/data:/mosquitto/data
       - /data/mosquitto/log:/mosquitto/log
+    user: "10001:10001" # Non-root UID:GID
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE # Add only what's strictly needed
+    security_opt:
+      - no-new-privileges:true
+    tty: false
+    stdin_open: false
 
   #################################
   #                               #
@@ -66,11 +93,14 @@ services:
   #                               #
   #################################
   telegraf-level0:
-    image: ${PRIVATE_REPO}/telegraf-level0:1.34.4-alpine
+    image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
     depends_on:
       - mosquitto
       - vminsert
     hostname: "{{.Node.Hostname}}"
+    configs:
+      - source: telegraf-level0.conf
+        target: /etc/telegraf/telegraf.conf
     deploy:
       mode: global # Ensures one instance per eligible node
       restart_policy:
@@ -94,29 +124,51 @@ services:
       - GOGC=50
       - GOMAXPROCS=4
     networks:
-      - public-network
+      - telemetry-network
     ports:
       - target: 8791 # container port
         published: 8791 # port exposed on the swarm nodes
         protocol: tcp
         mode: host # or 'ingress' for routing mesh
+    secrets:
+      - source: telegraf-level0.crt
+        target: /etc/telegraf/telegraf.crt
+      - source: telegraf-level0.key
+        target: /etc/telegraf/telegraf.key
+      - source: iot.ca
+        target: /etc/telegraf/ca.crt
+      - source: mosquitto.user
+        target: /etc/telegraf/mosquitto.user
+      - source: mosquitto.passwd
+        target: /etc/telegraf/mosquitto.passwd
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /data/telegraf:/telegraf
       # For Docker
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # File system
-      - /proc/sys/fs:/proc/sys/fs:ro
       # For memory metrics
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
+    # The user must be telegraf (belonging to the docker group) to get access to the Docker socket
+    user: "telegraf:985"
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE # Add only what's strictly needed
+    security_opt:
+      - no-new-privileges:true
+    tty: false
+    stdin_open: false
 
   telegraf-level1:
-    image: ${PRIVATE_REPO}/telegraf-level1:1.34.4-alpine
+    image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
     depends_on:
       - telegraf-level0
     hostname: "{{.Node.Hostname}}"
+    configs:
+      - source: telegraf-level1.conf
+        target: /etc/telegraf/telegraf.conf
     deploy:
       mode: global # Ensures one instance per eligible node
       restart_policy:
@@ -140,12 +192,23 @@ services:
       - GOGC=50
       - GOMAXPROCS=4
     networks:
-      - public-network
+      - telemetry-network
     ports:
       - target: 8791 # container port
         published: 8791 # port exposed on the swarm nodes
         protocol: tcp
         mode: host # or 'ingress' for routing mesh
+    secrets:
+      - source: telegraf-level1.crt
+        target: /etc/telegraf/telegraf.crt
+      - source: telegraf-level1.key
+        target: /etc/telegraf/telegraf.key
+      - source: iot.ca
+        target: /etc/telegraf/ca.crt
+      - source: mosquitto.user
+        target: /etc/telegraf/mosquitto.user
+      - source: mosquitto.passwd
+        target: /etc/telegraf/mosquitto.passwd
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -155,12 +218,25 @@ services:
       # For memory metrics
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
+    # The user must be telegraf (belonging to the docker group) to get access to the Docker socket
+    user: "telegraf:985"
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE # Add only what's strictly needed
+    security_opt:
+      - no-new-privileges:true
+    tty: false
+    stdin_open: false
 
   telegraf-level2:
-    image: ${PRIVATE_REPO}/telegraf-level2:1.34.4-alpine
+    image: ${PRIVATE_REPO}/telegraf:1.34.4-alpine
     depends_on:
       - telegraf-level1
     hostname: "{{.Node.Hostname}}"
+    configs:
+      - source: telegraf-level2.conf
+        target: /etc/telegraf/telegraf.conf
     deploy:
       mode: global # Ensures one instance per eligible node
       restart_policy:
@@ -184,7 +260,18 @@ services:
       - GOGC=50
       - GOMAXPROCS=4
     networks:
-      - public-network
+      - telemetry-network
+    secrets:
+      - source: telegraf-level2.crt
+        target: /etc/telegraf/telegraf.crt
+      - source: telegraf-level2.key
+        target: /etc/telegraf/telegraf.key
+      - source: iot.ca
+        target: /etc/telegraf/ca.crt
+      - source: mosquitto.user
+        target: /etc/telegraf/mosquitto.user
+      - source: mosquitto.passwd
+        target: /etc/telegraf/mosquitto.passwd
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -196,6 +283,16 @@ services:
       - /sys:/host/sys:ro
       # For vcgencmd metrics
       - /tmp/telegraf_metrics:/telegraf_metrics:ro
+    # The user must be telegraf (belonging to the docker group) to get access to the Docker socket
+    user: "telegraf:985"
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE # Add only what's strictly needed
+    security_opt:
+      - no-new-privileges:true
+    tty: false
+    stdin_open: false
 
   #################################
   #                               #
@@ -214,16 +311,27 @@ services:
         constraints:
           - node.labels.level == 0
     command:
-      - "--storageNode=iot-stack_vmstorage:8400"
+      - "--storageNode=vmstorage:8400"
     depends_on:
       - vmstorage
     networks:
-      - public-network
+      - telemetry-network
+      - timeseries-network
     ports:
       - "8480:8480" # remote_write endpoint for Telegraf
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
+    user: "10001:10001" # Non-root UID:GID
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE # Add only what's strictly needed
+    security_opt:
+      - no-new-privileges:true
+    tty: false
+    stdin_open: false
 
   vmstorage:
     image: ${PRIVATE_REPO}/vmstorage:v1.119.0-cluster
@@ -239,11 +347,13 @@ services:
       - "--retentionPeriod=1d"
       - "--storageDataPath=/vmstorage"
     networks:
-      - public-network
+      - timeseries-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - vmstorage-data:/vmstorage
+    tty: false
+    stdin_open: false
 
   vmselect:
     image: ${PRIVATE_REPO}/vmselect:v1.119.0-cluster
@@ -258,14 +368,24 @@ services:
     depends_on:
       - vmstorage
     networks:
-      - public-network
+      - secured-network
+      - timeseries-network
     ports:
       - "8481:8481" # UI and query API
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     command:
-      - "--storageNode=iot-stack_vmstorage:8401"
+      - "--storageNode=vmstorage:8401"
+    user: "10001:10001" # Non-root UID:GID
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE # Add only what's strictly needed
+    security_opt:
+      - no-new-privileges:true
+    tty: false
+    stdin_open: false
 
   #################################
   #                               #
@@ -276,7 +396,6 @@ services:
   loki:
     image: ${PRIVATE_REPO}/loki:3.0.0
     hostname: "{{.Node.Hostname}}"
-    user: "10001:10001"
     command: -config.file=/etc/loki/local-config.yaml
     configs:
       - source: loki-config.yaml
@@ -289,24 +408,38 @@ services:
         constraints:
           - node.labels.level == 0
     networks:
-      - public-network
+      - secured-network
+      - log-network
     ports:
-      - "3100:3100"
+      - "3100:3100" # or 'ingress' for routing mesh
+    secrets:
+      - source: loki.crt
+        target: /etc/loki/loki.crt
+      - source: loki.key
+        target: /etc/loki/loki.key
+      - source: iot.ca
+        target: /etc/loki/ca.crt
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /mnt/replicated-data/loki:/loki-chunks # Persistent storage for Loki
-      - /var/lib/loki/:/loki/ # local disk
+      - loki_data:/loki/ # local disk
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
     tty: false
     stdin_open: false
 
   alloy-level0:
-    image: ${PRIVATE_REPO}/alloy-level0:v1.10.2
+    image: ${PRIVATE_REPO}/alloy:v1.10.2
     depends_on:
       - loki
     hostname: "{{.Node.Hostname}}"
+    configs:
+      - source: alloy-level0.alloy
+        target: /etc/alloy/config.alloy
+        mode: 0444 # read-only inside container
     deploy:
       mode: global # Ensures one instance per eligible node
       restart_policy:
@@ -315,12 +448,19 @@ services:
         constraints:
           - node.labels.level == 0
     networks:
-      - public-network
+      - log-network
     ports:
       - target: 3110 # container port
         published: 3110 # port exposed on the swarm nodes
         protocol: tcp
         mode: host # or 'ingress' for routing mesh
+    secrets:
+      - source: alloy.crt
+        target: /etc/alloy/alloy.crt
+      - source: alloy.key
+        target: /etc/alloy/alloy.key
+      - source: iot.ca
+        target: /etc/alloy/ca.crt
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -338,10 +478,14 @@ services:
     stdin_open: false
 
   alloy-level1:
-    image: ${PRIVATE_REPO}/alloy-level1:v1.10.2
+    image: ${PRIVATE_REPO}/alloy:v1.10.2
     depends_on:
       - alloy-level0
     hostname: "{{.Node.Hostname}}"
+    configs:
+      - source: alloy-level1.alloy
+        target: /etc/alloy/config.alloy
+        mode: 0444 # read-only inside container
     deploy:
       mode: global # Ensures one instance per eligible node
       restart_policy:
@@ -352,7 +496,7 @@ services:
     environment:
       - PARENT_LEVEL_NUMBER=0
     networks:
-      - public-network
+      - log-network
     ports:
       - target: 3111 # container port
         published: 3111 # port exposed on the swarm nodes
@@ -375,10 +519,14 @@ services:
     stdin_open: false
 
   alloy-level2:
-    image: ${PRIVATE_REPO}/alloy-level2:v1.10.2
+    image: ${PRIVATE_REPO}/alloy:v1.10.2
     depends_on:
       - alloy-level1
     hostname: "{{.Node.Hostname}}"
+    configs:
+      - source: alloy-level2.alloy
+        target: /etc/alloy/config.alloy
+        mode: 0444 # read-only inside container
     deploy:
       mode: global # Ensures one instance per eligible node
       restart_policy:
@@ -389,7 +537,7 @@ services:
     environment:
       - PARENT_LEVEL_NUMBER=1
     networks:
-      - public-network
+      - log-network
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -413,11 +561,20 @@ services:
   #################################
 
   grafana:
-    image: ${PRIVATE_REPO}/grafana:12.2.0
+    image: ${PRIVATE_REPO}/grafana:12.3.0-17750354453
     depends_on:
       - loki
       - vmselect
     hostname: "{{.Node.Hostname}}"
+    environment:
+      - GF_PATHS_DATA=/var/lib/grafana
+      - GF_PATHS_LOGS=/var/log/grafana
+      - GF_PATHS_PLUGINS=/var/lib/grafana/plugins
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_NAME=Main Org.
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_UID=dash_raspberry_s_metrics
     deploy:
       mode: replicated
       replicas: 1
@@ -426,28 +583,181 @@ services:
       placement:
         constraints:
           - node.labels.level == 0
-    environment:
-      - GF_PLUGINS_PREINSTALL_SYNC=volkovlabs-echarts-panel,volkovlabs-variable-panel,marcusolsson-static-datasource
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_NAME=Main Org.
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
-    networks:
-      - public-network
     ports:
       - "8080:3000"
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
+      - grafana_data:/var/lib/grafana
+      - grafana_logs:/var/log/grafana
+    # Try without any capability restrictions first
+    security_opt:
+      - no-new-privileges:true
+    tty: false
+    stdin_open: false
+    networks:
+      - public-network
+      - secured-network
+      # Ensure the container runs your shell script as PID 1 instead of the image's /run.sh
+    entrypoint:
+      - /bin/sh
+      - -c
+    command:
+      - |
+        set -euo pipefail
+
+        echo "=== grafana init start ==="
+
+        PROV_DIR="/etc/grafana/provisioning/datasources"
+        mkdir -p "$$PROV_DIR"
+
+        # read secrets if they exist
+        CA="$$(cat /etc/loki/ca.crt 2>/dev/null || true)"
+        CLIENT_CERT="$$(cat /etc/loki/loki.crt 2>/dev/null || true)"
+        CLIENT_KEY="$$(cat /etc/loki/loki.key 2>/dev/null || true)"
+
+        # use Compose-safe default expansion for LOKI_HOST
+        LOKI_HOST="$${LOKI_HOST:-loki}"
+
+        # write provisioning header using printf
+        printf '%s\n' \
+          "apiVersion: 1" \
+          "datasources:" \
+          "  - name: Loki with TLS" \
+          "    uid: ds_loki_tls" \
+          "    type: loki" \
+          "    access: proxy" \
+          "    typeLogoUrl: public/plugins/loki/img/loki_icon.svg" \
+          "    url: https://$$LOKI_HOST:3100/" \
+          "    basicAuth: false" \
+          "    basicAuthUser: ''" \
+          "    withCredentials: false" \
+          "    isDefault: false" \
+          "    jsonData:" \
+          "      tlsAuth: true" \
+          "      tlsAuthWithCACert: true" \
+          "      tlsSkipVerify: false" \
+          "      serverName: $$LOKI_HOST" \
+          "      pdcInjected: false" \
+          "    secureJsonData:" \
+          "      tlsCACert: |" > "$$PROV_DIR/loki.yaml"
+
+        # append CA block (8-space indentation) or blank line
+        if [ -n "$$CA" ]; then
+          printf '%s\n' "$$CA" | sed 's/^/        /' >> "$$PROV_DIR/loki.yaml"
+        else
+          printf '        \n' >> "$$PROV_DIR/loki.yaml"
+        fi
+
+        # tlsClientCert block
+        printf '%s\n' "      tlsClientCert: |" >> "$$PROV_DIR/loki.yaml"
+        if [ -n "$$CLIENT_CERT" ]; then
+          printf '%s\n' "$$CLIENT_CERT" | sed 's/^/        /' >> "$$PROV_DIR/loki.yaml"
+        else
+          printf '        \n' >> "$$PROV_DIR/loki.yaml"
+        fi
+
+        # tlsClientKey block
+        printf '%s\n' "      tlsClientKey: |" >> "$$PROV_DIR/loki.yaml"
+        if [ -n "$$CLIENT_KEY" ]; then
+          printf '%s\n' "$$CLIENT_KEY" | sed 's/^/        /' >> "$$PROV_DIR/loki.yaml"
+        else
+          printf '        \n' >> "$$PROV_DIR/loki.yaml"
+        fi
+
+        printf '\n' >> "$$PROV_DIR/loki.yaml"
+
+        # permissions for Grafana UID (472)
+        chown -R 472:472 /etc/grafana/provisioning || true
+        chmod -R 0700 /etc/grafana/provisioning || true
+
+        echo "=== grafana init handoff ==="
+
+        if [ -x /run.sh ]; then
+          exec /run.sh
+        else
+          exec grafana-server --homepath=/usr/share/grafana --config=/etc/grafana/grafana.ini
+        fi
+    secrets:
+      - source: loki.crt
+        target: /etc/loki/loki.crt
+      - source: loki.key
+        target: /etc/loki/loki.key
+      - source: iot.ca
+        target: /etc/loki/ca.crt
 
 networks:
+  log-network:
+    driver: overlay
+    internal: true # isolates backend traffic
   public-network:
     driver: overlay
     internal: true # isolates backend traffic
+  secured-network:
+    external: true
+  telemetry-network:
+    external: true
+  timeseries-network:
+    driver: overlay
+    internal: true # isolates VictoriaMetrics cluster traffic
 
 configs:
+  alloy-level0.alloy:
+    external: true
+  alloy-level1.alloy:
+    external: true
+  alloy-level2.alloy:
+    external: true
   loki-config.yaml:
+    external: true
+  mosquitto.conf:
+    external: true
+  telegraf-level0.conf:
+    external: true
+  telegraf-level1.conf:
+    external: true
+  telegraf-level2.conf:
+    external: true
+
+secrets:
+  alloy.crt:
+    external: true
+  alloy.key:
+    external: true
+  grafana.crt:
+    external: true
+  grafana.key:
+    external: true
+  iot.ca:
+    external: true
+  loki.crt:
+    external: true
+  loki.key:
+    external: true
+  mosquitto.crt:
+    external: true
+  mosquitto.key:
+    external: true
+  mosquitto.passwd:
+    external: true
+  mosquitto.user:
+    external: true
+  telegraf-level0.crt:
+    external: true
+  telegraf-level0.key:
+    external: true
+  telegraf-level1.crt:
+    external: true
+  telegraf-level1.key:
+    external: true
+  telegraf-level2.crt:
+    external: true
+  telegraf-level2.key:
     external: true
 
 volumes:
+  grafana_data:
+  grafana_logs:
+  loki_data:
   vmstorage-data:
     driver: local

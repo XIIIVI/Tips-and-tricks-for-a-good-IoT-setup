@@ -61,7 +61,7 @@ LOCAL_REGISTRY_PORT="4443"
 # --------------------------------------
 usage() {
   cat <<EOF
-Usage: $0 --version-number <grafana_version> --admin-passwd <password> --grizzly-basedir <dir> --local-registry-address <addr> [options]
+Usage: $0 --version-number <grafana_version> --admin-passwd <password> --grafana-url <Grafana's URL> --local-registry-address <addr> --sa-token <service account token> [options]
 
 Mandatory:
   --version-number        Grafana image version tag (e.g., 12.2.0)
@@ -189,8 +189,14 @@ cp "./${CUSTOM_DB}" "${BUILD_CTX}/grafana.db"
 cat > "${BUILD_CTX}/Dockerfile" <<EOF
 # Use the official image for the desired version; buildx will pull the ${TARGET_ARCH} variant
 FROM grafana/grafana:${VERSION_NUMBER}
+
+USER root
+
 # Replace SQLite database with customized one
 COPY --chown=472:472 grafana.db /var/lib/grafana/grafana.db
+RUN chmod 640 /var/lib/grafana/grafana.db
+
+USER 472
 EOF
 
 # Ensure buildx exists and a builder is selected
@@ -212,7 +218,7 @@ if docker image inspect "${TARGET_IMAGE}" >/dev/null 2>&1; then
 fi
 
 # Build and push fresh image
-log_debug "\t- RBuild and push the image ${TARGET_IMAGE}"
+log_debug "\t- Build and push the image ${TARGET_IMAGE}"
 docker buildx build \
   --platform "linux/${TARGET_ARCH}" \
   --tag "${TARGET_IMAGE}" \

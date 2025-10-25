@@ -94,9 +94,9 @@ export DEBCONF_NOWARNINGS=yes
 # 📦 Reconfigure any unpacked packages, quietly and safely
 sudo -E dpkg --force-confnew --force-confdef --configure -a 1>/dev/null
 
-# ⚙️ Install Python tools and git without interaction
+# ⚙️ Install Python tools, fonts and git without interaction
 sudo -E apt-get update -qq
-sudo -E apt-get install -y -qq python3-pip python3-venv git 1>/dev/null
+sudo -E apt-get install -y -qq fonts-dejavu-core git python3-pip python3-venv 1>/dev/null
 
 # 📁 Clone the UCTRONICS SSD1306 repo
 cd /tmp

@@ -44,7 +44,7 @@ export HOSTNAME
 mkdir -p /telegraf/logs
 
 # Create the state file for the plugin
-PLUGIN_STATE_FILE="/telegraf/plugin_state"
+PLUGIN_STATE_FILE="/telegraf/states/plugin_state"
 
 echo "Creating the plugin state file ${PLUGIN_STATE_FILE} if it does not exist..."
 

@@ -10,6 +10,12 @@
 
 ---
 
+## Networks
+
+* Tu check which services uses an overlay network: ```sudo docker network inspect <OVERLAY_NETWORK>```
+
+---
+
 ## Nodes
 
 * To list the services on a given node: ```sudo docker node ps <Node's name>```
@@ -19,14 +25,24 @@
 ## Secrets
 
 * To list the imported secrets: ```sudo docker secret ls```
+* To delete an imported secrets: ```sudo docker secret rm <SECRET>```
   
 ---
 
 ## Services
 
+* Display the details of a service: ```sudo docker service inspect <SERVICE_NAME> --pretty```
 * List all the services: ```sudo docker service ls```
 * Remove a single service: ```sudo docker service rm <Name of the service>```
 * Remove all the services: ```sudo docker service rm $(sudo docker service ls -q)```
+* Restart a service: ```sudo docker service update --force <SERVICE_NAME>```
+* Run a command/shell in the service
+
+On the host, run the following commands
+
+1) Get the container ID: ```CID=$(sudo docker ps --filter name=<SERVICE_NAME> --format '{{.ID}}' | head -n1)```
+
+2) Run the command: ```sudo docker exec -it "$CID" bash```(or ```sudo docker exec -it "$CID" sh```) to open a console or ```sudo docker exec -it "$CID" sh -c '<COMMAND>'``` to execute a command
 
 ### Logs
 
